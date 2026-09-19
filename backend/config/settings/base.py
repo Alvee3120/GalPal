@@ -49,6 +49,7 @@ INSTALLED_APPS = [
     "apps.core",
     "apps.accounts",
     "apps.site_settings",
+    "apps.catalog",
 ]
 
 MIDDLEWARE = [
@@ -258,6 +259,10 @@ SPECTACULAR_SETTINGS = {
         {"name": "Admin – Customers", "description": "Admin only: browse customers, activate/deactivate."},
         {"name": "Site Settings", "description": "Public, safe subset of the global site settings (branding, contact, tracking IDs, commerce flags)."},
         {"name": "Admin – Site Settings", "description": "Admin only: edit all site settings. Secrets are masked."},
+        {"name": "Catalog", "description": "Public read-only categories (tree/flat), brands and tags."},
+        {"name": "Admin – Categories", "description": "Admin only: category CRUD, tree, safe delete."},
+        {"name": "Admin – Brands", "description": "Admin only: brand CRUD."},
+        {"name": "Admin – Tags", "description": "Admin only: tag CRUD."},
     ],
 }
 

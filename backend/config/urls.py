@@ -22,8 +22,10 @@ urlpatterns = [
     path("api/v1/", include("apps.core.urls")),
     path("api/v1/admin/", include("apps.accounts.urls_admin")),  # before the storefront includes
     path("api/v1/admin/", include("apps.site_settings.urls_admin")),
+    path("api/v1/admin/", include("apps.catalog.urls_admin")),
     path("api/v1/", include("apps.accounts.urls")),
     path("api/v1/", include("apps.site_settings.urls")),
+    path("api/v1/", include("apps.catalog.urls")),
 ]
 
 if settings.DEBUG:

@@ -18,6 +18,23 @@ class TimeStampedModel(models.Model):
         abstract = True
 
 
+class SlugModel(models.Model):
+    """
+    A unique, URL-safe `slug` that is generated from the name but editable by an admin.
+
+    `slug_is_custom` remembers whether an admin set the slug by hand, so a later rename only
+    regenerates slugs that were automatic. The logic lives in `apps.core.utils.resolve_slug`
+    (used by `SlugSerializerMixin`); it is not in `save()` because whether the admin *typed* a
+    slug is a fact about the request, not about the row.
+    """
+
+    slug = models.SlugField(max_length=255, unique=True, allow_unicode=False)
+    slug_is_custom = models.BooleanField(default=False, editable=False)
+
+    class Meta:
+        abstract = True
+
+
 class SoftDeleteQuerySet(models.QuerySet):
     def _touch_fields(self, **fields):
         # QuerySet.update() bypasses auto_now, so keep `updated_at` fresh by hand.

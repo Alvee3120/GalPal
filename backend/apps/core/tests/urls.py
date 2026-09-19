@@ -62,6 +62,18 @@ class ThrottledView(_Open):
         raise exceptions.Throttled(wait=30)
 
 
+class ConflictWithDetails(exceptions.APIException):
+    status_code = 409
+    default_code = "in_use"
+    default_detail = "It is in use."
+    details = {"children_count": 3}
+
+
+class ConflictView(_Open):
+    def get(self, request):
+        raise ConflictWithDetails()
+
+
 class Boom(_Open):
     def get(self, request):
         raise RuntimeError("secret internal detail")
@@ -87,6 +99,7 @@ urlpatterns = [
     path("django-404/", DjangoNotFound.as_view()),
     path("throttled/", ThrottledView.as_view()),
     path("boom/", Boom.as_view()),
+    path("conflict/", ConflictView.as_view()),
     path("numbers/", Numbers.as_view()),
     path("api/v1/", include("apps.core.urls")),
 ]

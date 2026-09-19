@@ -13,7 +13,8 @@ One JSON error format for the whole API.
 * `code`    – stable machine-readable string the frontend can switch on
 * `message` – human-readable summary
 * `details` – field errors for validation failures (always a dict),
-              `{"retry_after": seconds}` for throttling, otherwise null
+              `{"retry_after": seconds}` for throttling, extra data an exception
+              carries (e.g. counts for a conflict), otherwise null
 """
 
 import logging
@@ -79,6 +80,8 @@ def api_exception_handler(exc, context):
     details = None
     if isinstance(exc, exceptions.Throttled) and exc.wait is not None:
         details = {"retry_after": int(exc.wait)}
+    elif getattr(exc, "details", None) is not None:
+        details = exc.details  # exceptions may attach structured details, e.g. {"children_count": 3}
 
     response.data = error_body(response.status_code, code, str(message), details)
     return response

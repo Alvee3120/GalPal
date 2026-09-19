@@ -77,3 +77,8 @@ def test_unknown_url_returns_json_404(client):
     response = client.get("/definitely/not/a/route/")
     assert_envelope(response, 404, "not_found")
     assert response["Content-Type"] == "application/json"
+
+
+def test_exceptions_can_attach_structured_details(api_client):
+    error = assert_envelope(api_client.get("/conflict/"), 409, "in_use")
+    assert error["message"] == "It is in use." and error["details"] == {"children_count": 3}

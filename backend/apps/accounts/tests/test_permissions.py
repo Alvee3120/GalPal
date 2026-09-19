@@ -107,6 +107,9 @@ def test_sweep_finds_the_admin_routes():
     assert "/api/v1/admin/staff/" in routes and "/api/v1/admin/staff/1/" in routes
     assert "/api/v1/admin/customers/1/activate/" in routes
     assert "/api/v1/admin/site-settings/" in routes  # Module 2 is picked up by the sweep automatically
+    for route in ["/api/v1/admin/categories/", "/api/v1/admin/categories/1/", "/api/v1/admin/categories/tree/",
+                  "/api/v1/admin/brands/", "/api/v1/admin/brands/1/", "/api/v1/admin/tags/", "/api/v1/admin/tags/1/"]:
+        assert route in routes, route  # Module 3
     assert not any("<" in r or "(" in r or "^" in r or "$" in r for r in routes), routes
     assert CCE_ALLOWED_ADMIN_PREFIXES == ("/api/v1/admin/orders/",)
 

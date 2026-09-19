@@ -31,6 +31,10 @@ def test_schema_documents_auth_and_admin_endpoints(client):
         "/api/v1/admin/staff/", "/api/v1/admin/staff/{id}/deactivate/",
         "/api/v1/admin/customers/", "/api/v1/admin/customers/{id}/",
         "/api/v1/site-settings/", "/api/v1/admin/site-settings/",
+        "/api/v1/categories/", "/api/v1/categories/tree/", "/api/v1/categories/{slug}/",
+        "/api/v1/brands/", "/api/v1/brands/{slug}/", "/api/v1/tags/", "/api/v1/tags/{slug}/",
+        "/api/v1/admin/categories/", "/api/v1/admin/categories/{id}/", "/api/v1/admin/categories/tree/",
+        "/api/v1/admin/brands/", "/api/v1/admin/brands/{id}/", "/api/v1/admin/tags/", "/api/v1/admin/tags/{id}/",
     ]:
         assert path in paths, path
     # every operation is tagged, so Swagger groups them

@@ -105,7 +105,8 @@ backend/
 │       ├── messaging.py     pluggable SMS backend (email uses Django's EMAIL_BACKEND)
 │       └── views.py         health check, JSON 400/403/404/500 handlers
 │   ├── accounts/      users, auth (JWT), RBAC permissions, address book, staff/customer admin API
-│   └── site_settings/ global site settings singleton (branding, contact, tracking, commerce, SEO)
+│   ├── site_settings/ global site settings singleton (branding, contact, tracking, commerce, SEO)
+│   └── catalog/       categories (tree), brands, tags (Module 4 adds products here)
 ├── pytest.ini · conftest.py
 ├── requirements.txt · requirements-dev.txt
 └── Dockerfile · docker-compose.yml · .env.example
@@ -162,3 +163,18 @@ endpoint must declare `permission_classes = [AllowAny]` explicitly.
   value to replace, the masked value back to keep, `""` to clear.
 - Caching: `REDIS_URL` enables Redis (**required in production with multiple workers**). Without it a per-process
   cache is used with a short TTL (30s) since other workers can't be invalidated. A cache outage falls back to the DB.
+
+## Catalog: categories, brands, tags (Module 3)
+
+- **Categories** nest without a depth limit. A category is public only if it *and every ancestor* is active.
+  `GET /categories/tree/` returns the whole visible tree as a plain nested array (no pagination);
+  `GET /categories/` is the flat, filterable, paginated list; `GET /categories/{slug}/` adds SEO fields,
+  breadcrumb and visible children.
+- **Slugs** (shared by categories, brands, tags; reuse for products/pages via `SlugModel` +
+  `SlugSerializerMixin`): auto-generated from the name (`-2`, `-3` on collision), editable by an admin.
+  Renaming regenerates only slugs the admin never set by hand; sending `slug: ""` switches back to automatic.
+  A hand-typed slug that is already taken is a 400, never silently changed.
+- **Circular parents** are rejected on create/update (400 on `parent`) and rechecked under a table lock at save time.
+- **Deleting a category** is blocked with a 409 if it has products (`category_has_products`) or sub-categories
+  (`category_has_children`). `DELETE ...?move_children_to=root|<id>` re-parents the sub-categories first.
+  Module 4: `Product.categories` must use `related_name="products"` so the product check works.

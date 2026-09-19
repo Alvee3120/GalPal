@@ -63,3 +63,11 @@ def test_upload_path_is_organised_and_random():
 
 def test_upload_path_is_migration_serializable():
     assert UploadPath("banners").deconstruct()[1] == ("banners",)
+
+
+def test_reserved_slugs_are_treated_as_taken(widget_table):
+    assert unique_slugify(Widget, "Tree", reserved={"tree"}) == "tree-2"
+    assert unique_slugify(Widget, "Tree", reserved={"tree", "tree-2"}) == "tree-3"
+    assert unique_slugify(Widget, "Tree") == "tree"
+    Widget.objects.create(name="a", slug="tree-2")
+    assert unique_slugify(Widget, "Tree", reserved={"tree"}) == "tree-3"
