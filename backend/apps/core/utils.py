@@ -53,3 +53,21 @@ def unique_slugify(model, value, *, instance=None, field="slug", fallback="item"
         suffix = f"-{counter}"
         candidate = f"{base[: max_length - len(suffix)]}{suffix}"
     return candidate
+
+
+MASK = "\u2022" * 8  # ••••••••
+
+
+def mask_secret(value):
+    """
+    Display form of a secret: "" if unset, otherwise bullets (plus the last 4 characters
+    for long values, so an admin can tell two tokens apart). Never returns the full secret.
+    """
+    if not value:
+        return ""
+    return f"{MASK}{value[-4:]}" if len(value) >= 12 else MASK
+
+
+def is_masked(value):
+    """True if `value` looks like something `mask_secret` produced (i.e. a round-tripped mask)."""
+    return isinstance(value, str) and value.startswith(MASK)

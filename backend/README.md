@@ -63,6 +63,20 @@ pytest -k health -v
 pytest-django creates and destroys its own `test_<dbname>` database, so your dev data
 is never touched. The DB user needs the `CREATEDB` privilege.
 
+## Redis (optional in dev, required in production)
+
+Set `REDIS_URL=redis://localhost:6379/0` in `.env` to use Redis for the cache (and, from Module 13/16, Celery).
+Leave it empty to use the in-memory cache.
+
+```bash
+brew install redis && brew services start redis     # macOS with a native (Apple Silicon or Intel) Homebrew
+# or, without Homebrew, via conda:
+conda create -y -n galpal-redis -c conda-forge redis-server
+~/anaconda3/envs/galpal-redis/bin/redis-server --bind 127.0.0.1 --daemonize yes   # stop: redis-cli shutdown nosave
+# or: docker compose up   (starts Redis for you)
+redis-cli ping    # PONG
+```
+
 ## Settings
 
 | Module | Use |
@@ -90,7 +104,8 @@ backend/
 │       ├── utils.py         UploadPath, unique_slugify
 │       ├── messaging.py     pluggable SMS backend (email uses Django's EMAIL_BACKEND)
 │       └── views.py         health check, JSON 400/403/404/500 handlers
-│   └── accounts/      users, auth (JWT), RBAC permissions, address book, staff/customer admin API
+│   ├── accounts/      users, auth (JWT), RBAC permissions, address book, staff/customer admin API
+│   └── site_settings/ global site settings singleton (branding, contact, tracking, commerce, SEO)
 ├── pytest.ini · conftest.py
 ├── requirements.txt · requirements-dev.txt
 └── Dockerfile · docker-compose.yml · .env.example
@@ -136,3 +151,14 @@ endpoint must declare `permission_classes = [AllowAny]` explicitly.
   message is **printed in the `runserver` console**. In production configure `EMAIL_*` and an `SMS_BACKEND`.
 - `apps.accounts.services.create_customer_account(...)` creates accounts with a generated password; used by
   checkout in Module 10. The plain password is returned once and never stored, logged or exposed by the API.
+
+## Site settings (Module 2)
+
+- One row (`id=1`, enforced by a DB constraint), created by a migration. Read it from code with
+  `apps.site_settings.services.get_site_settings()` (cached); never query the model in request paths.
+- `GET /api/v1/site-settings/` is public and returns an **allow-listed** subset. Secrets (Meta CAPI token,
+  GA4 API secret) and internal flags can never appear there; a test fails if a new field isn't classified.
+- `GET/PATCH /api/v1/admin/site-settings/` is Admin-only. Secrets come back masked (`••••••••1234`); send a new
+  value to replace, the masked value back to keep, `""` to clear.
+- Caching: `REDIS_URL` enables Redis (**required in production with multiple workers**). Without it a per-process
+  cache is used with a short TTL (30s) since other workers can't be invalidated. A cache outage falls back to the DB.

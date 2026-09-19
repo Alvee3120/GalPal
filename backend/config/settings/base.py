@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     # Local
     "apps.core",
     "apps.accounts",
+    "apps.site_settings",
 ]
 
 MIDDLEWARE = [
@@ -122,6 +123,27 @@ PASSWORD_RESET_OTP_MAX_ATTEMPTS = env.int("PASSWORD_RESET_OTP_MAX_ATTEMPTS", def
 PASSWORD_RESET_OTP_RESEND_COOLDOWN_SECONDS = env.int(
     "PASSWORD_RESET_OTP_RESEND_COOLDOWN_SECONDS", default=60
 )
+
+# --- Cache ------------------------------------------------------------------
+# Redis when REDIS_URL is set (required for multi-worker production), otherwise a per-process
+# in-memory cache. Failing fast on timeouts keeps a Redis outage from stalling requests.
+
+REDIS_URL = env("REDIS_URL", default="")
+if REDIS_URL:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.redis.RedisCache",
+            "LOCATION": REDIS_URL,
+            "KEY_PREFIX": "galpal",
+            "OPTIONS": {"socket_connect_timeout": 2, "socket_timeout": 2},
+        }
+    }
+else:
+    CACHES = {"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache", "LOCATION": "galpal"}}
+
+# How long the site-settings row is cached. Saving invalidates it immediately, but a per-process
+# cache can't be invalidated in the *other* worker processes, so without Redis keep it short.
+SITE_SETTINGS_CACHE_TTL = env.int("SITE_SETTINGS_CACHE_TTL", default=3600 if REDIS_URL else 30)
 
 # --- Email / SMS ------------------------------------------------------------
 # Email uses Django's pluggable EMAIL_BACKEND. SMS uses our own pluggable backend
@@ -234,6 +256,8 @@ SPECTACULAR_SETTINGS = {
         {"name": "Account", "description": "The logged-in user's profile and address book."},
         {"name": "Admin – Staff", "description": "Admin only: manage Admin and CCE accounts."},
         {"name": "Admin – Customers", "description": "Admin only: browse customers, activate/deactivate."},
+        {"name": "Site Settings", "description": "Public, safe subset of the global site settings (branding, contact, tracking IDs, commerce flags)."},
+        {"name": "Admin – Site Settings", "description": "Admin only: edit all site settings. Secrets are masked."},
     ],
 }
 

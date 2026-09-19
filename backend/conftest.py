@@ -1,5 +1,6 @@
 import pytest
 from django.core import mail
+from django.core.cache import cache
 from rest_framework.test import APIClient
 from rest_framework_simplejwt.tokens import AccessToken
 
@@ -11,6 +12,14 @@ from apps.core.messaging import LocMemSMSBackend
 def _clear_outboxes():
     LocMemSMSBackend.outbox.clear()
     mail.outbox.clear()
+
+
+@pytest.fixture(autouse=True)
+def _clear_cache():
+    """The in-memory cache outlives a test's rolled-back transaction, so start every test clean."""
+    cache.clear()
+    yield
+    cache.clear()
 
 
 @pytest.fixture
