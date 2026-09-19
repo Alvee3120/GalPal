@@ -1,0 +1,56 @@
+# Local development stack: Django + PostgreSQL + Redis.
+#   docker compose up --build
+# API on http://localhost:8000  ·  Swagger on http://localhost:8000/api/docs/
+# (Redis is provisioned now; Celery/caching arrive in later modules.)
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: galpal
+      POSTGRES_USER: galpal
+      POSTGRES_PASSWORD: galpal
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U galpal -d galpal"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  web:
+    build: .
+    command: >
+      sh -c "python manage.py migrate --noinput &&
+             python manage.py runserver 0.0.0.0:8000"
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.dev
+      DEBUG: "True"
+      SECRET_KEY: docker-dev-insecure-key
+      ALLOWED_HOSTS: "*"
+      DATABASE_URL: postgres://galpal:galpal@db:5432/galpal
+      REDIS_URL: redis://redis:6379/0
+      CORS_ALLOWED_ORIGINS: http://localhost:3000
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+volumes:
+  pgdata:
