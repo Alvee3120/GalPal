@@ -20,6 +20,8 @@ urlpatterns = [
     path("api/redoc/", SpectacularRedocView.as_view(url_name="schema"), name="redoc"),
     # Versioned API. Each module adds its own include here.
     path("api/v1/", include("apps.core.urls")),
+    path("api/v1/admin/", include("apps.accounts.urls_admin")),  # before the storefront include
+    path("api/v1/", include("apps.accounts.urls")),
 ]
 
 if settings.DEBUG:

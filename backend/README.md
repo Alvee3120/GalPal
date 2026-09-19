@@ -25,8 +25,12 @@ pip install -r requirements-dev.txt
 
 cp .env.example .env            # then edit DATABASE_URL / SECRET_KEY
 
-createdb galpal                 # or create the role + database your DATABASE_URL points to
+# PostgreSQL: a dedicated role + database matching DATABASE_URL in .env
+psql -d postgres -c "CREATE ROLE galpal LOGIN PASSWORD 'galpal' CREATEDB;"
+createdb -O galpal galpal
+
 python manage.py migrate
+python manage.py createsuperuser        # asks for phone, full name, password -> role "admin"
 python manage.py runserver
 ```
 
@@ -82,9 +86,11 @@ backend/
 │       ├── models.py        TimeStampedModel, SoftDeleteModel
 │       ├── pagination.py    StandardPagination (default 20, max 100)
 │       ├── exceptions.py    API error envelope
-│       ├── validators.py    image upload validation (jpg/png/webp + size)
+│       ├── validators.py    image upload validation, Bangladesh phone normalisation
 │       ├── utils.py         UploadPath, unique_slugify
+│       ├── messaging.py     pluggable SMS backend (email uses Django's EMAIL_BACKEND)
 │       └── views.py         health check, JSON 400/403/404/500 handlers
+│   └── accounts/      users, auth (JWT), RBAC permissions, address book, staff/customer admin API
 ├── pytest.ini · conftest.py
 ├── requirements.txt · requirements-dev.txt
 └── Dockerfile · docker-compose.yml · .env.example
@@ -114,3 +120,19 @@ endpoint must declare `permission_classes = [AllowAny]` explicitly.
 **Slugs**: generate with `apps.core.utils.unique_slugify` (handles `-2`, `-3` collisions and Bangla text).
 
 **Images**: attach `validate_image_file` and `upload_to=UploadPath("products")` to image fields.
+
+## Authentication & roles (Module 1)
+
+- Login with **phone or email + password**: `POST /api/v1/auth/login/` with `{"identifier", "password"}`.
+  Phones are accepted as `01712345678`, `+8801712345678` or `8801712345678` and stored as `01712345678`.
+- Send `Authorization: Bearer <access>`. Access tokens last 15 min, refresh tokens 7 days (`JWT_*` env vars);
+  refresh tokens rotate and the old one is blacklisted. Logout blacklists the refresh token.
+- Roles: `admin`, `cce`, `customer` (+ anonymous guest). The whole matrix lives in
+  `apps/accounts/permissions.py`. CCE may only use `/api/v1/admin/orders/**`; everything else under
+  `/api/v1/admin/` is Admin-only. `apps/accounts/tests/test_permissions.py` sweeps **every** admin route
+  and fails if a CCE gets anything but 403 outside the order module, so new modules are covered automatically.
+- Users created by `createsuperuser` get the `admin` role.
+- Password reset sends a 6-digit code (SMS for a phone identifier, email for an email identifier). In dev the
+  message is **printed in the `runserver` console**. In production configure `EMAIL_*` and an `SMS_BACKEND`.
+- `apps.accounts.services.create_customer_account(...)` creates accounts with a generated password; used by
+  checkout in Module 10. The plain password is returned once and never stored, logged or exposed by the API.

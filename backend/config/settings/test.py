@@ -13,3 +13,7 @@ PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]
 MEDIA_ROOT = tempfile.mkdtemp(prefix="galpal-test-media-")
 
 CACHES = {"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}}
+
+# Capture SMS in memory (`apps.core.messaging.LocMemSMSBackend.outbox`); pytest-django
+# already swaps Django's email backend for the in-memory one.
+SMS_BACKEND = "apps.core.messaging.LocMemSMSBackend"

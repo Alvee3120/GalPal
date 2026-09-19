@@ -5,6 +5,7 @@ Environment-specific behaviour lives in dev.py / prod.py / test.py. Secrets and
 per-deployment values come from environment variables (or backend/.env).
 """
 
+from datetime import timedelta
 from pathlib import Path
 
 import environ
@@ -42,8 +43,11 @@ INSTALLED_APPS = [
     "corsheaders",
     "drf_spectacular",
     "drf_spectacular_sidecar",
+    "rest_framework_simplejwt",
+    "rest_framework_simplejwt.token_blacklist",
     # Local
     "apps.core",
+    "apps.accounts",
 ]
 
 MIDDLEWARE = [
@@ -91,12 +95,47 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # --- Auth / passwords -------------------------------------------------------
 
+AUTH_USER_MODEL = "accounts.User"
+
 AUTH_PASSWORD_VALIDATORS = [
-    {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
+    {
+        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
+        "OPTIONS": {"user_attributes": ("full_name", "phone", "email")},
+    },
     {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
     {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
+
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=env.int("JWT_ACCESS_MINUTES", default=15)),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=env.int("JWT_REFRESH_DAYS", default=7)),
+    "ROTATE_REFRESH_TOKENS": True,  # every refresh issues a new refresh token...
+    "BLACKLIST_AFTER_ROTATION": True,  # ...and burns the old one
+    "UPDATE_LAST_LOGIN": True,
+    "AUTH_HEADER_TYPES": ("Bearer",),
+}
+
+# Password reset (forgot password) one-time codes
+PASSWORD_RESET_OTP_TTL_MINUTES = env.int("PASSWORD_RESET_OTP_TTL_MINUTES", default=10)
+PASSWORD_RESET_OTP_MAX_ATTEMPTS = env.int("PASSWORD_RESET_OTP_MAX_ATTEMPTS", default=5)
+PASSWORD_RESET_OTP_RESEND_COOLDOWN_SECONDS = env.int(
+    "PASSWORD_RESET_OTP_RESEND_COOLDOWN_SECONDS", default=60
+)
+
+# --- Email / SMS ------------------------------------------------------------
+# Email uses Django's pluggable EMAIL_BACKEND. SMS uses our own pluggable backend
+# (apps.core.messaging). The full notification system arrives in Module 16.
+
+EMAIL_BACKEND = env("EMAIL_BACKEND", default="django.core.mail.backends.smtp.EmailBackend")
+EMAIL_HOST = env("EMAIL_HOST", default="localhost")
+EMAIL_PORT = env.int("EMAIL_PORT", default=587)
+EMAIL_HOST_USER = env("EMAIL_HOST_USER", default="")
+EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default="")
+EMAIL_USE_TLS = env.bool("EMAIL_USE_TLS", default=True)
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="GalPal <no-reply@galpal.local>")
+# Safe default: messages are dropped (never logged) until a real provider is configured.
+SMS_BACKEND = env("SMS_BACKEND", default="apps.core.messaging.NullSMSBackend")
 
 # --- i18n -------------------------------------------------------------------
 
@@ -185,7 +224,17 @@ SPECTACULAR_SETTINGS = {
     "SWAGGER_UI_FAVICON_HREF": "SIDECAR",
     "REDOC_DIST": "SIDECAR",
     "SWAGGER_UI_SETTINGS": {"persistAuthorization": True, "displayRequestDuration": True},
-    "TAGS": [{"name": "System", "description": "Health and operational endpoints."}],
+    "ENUM_NAME_OVERRIDES": {
+        "UserRoleEnum": "apps.accounts.models.User.Role",
+        "StaffRoleEnum": "apps.accounts.serializers.STAFF_ROLE_CHOICES",
+    },
+    "TAGS": [
+        {"name": "System", "description": "Health and operational endpoints."},
+        {"name": "Auth", "description": "Register, login, JWT refresh/logout, password change and reset."},
+        {"name": "Account", "description": "The logged-in user's profile and address book."},
+        {"name": "Admin – Staff", "description": "Admin only: manage Admin and CCE accounts."},
+        {"name": "Admin – Customers", "description": "Admin only: browse customers, activate/deactivate."},
+    ],
 }
 
 # --- Logging ----------------------------------------------------------------

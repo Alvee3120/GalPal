@@ -47,3 +47,32 @@ def test_rejects_oversized_image(settings):
     with pytest.raises(ValidationError) as exc:
         validate_image_file(make_image())
     assert exc.value.code == "file_too_large"
+
+
+# --- Bangladesh phone numbers -------------------------------------------------
+
+from apps.core.validators import normalize_bd_phone, validate_bd_phone  # noqa: E402
+
+
+@pytest.mark.parametrize(
+    "raw",
+    ["01712345678", "+8801712345678", "8801712345678", "+880 1712-345678", " 017 1234 5678 ", "(01712) 345678"],
+)
+def test_normalize_bd_phone_accepts_common_formats(raw):
+    assert normalize_bd_phone(raw) == "01712345678"
+
+
+@pytest.mark.parametrize(
+    "raw", ["", None, "1712345678", "0171234567", "017123456789", "01212345678", "01012345678",
+            "+8801212345678", "+919812345678", "abcdefghijk", "88017123456789"],
+)
+def test_normalize_bd_phone_rejects_bad_numbers(raw):
+    with pytest.raises(ValidationError) as exc:
+        normalize_bd_phone(raw)
+    assert exc.value.code == "invalid_phone"
+
+
+def test_validate_bd_phone_requires_canonical_form():
+    validate_bd_phone("01712345678")
+    with pytest.raises(ValidationError):
+        validate_bd_phone("+8801712345678")

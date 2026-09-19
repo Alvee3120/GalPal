@@ -13,3 +13,7 @@ ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=["localhost", "127.0.0.1", "[:
 # The Next.js dev server
 if not CORS_ALLOWED_ORIGINS:
     CORS_ALLOWED_ORIGINS = ["http://localhost:3000", "http://127.0.0.1:3000"]
+
+# Print emails and SMS (including password-reset codes) to the console.
+EMAIL_BACKEND = env("EMAIL_BACKEND", default="django.core.mail.backends.console.EmailBackend")
+SMS_BACKEND = env("SMS_BACKEND", default="apps.core.messaging.ConsoleSMSBackend")
