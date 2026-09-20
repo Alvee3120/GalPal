@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import AccountMenu from "./AccountMenu";
+import { logoutAction } from "@/app/actions/auth";
 
 const links = [
   { href: "/", label: "Home" },
@@ -118,6 +120,26 @@ export default function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
   const isHome = pathname === "/";
+
+  // Session state comes from the auth cookies (via /api/session); re-checked on every navigation,
+  // so it updates right after login or logout.
+  const [authed, setAuthed] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/session", { cache: "no-store" })
+      .then((res) => res.json())
+      .then((data) => !cancelled && setAuthed(Boolean(data.authenticated)))
+      .catch(() => !cancelled && setAuthed(false));
+    return () => {
+      cancelled = true;
+    };
+  }, [pathname]);
+
+  const handleLogout = async () => {
+    await logoutAction();
+    setAuthed(false);
+    router.refresh();
+  };
 
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
@@ -243,7 +265,16 @@ export default function Navbar() {
           >
             {searchIcon}
           </button>
-          {actions.map((a) => (
+          {actions.map((a) =>
+            a.href === "/account" ? (
+              <AccountMenu
+                key={a.href}
+                authed={authed}
+                icon={a.icon}
+                onLogout={handleLogout}
+                className="navbar-action rounded-full p-2 transition-colors"
+              />
+            ) : (
             <Link
               key={a.href}
               href={a.href}
@@ -252,7 +283,8 @@ export default function Navbar() {
             >
               {a.icon}
             </Link>
-          ))}
+            ),
+          )}
           <button
             type="button"
             aria-label={open ? "Close menu" : "Open menu"}

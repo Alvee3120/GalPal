@@ -24,6 +24,7 @@
   --color-brand: #6b0127;
   --color-heading: var(--color-brand);
   --color-focus: var(--color-foreground);
+  --color-danger: #dc2626;
   --color-shadow: color-mix(in srgb, var(--color-primary) 25%, transparent);
   --color-shadow-soft: color-mix(in srgb, var(--color-black) 10%, transparent);
 
@@ -55,6 +56,18 @@
   --color-footer-icon-hover-bg: var(--color-brand);
   --color-footer-icon-hover-text: var(--color-white);
   --color-footer-wordmark: color-mix(in srgb, var(--color-foreground) 35%, transparent);
+
+  /* Auth pages */
+  --color-auth-bg: color-mix(in srgb, var(--color-brand) 6%, var(--color-background));
+  --color-auth-frame: var(--color-background);
+  --color-auth-card: var(--color-background);
+  --color-auth-card-ring: var(--color-auth-bg);
+  --color-auth-text: var(--color-foreground);
+  --color-auth-muted: var(--color-muted);
+  --color-auth-line: var(--color-border);
+  --color-auth-error: var(--color-brand);
+  --color-auth-button: var(--color-brand);
+  --color-auth-button-text: var(--color-white);
 
   /* Kept for existing usages */
   --background: var(--color-background);
@@ -235,4 +248,116 @@ body {
 
 .footer-bottom {
   color: var(--color-footer-text);
+}
+
+/* ================================
+   Auth pages (colors only; layout lives in the components)
+   ================================ */
+.auth-page {
+  background-color: var(--color-auth-bg);
+  color: var(--color-auth-text);
+}
+
+.auth-frame {
+  background-color: var(--color-auth-frame);
+}
+
+.auth-card {
+  background-color: var(--color-auth-card);
+  color: var(--color-auth-text);
+  box-shadow: 0 0 0 0.5rem var(--color-auth-card-ring);
+}
+
+.auth-muted {
+  color: var(--color-auth-muted);
+}
+
+.auth-input {
+  background-color: transparent;
+  color: var(--color-auth-text);
+  border-bottom: 1px solid var(--color-auth-line);
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.auth-input::placeholder {
+  color: var(--color-auth-muted);
+}
+
+.auth-input:focus {
+  border-bottom-color: var(--color-brand);
+}
+
+.auth-input[aria-invalid="true"] {
+  border-bottom-color: var(--color-auth-error);
+}
+
+.auth-error {
+  color: var(--color-auth-error);
+}
+
+.auth-btn {
+  border: 1px solid var(--color-auth-button);
+  transition: opacity 0.2s ease, background-color 0.2s ease;
+}
+
+.auth-btn:focus-visible,
+.auth-link:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.auth-btn--primary {
+  background-color: var(--color-auth-button);
+  color: var(--color-auth-button-text);
+}
+
+.auth-btn--primary:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.auth-btn--outline {
+  background-color: transparent;
+  color: var(--color-auth-text);
+  border-color: var(--color-auth-line);
+}
+
+.auth-btn--outline:hover:not(:disabled) {
+  background-color: var(--color-hover);
+}
+
+.auth-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.auth-link {
+  color: var(--color-brand);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+/* ================================
+   Account menu (colors only; layout lives in the component)
+   ================================ */
+.account-menu {
+  background-color: var(--color-navbar-solid);
+  color: var(--color-navbar-solid-text);
+  border: 1px solid var(--color-border);
+  box-shadow: 0 10px 15px -3px var(--color-shadow-soft);
+}
+
+.account-menu__item:hover,
+.account-menu__item:focus-visible {
+  background-color: var(--color-hover);
+  outline: none;
+}
+
+.account-menu__item--danger {
+  color: var(--color-danger);
+}
+
+.account-menu__item--danger:hover,
+.account-menu__item--danger:focus-visible {
+  background-color: color-mix(in srgb, var(--color-danger) 10%, transparent);
 }
