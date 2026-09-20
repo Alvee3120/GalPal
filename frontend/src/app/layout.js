@@ -3,6 +3,7 @@ import "./globals.css";
 import Navbar from "@/component/shared/Navbar";
 import Footer from "@/component/shared/Footer";
 import FooterGate from "@/component/shared/FooterGate";
+import AppToaster from "@/component/shared/AppToaster";
 import { CartProvider } from "@/component/cart/CartProvider";
 import CartDrawer from "@/component/cart/CartDrawer";
 import { getCurrencySymbol } from "@/lib/siteSettings";
@@ -38,6 +39,7 @@ export default async function RootLayout({ children }) {
           </FooterGate>
           <CartDrawer />
         </CartProvider>
+        <AppToaster />
       </body>
     </html>
   );

@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
 import { useCart } from "@/component/cart/CartProvider";
 
 const ADDED_MS = 1800;
@@ -10,7 +9,6 @@ const ADDED_MS = 1800;
 export default function AddToCartButton({ product }) {
   const { addItem, openCart } = useCart();
   const [status, setStatus] = useState("idle"); // idle | adding | added
-  const [problem, setProblem] = useState(null); // { message, needsVariant }
   const timer = useRef(null);
   const buttonRef = useRef(null);
 
@@ -20,12 +18,10 @@ export default function AddToCartButton({ product }) {
 
   async function handleAdd() {
     if (status === "adding") return;
-    setProblem(null);
     setStatus("adding");
-    const result = await addItem(product.id, 1);
+    const result = await addItem(product.id, 1, { productSlug: product.slug });
     if (!result.ok) {
-      setStatus("idle");
-      setProblem(result);
+      setStatus("idle"); // the error toast was already shown by the cart
       return;
     }
     setStatus("added");
@@ -48,16 +44,6 @@ export default function AddToCartButton({ product }) {
       >
         <span aria-live="polite">{label}</span>
       </button>
-      {problem && (
-        <p role="alert" className="auth-error mt-2 text-xs leading-snug">
-          {problem.message}{" "}
-          {problem.needsVariant && (
-            <Link href={`/products/${product.slug}`} className="auth-link font-medium">
-              Choose options
-            </Link>
-          )}
-        </p>
-      )}
     </div>
   );
 }

@@ -7,6 +7,7 @@ import { usePathname, useRouter } from "next/navigation";
 import AccountMenu from "./AccountMenu";
 import { useCart } from "@/component/cart/CartProvider";
 import { logoutAction } from "@/app/actions/auth";
+import { notify } from "@/lib/notify";
 
 const links = [
   { href: "/", label: "Home" },
@@ -138,8 +139,14 @@ export default function Navbar() {
   }, [pathname]);
 
   const handleLogout = async () => {
-    await logoutAction();
+    try {
+      await logoutAction();
+    } catch {
+      notify.error("Logout failed. Please try again.");
+      return;
+    }
     setAuthed(false);
+    notify.success("Logged out successfully.");
     router.refresh();
   };
 

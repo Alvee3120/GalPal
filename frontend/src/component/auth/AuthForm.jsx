@@ -1,10 +1,12 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { FcGoogle } from "react-icons/fc";
 import { FiEye, FiEyeOff } from "react-icons/fi";
 import { loginAction, registerAction } from "@/app/actions/auth";
+import { notify } from "@/lib/notify";
 
 const CONFIG = {
   register: {
@@ -43,6 +45,21 @@ export default function AuthForm({ mode }) {
   const cfg = CONFIG[mode];
   const [state, formAction, pending] = useActionState(cfg.action, initialState);
   const [showPassword, setShowPassword] = useState(false);
+  const router = useRouter();
+  const handled = useRef(null);
+
+  // Every result is announced once through the global toast: success -> toast, then go where the action says
+  // (login: home/account, register: login page); failure -> error toast and stay on the page.
+  useEffect(() => {
+    if (state === initialState || handled.current === state) return;
+    handled.current = state;
+    if (state.success) {
+      notify.success(state.message);
+      router.push(state.redirectTo);
+    } else if (state.error) {
+      notify.error(state.error);
+    }
+  }, [state, router]);
 
   return (
     <>
@@ -93,12 +110,6 @@ export default function AuthForm({ mode }) {
           );
         })}
         </div>
-
-        {state.error && (
-          <p role="alert" className="auth-error text-xs leading-tight sm:text-sm">
-            {state.error}
-          </p>
-        )}
 
         <div className="flex flex-col gap-[clamp(0.375rem,1.4dvh,0.75rem)]">
           <button type="submit" disabled={pending} className={`auth-btn auth-btn--primary w-full rounded-full px-6 text-sm font-medium py-[clamp(0.4rem,1.5dvh,0.75rem)]`}>

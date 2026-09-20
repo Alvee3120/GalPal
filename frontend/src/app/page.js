@@ -2,7 +2,9 @@ import { Suspense } from "react";
 import Banner from "@/component/homepage/Banner";
 import Marquee from "@/component/homepage/Marquee";
 import CategoryShowcase, { CategoryShowcaseSkeleton } from "@/component/homepage/CategoryShowcase";
+import SkincareVideoSection from "@/component/homepage/SkincareVideoSection";
 import CategoryProductShowcase, { ProductShowcaseSkeleton } from "@/component/homepage/CategoryProductShowcase";
+import TrendingProducts from "@/component/homepage/TrendingProducts";
 
 export default function Home() {
   return (
@@ -12,19 +14,38 @@ export default function Home() {
       <Suspense fallback={<CategoryShowcaseSkeleton />}>
         <CategoryShowcase />
       </Suspense>
+
       <Suspense fallback={<ProductShowcaseSkeleton />}>
         <CategoryProductShowcase
           category="makeup"
-          title="Top picks of the month"
-          description="Our community's most-loved essentials. Nourish your skin with clean, effective beauty made for real life."
+          title="Makeup"
+          description=""
           productLimit={8}
+          rows = {1}
         />
         <CategoryProductShowcase
           category="skincare"
           title="Skincare"
           description=""
           productLimit={8}
+          rows = {1}
         />
+      </Suspense>
+
+       <SkincareVideoSection />
+
+        <Suspense fallback={<ProductShowcaseSkeleton />}>
+        <CategoryProductShowcase
+          category="accessories"
+          title="Accessories"
+          description=""
+          productLimit={8}
+          rows = {1}
+        />
+      </Suspense>
+
+      <Suspense fallback={<ProductShowcaseSkeleton />}>
+        <TrendingProducts productLimit={8} />
       </Suspense>
     </main>
   );

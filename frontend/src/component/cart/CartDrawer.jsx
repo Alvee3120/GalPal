@@ -87,7 +87,7 @@ function CartLine({ item, symbol, busy, onQuantity, onRemove, onNavigate }) {
 // The ONE cart drawer. It is mounted once in the root layout and opened through useCart().openCart(),
 // so product cards, the navbar, and any future "add to cart" button all share it.
 export default function CartDrawer() {
-  const { items, itemCount, subtotal, currencySymbol, isOpen, error, pendingIds, closeCart, setQuantity, removeItem } = useCart();
+  const { items, itemCount, subtotal, currencySymbol, isOpen, pendingIds, closeCart, setQuantity, removeItem } = useCart();
   const panelRef = useRef(null);
   const closeRef = useRef(null);
   const isEmpty = items.length === 0;
@@ -146,12 +146,6 @@ export default function CartDrawer() {
             {icon("M6 6l12 12M18 6 6 18", "h-5 w-5")}
           </button>
         </header>
-
-        {error && (
-          <p role="alert" className="auth-error px-5 pt-3 text-sm sm:px-6">
-            {error}
-          </p>
-        )}
 
         {isEmpty ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-3 px-8 text-center">

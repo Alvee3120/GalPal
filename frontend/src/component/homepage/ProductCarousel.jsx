@@ -19,7 +19,7 @@ export default function ProductCarousel({ products, currencySymbol, title, descr
   return (
     <>
       <div className="mb-8 grid grid-cols-[minmax(0,1fr)_auto] items-end gap-x-6 gap-y-3 md:mb-10 lg:flex lg:justify-between lg:gap-x-12">
-        <h2 className="custom-font max-w-[12em] text-3xl leading-[1.1] sm:text-4xl lg:text-5xl">{title}</h2>
+        <h2 className="custom-font max-w-[12em] text-3xl leading-[1.1] sm:text-4xl">{title}</h2>
 
         {/* Mobile: these two are placed straight into the grid (display: contents). Desktop: one right-hand group. */}
         <div className="contents lg:flex lg:min-w-0 lg:items-end lg:gap-10">

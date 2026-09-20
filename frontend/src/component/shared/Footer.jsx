@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import FooterWordmark from "./FooterWordmark";
 
 const navigation = [
   { href: "/shop", label: "Shop" },
@@ -8,7 +9,7 @@ const navigation = [
 ];
 
 const company = [
-  { href: "/contact", label: "Contact" },
+  { href: "/return&cancellation-policy", label: "Return & Cancellation Policy" },
   { href: "/privacy-policy", label: "Privacy Policy" },
   { href: "/terms", label: "Terms of Service" },
 ];
@@ -143,13 +144,8 @@ export default function Footer() {
         </div>
       </div>
 
-      {/* Oversized brand wordmark, cropped to its top half and fading out (decorative) */}
-      <div
-        aria-hidden="true"
-        className="footer-wordmark custom-font pointer-events-none mt-8 h-[0.65em] select-none overflow-hidden whitespace-nowrap text-center text-[24vw] leading-[1.2]"
-      >
-        Galpal
-      </div>
+      {/* Oversized brand wordmark: rises from the bottom when scrolled into view */}
+      <FooterWordmark />
 
       <div className="footer-bottom mx-auto flex w-full max-w-7xl flex-col items-center justify-between gap-2 px-4 py-6 text-sm sm:flex-row sm:px-6 lg:px-8">
         <p>Skincare made with care</p>
