@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import useScrollEdges from "@/lib/useScrollEdges";
 
 const chevron = (dir) => (
   <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -49,28 +49,7 @@ function CategoryCard({ category, priority }) {
 
 // Header (heading left, prev/next buttons right, one flex row) above a horizontal scroll-snap row.
 export default function CategoryRow({ categories, heading }) {
-  const listRef = useRef(null);
-  const [edges, setEdges] = useState({ start: true, end: true });
-
-  const update = useCallback(() => {
-    const el = listRef.current;
-    if (!el) return;
-    setEdges({
-      start: el.scrollLeft <= 4,
-      end: el.scrollLeft + el.clientWidth >= el.scrollWidth - 4,
-    });
-  }, []);
-
-  useEffect(() => {
-    update();
-    window.addEventListener("resize", update);
-    return () => window.removeEventListener("resize", update);
-  }, [update]);
-
-  const scrollBy = (dir) => {
-    const el = listRef.current;
-    if (el) el.scrollBy({ left: dir * el.clientWidth * 0.8, behavior: "smooth" });
-  };
+  const { ref: listRef, edges, update, scrollBy } = useScrollEdges();
 
   const showNav = !(edges.start && edges.end);
 
