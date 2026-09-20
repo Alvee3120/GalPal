@@ -1,0 +1,238 @@
+
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap');
+
+@import "tailwindcss";
+
+@font-face {
+  font-family: "Honacu";
+  src: url("/font/honacu.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  /* Base palette */
+  --color-white: #ffffff;
+  --color-black: #000000;
+  --color-primary: #fff;
+  --color-primary-contrast: var(--color-white);
+  --color-background: #ffffff;
+  --color-foreground: #171717;
+  --color-muted: #737373;
+  --color-border: #e5e5e5;
+  --color-brand: #6b0127;
+  --color-heading: var(--color-brand);
+  --color-focus: var(--color-foreground);
+  --color-shadow: color-mix(in srgb, var(--color-primary) 25%, transparent);
+  --color-shadow-soft: color-mix(in srgb, var(--color-black) 10%, transparent);
+
+  /* Interactive states (derive from the current text color) */
+  --color-hover: color-mix(in srgb, currentColor 12%, transparent);
+  --color-divider: color-mix(in srgb, currentColor 20%, transparent);
+
+  /* Navbar */
+  --color-navbar-overlay: transparent; /* homepage, top of page */
+  --color-navbar-overlay-text: var(--color-foreground);
+  --color-navbar-scrolled: color-mix(in srgb, var(--color-primary) 70%, transparent);
+  --color-navbar-scrolled-text: var(--color-black);
+  --color-navbar-solid: var(--color-background); /* all other pages */
+  --color-navbar-solid-text: var(--color-foreground);
+
+  /* Search */
+  --color-search-bg: var(--color-background);
+  --color-search-text: var(--color-foreground);
+  --color-search-placeholder: var(--color-muted);
+  --color-search-border: var(--color-border);
+  --color-search-panel: var(--color-navbar-solid);
+
+  /* Footer */
+  --color-footer-bg: var(--color-background);
+  --color-footer-text: var(--color-foreground);
+  --color-footer-muted: var(--color-muted);
+  --color-footer-border: var(--color-border);
+  --color-footer-icon-bg: color-mix(in srgb, var(--color-foreground) 6%, transparent);
+  --color-footer-icon-hover-bg: var(--color-brand);
+  --color-footer-icon-hover-text: var(--color-white);
+  --color-footer-wordmark: color-mix(in srgb, var(--color-foreground) 35%, transparent);
+
+  /* Kept for existing usages */
+  --background: var(--color-background);
+  --foreground: var(--color-foreground);
+
+  --font-custom: "Honacu", "Montserrat", sans-serif;
+}
+
+.custom-font {
+  font-family: var(--font-custom);
+}
+
+.montserrat{
+  font-family: "Montserrat", sans-serif;
+}
+
+/* Headings use the brand color everywhere */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  color: var(--color-heading);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: "Montserrat", sans-serif;
+}
+
+/* ================================
+   Navbar (colors only; layout lives in the component)
+   ================================ */
+.navbar--overlay {
+  background-color: var(--color-navbar-overlay);
+  color: var(--color-navbar-overlay-text);
+  box-shadow: none;
+}
+
+.navbar--scrolled {
+  background-color: var(--color-navbar-scrolled);
+  color: var(--color-navbar-scrolled-text);
+  box-shadow: 0 10px 15px -3px var(--color-shadow);
+  backdrop-filter: blur(12px);
+}
+
+.navbar--solid {
+  background-color: var(--color-navbar-solid);
+  color: var(--color-navbar-solid-text);
+  box-shadow: 0 1px 2px var(--color-shadow-soft);
+}
+
+.navbar-action:hover {
+  background-color: var(--color-hover);
+}
+
+.navbar a:focus-visible,
+.navbar button:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.navbar-mobile-menu {
+  border-top: 1px solid var(--color-divider);
+}
+
+/* ================================
+   Search (colors only; layout lives in the component)
+   ================================ */
+.search-field {
+  background-color: var(--color-search-bg);
+  color: var(--color-search-text);
+  border: 1px solid var(--color-search-border);
+  border-radius: 9999px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.search-field:focus-within {
+  border-color: var(--color-focus);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-focus) 20%, transparent);
+}
+
+.search-field input {
+  color: inherit;
+  outline: none;
+}
+
+.search-field input::placeholder {
+  color: var(--color-search-placeholder);
+}
+
+.search-panel {
+  background-color: var(--color-search-panel);
+  color: var(--color-search-text);
+  border-top: 1px solid var(--color-border);
+  box-shadow: 0 10px 15px -3px var(--color-shadow-soft);
+}
+
+/* ================================
+   Brand marquee (colors only; layout lives in the component)
+   ================================ */
+.brand-marquee {
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+  border-bottom: 1px solid var(--color-border);
+}
+
+/* Fade the row out at both edges without any color values */
+.brand-marquee__mask {
+  -webkit-mask-image: linear-gradient(to right, transparent, var(--color-black) 8%, var(--color-black) 92%, transparent);
+  mask-image: linear-gradient(to right, transparent, var(--color-black) 8%, var(--color-black) 92%, transparent);
+}
+
+.brand-marquee__item {
+  opacity: 0.6;
+  filter: grayscale(1);
+  transition: opacity 0.3s ease, filter 0.3s ease;
+}
+
+.brand-marquee__item:hover {
+  opacity: 1;
+  filter: grayscale(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .brand-marquee__item {
+    transition: none;
+  }
+}
+
+/* ================================
+   Footer (colors only; layout lives in the component)
+   ================================ */
+.footer {
+  background-color: var(--color-footer-bg);
+  color: var(--color-footer-text);
+}
+
+.footer-muted {
+  color: var(--color-footer-muted);
+}
+
+.footer-link {
+  opacity: 0.85;
+  transition: opacity 0.2s ease;
+}
+
+.footer-link:hover,
+.footer-link:focus-visible {
+  opacity: 1;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.footer-icon {
+  background-color: var(--color-footer-icon-bg);
+}
+
+.footer-icon:hover,
+.footer-icon:focus-visible {
+  background-color: var(--color-footer-icon-hover-bg);
+  color: var(--color-footer-icon-hover-text);
+}
+
+.footer a:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+/* Wordmark fades out toward the bottom */
+.footer-wordmark {
+  color: var(--color-footer-wordmark);
+  -webkit-mask-image: linear-gradient(to bottom, var(--color-black) 45%, transparent 100%);
+  mask-image: linear-gradient(to bottom, var(--color-black) 45%, transparent 100%);
+}
+
+.footer-bottom {
+  color: var(--color-footer-text);
+}
