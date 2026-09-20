@@ -35,6 +35,14 @@ def test_schema_documents_auth_and_admin_endpoints(client):
         "/api/v1/brands/", "/api/v1/brands/{slug}/", "/api/v1/tags/", "/api/v1/tags/{slug}/",
         "/api/v1/admin/categories/", "/api/v1/admin/categories/{id}/", "/api/v1/admin/categories/tree/",
         "/api/v1/admin/brands/", "/api/v1/admin/brands/{id}/", "/api/v1/admin/tags/", "/api/v1/admin/tags/{id}/",
+        "/api/v1/products/", "/api/v1/products/{slug}/",
+        "/api/v1/admin/products/", "/api/v1/admin/products/{id}/", "/api/v1/admin/products/{id}/duplicate/",
+        "/api/v1/admin/products/{product_pk}/images/", "/api/v1/admin/products/{product_pk}/variants/",
+        "/api/v1/admin/product-attributes/", "/api/v1/admin/attribute-values/", "/api/v1/admin/stock-movements/",
+        "/api/v1/hero-banners/", "/api/v1/admin/hero-slider-config/", "/api/v1/admin/hero-banners/",
+        "/api/v1/videos/", "/api/v1/admin/videos/", "/api/v1/admin/products/picker/",
+        "/api/v1/cart/", "/api/v1/cart/items/", "/api/v1/cart/items/{item_id}/",
+        "/api/v1/cart/coupon/", "/api/v1/admin/coupons/", "/api/v1/admin/coupons/{id}/", "/api/v1/admin/coupon-usages/",
     ]:
         assert path in paths, path
     # every operation is tagged, so Swagger groups them

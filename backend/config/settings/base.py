@@ -50,6 +50,10 @@ INSTALLED_APPS = [
     "apps.accounts",
     "apps.site_settings",
     "apps.catalog",
+    "apps.banners",
+    "apps.videos",
+    "apps.cart",
+    "apps.coupons",
 ]
 
 MIDDLEWARE = [
@@ -195,11 +199,15 @@ if USE_S3:
 
 # Upload limits (see apps.core.validators)
 IMAGE_MAX_UPLOAD_SIZE = env.int("IMAGE_MAX_UPLOAD_SIZE", default=5 * 1024 * 1024)  # bytes
+VIDEO_MAX_UPLOAD_SIZE = env.int("VIDEO_MAX_UPLOAD_SIZE", default=50 * 1024 * 1024)  # bytes
 
 # --- CORS / CSRF ------------------------------------------------------------
 
 CORS_ALLOWED_ORIGINS = env.list("CORS_ALLOWED_ORIGINS", default=[])
-CORS_ALLOW_HEADERS = list(default_headers)
+# X-Cart-Token: the guest cart identifier (apps.cart) — sent by the client and, on its first
+# response, sent back by the server, so both directions must be explicitly allowed.
+CORS_ALLOW_HEADERS = [*default_headers, "x-cart-token"]
+CORS_EXPOSE_HEADERS = ["x-cart-token"]
 CSRF_TRUSTED_ORIGINS = env.list("CSRF_TRUSTED_ORIGINS", default=[])
 
 # --- Django REST Framework --------------------------------------------------
@@ -250,6 +258,7 @@ SPECTACULAR_SETTINGS = {
     "ENUM_NAME_OVERRIDES": {
         "UserRoleEnum": "apps.accounts.models.User.Role",
         "StaffRoleEnum": "apps.accounts.serializers.STAFF_ROLE_CHOICES",
+        "ProductStatusEnum": "apps.catalog.models.ProductStatus",
     },
     "TAGS": [
         {"name": "System", "description": "Health and operational endpoints."},
@@ -263,6 +272,14 @@ SPECTACULAR_SETTINGS = {
         {"name": "Admin – Categories", "description": "Admin only: category CRUD, tree, safe delete."},
         {"name": "Admin – Brands", "description": "Admin only: brand CRUD."},
         {"name": "Admin – Tags", "description": "Admin only: tag CRUD."},
+        {"name": "Admin – Products", "description": "Admin only: product CRUD, variants, gallery, attributes, inventory."},
+        {"name": "Hero Banners", "description": "Public: the homepage hero slider (config + active banners)."},
+        {"name": "Admin – Hero Banners", "description": "Admin only: slider config and banner CRUD/reorder."},
+        {"name": "Video Cards", "description": "Public: active video cards with their shoppable linked products."},
+        {"name": "Admin – Video Cards", "description": "Admin only: video card CRUD."},
+        {"name": "Cart", "description": "Storefront cart: guests use an X-Cart-Token header, logged-in customers use their account."},
+        {"name": "Coupons", "description": "Apply or remove a coupon on the current cart."},
+        {"name": "Admin – Coupons", "description": "Admin only: coupon CRUD and usage history."},
     ],
 }
 
