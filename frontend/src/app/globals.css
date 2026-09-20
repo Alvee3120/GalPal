@@ -457,3 +457,67 @@ body {
     transform: none;
   }
 }
+
+/* ================================
+   404 page (colors only; layout lives in the component)
+   ================================ */
+:root {
+  --color-notfound-bg: color-mix(in srgb, var(--color-brand) 5%, var(--color-background));
+  --color-notfound-orb: color-mix(in srgb, var(--color-brand) 9%, transparent);
+}
+
+.notfound {
+  background-color: var(--color-notfound-bg);
+  color: var(--color-foreground);
+}
+
+.nf-orb {
+  background-color: var(--color-notfound-orb);
+  filter: blur(48px);
+}
+
+.nf-arch {
+  box-shadow: 0 0 0 0.02em var(--color-brand), 0 1.2em 2.4em -1.4em var(--color-shadow-soft);
+  background-color: var(--color-showcase-empty);
+}
+
+/* Standalone pages hide the site footer (the 404 page marks itself with data-standalone-page) */
+body:has([data-standalone-page]) .footer {
+  display: none;
+}
+
+@keyframes nf-rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes nf-float {
+  0%,
+  100% {
+    transform: translateY(-2%);
+  }
+  50% {
+    transform: translateY(2%);
+  }
+}
+
+.nf-rise {
+  animation: nf-rise 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.nf-float {
+  animation: nf-float 8s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nf-rise,
+  .nf-float {
+    animation: none;
+  }
+}
