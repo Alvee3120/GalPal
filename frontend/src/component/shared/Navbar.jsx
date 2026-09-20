@@ -4,6 +4,10 @@ import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import AccountMenu from "./AccountMenu";
+import { useCart } from "@/component/cart/CartProvider";
+import { logoutAction } from "@/app/actions/auth";
+import { notify } from "@/lib/notify";
 
 const links = [
   { href: "/", label: "Home" },
@@ -118,6 +122,33 @@ export default function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
   const isHome = pathname === "/";
+  const { itemCount, openCart } = useCart();
+
+  // Session state comes from the auth cookies (via /api/session); re-checked on every navigation,
+  // so it updates right after login or logout.
+  const [authed, setAuthed] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/session", { cache: "no-store" })
+      .then((res) => res.json())
+      .then((data) => !cancelled && setAuthed(Boolean(data.authenticated)))
+      .catch(() => !cancelled && setAuthed(false));
+    return () => {
+      cancelled = true;
+    };
+  }, [pathname]);
+
+  const handleLogout = async () => {
+    try {
+      await logoutAction();
+    } catch {
+      notify.error("Logout failed. Please try again.");
+      return;
+    }
+    setAuthed(false);
+    notify.success("Logged out successfully.");
+    router.refresh();
+  };
 
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
@@ -243,7 +274,37 @@ export default function Navbar() {
           >
             {searchIcon}
           </button>
-          {actions.map((a) => (
+          {actions.map((a) =>
+            a.href === "/account" ? (
+              <AccountMenu
+                key={a.href}
+                authed={authed}
+                icon={a.icon}
+                onLogout={handleLogout}
+                className="navbar-action rounded-full p-2 transition-colors"
+              />
+            ) : a.href === "/cart" ? (
+              // Opens the shared cart drawer instead of navigating
+              <button
+                key={a.href}
+                type="button"
+                aria-label={itemCount > 0 ? `Cart, ${itemCount} ${itemCount === 1 ? "item" : "items"}` : "Cart"}
+                aria-haspopup="dialog"
+                onClick={() => {
+                  setOpen(false);
+                  closeSearch();
+                  openCart();
+                }}
+                className="navbar-action relative rounded-full p-2 transition-colors"
+              >
+                {a.icon}
+                {itemCount > 0 && (
+                  <span aria-hidden="true" className="cart-count absolute -right-0.5 -top-0.5 flex h-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full px-1 text-[0.625rem] font-semibold leading-none">
+                    {itemCount > 99 ? "99+" : itemCount}
+                  </span>
+                )}
+              </button>
+            ) : (
             <Link
               key={a.href}
               href={a.href}
@@ -252,7 +313,8 @@ export default function Navbar() {
             >
               {a.icon}
             </Link>
-          ))}
+            ),
+          )}
           <button
             type="button"
             aria-label={open ? "Close menu" : "Open menu"}

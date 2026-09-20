@@ -24,6 +24,8 @@
   --color-brand: #6b0127;
   --color-heading: var(--color-brand);
   --color-focus: var(--color-foreground);
+  --color-danger: #dc2626;
+  --color-success: #1b5e3b; /* dark green */
   --color-shadow: color-mix(in srgb, var(--color-primary) 25%, transparent);
   --color-shadow-soft: color-mix(in srgb, var(--color-black) 10%, transparent);
 
@@ -55,6 +57,46 @@
   --color-footer-icon-hover-bg: var(--color-brand);
   --color-footer-icon-hover-text: var(--color-white);
   --color-footer-wordmark: color-mix(in srgb, var(--color-foreground) 35%, transparent);
+
+  /* Auth pages */
+  --color-auth-bg: color-mix(in srgb, var(--color-brand) 6%, var(--color-background));
+  --color-auth-frame: var(--color-background);
+  --color-auth-card: var(--color-background);
+  --color-auth-card-ring: var(--color-auth-bg);
+  --color-auth-text: var(--color-foreground);
+  --color-auth-muted: var(--color-muted);
+  --color-auth-line: var(--color-border);
+  --color-auth-error: var(--color-brand);
+  --color-auth-button: var(--color-brand);
+  --color-auth-button-text: var(--color-white);
+
+  /* Shape */
+  --radius-card: 1.25rem;
+
+  /* Category showcase */
+  --color-showcase-overlay: color-mix(in srgb, var(--color-black) 60%, transparent);
+  --color-showcase-empty: color-mix(in srgb, var(--color-brand) 8%, var(--color-background));
+
+  /* Product showcase */
+  --color-product-tile: color-mix(in srgb, var(--color-brand) 5%, var(--color-background));
+  --color-product-skeleton: color-mix(in srgb, var(--color-foreground) 8%, transparent);
+
+  /* Cart */
+  --color-cart-bg: var(--color-background);
+  --color-cart-backdrop: color-mix(in srgb, var(--color-black) 45%, transparent);
+  --color-cart-line: var(--color-border);
+  --color-cart-badge: var(--color-brand);
+  --color-cart-badge-text: var(--color-white);
+
+  /* Toasts: the whole toast is filled (dark green = success, red = error) with white text */
+  --color-toast-success: var(--color-success);
+  --color-toast-success-text: var(--color-white);
+  --color-toast-error: var(--color-danger);
+  --color-toast-error-text: var(--color-white);
+  --color-toast-shadow: var(--color-shadow-soft);
+
+  /* Skincare video section */
+  --color-editorial-text: color-mix(in srgb, var(--color-foreground) 82%, transparent);
 
   /* Kept for existing usages */
   --background: var(--color-background);
@@ -233,6 +275,708 @@ body {
   mask-image: linear-gradient(to bottom, var(--color-black) 45%, transparent 100%);
 }
 
+/* Rise from below the crop line when the footer scrolls into view (see FooterWordmark) */
+.footer-wordmark__text {
+  transition: transform 1.1s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.9s ease;
+}
+
+.footer-wordmark[data-wordmark="pending"] .footer-wordmark__text {
+  transform: translateY(105%);
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .footer-wordmark[data-wordmark="pending"] .footer-wordmark__text {
+    transform: none;
+    opacity: 1;
+  }
+  .footer-wordmark__text {
+    transition: none;
+  }
+}
+
 .footer-bottom {
   color: var(--color-footer-text);
+}
+
+/* ================================
+   Auth pages (colors only; layout lives in the components)
+   ================================ */
+.auth-page {
+  background-color: var(--color-auth-bg);
+  color: var(--color-auth-text);
+}
+
+.auth-frame {
+  background-color: var(--color-auth-frame);
+}
+
+.auth-card {
+  background-color: var(--color-auth-card);
+  color: var(--color-auth-text);
+  box-shadow: 0 0 0 0.5rem var(--color-auth-card-ring);
+}
+
+.auth-muted {
+  color: var(--color-auth-muted);
+}
+
+.auth-input {
+  background-color: transparent;
+  color: var(--color-auth-text);
+  border-bottom: 1px solid var(--color-auth-line);
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.auth-input::placeholder {
+  color: var(--color-auth-muted);
+}
+
+.auth-input:focus {
+  border-bottom-color: var(--color-brand);
+}
+
+.auth-input[aria-invalid="true"] {
+  border-bottom-color: var(--color-auth-error);
+}
+
+.auth-error {
+  color: var(--color-auth-error);
+}
+
+.auth-btn {
+  border: 1px solid var(--color-auth-button);
+  transition: opacity 0.2s ease, background-color 0.2s ease;
+}
+
+.auth-btn:focus-visible,
+.auth-link:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.auth-btn--primary {
+  background-color: var(--color-auth-button);
+  color: var(--color-auth-button-text);
+}
+
+.auth-btn--primary:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.auth-btn--outline {
+  background-color: transparent;
+  color: var(--color-auth-text);
+  border-color: var(--color-auth-line);
+}
+
+.auth-btn--outline:hover:not(:disabled) {
+  background-color: var(--color-hover);
+}
+
+.auth-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.auth-link {
+  color: var(--color-brand);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+/* ================================
+   Account menu (colors only; layout lives in the component)
+   ================================ */
+.account-menu {
+  background-color: var(--color-navbar-solid);
+  color: var(--color-navbar-solid-text);
+  border: 1px solid var(--color-border);
+  box-shadow: 0 10px 15px -3px var(--color-shadow-soft);
+}
+
+.account-menu__item:hover,
+.account-menu__item:focus-visible {
+  background-color: var(--color-hover);
+  outline: none;
+}
+
+.account-menu__item--danger {
+  color: var(--color-danger);
+}
+
+.account-menu__item--danger:hover,
+.account-menu__item--danger:focus-visible {
+  background-color: color-mix(in srgb, var(--color-danger) 10%, transparent);
+}
+
+/* ================================
+   Category showcase (colors only; layout lives in the components)
+   ================================ */
+.showcase-muted {
+  color: var(--color-muted);
+}
+
+.category-skeleton {
+  background-color: var(--color-showcase-empty);
+  border-radius: var(--radius-card);
+}
+
+.category-card {
+  background-color: var(--color-showcase-empty);
+  border-radius: var(--radius-card);
+  color: var(--color-white);
+  isolation: isolate;
+}
+
+.category-card__overlay {
+  background: linear-gradient(to top, var(--color-showcase-overlay) 0%, transparent 55%);
+}
+
+.category-card__img {
+  transition: transform 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.category-card:hover .category-card__img,
+.category-card:focus-visible .category-card__img {
+  transform: scale(1.05);
+}
+
+.category-card__arrow {
+  border: 1px solid currentColor;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.category-card:hover .category-card__arrow,
+.category-card:focus-visible .category-card__arrow {
+  background-color: var(--color-white);
+  color: var(--color-brand);
+}
+
+.category-card:focus-visible,
+.showcase-nav:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 3px;
+}
+
+/* No image from the backend: tinted tile with brand-colored text instead of the dark overlay */
+.category-card--empty {
+  color: var(--color-brand);
+}
+
+.category-card--empty .category-card__overlay {
+  display: none;
+}
+
+.category-card--empty:hover .category-card__arrow,
+.category-card--empty:focus-visible .category-card__arrow {
+  background-color: var(--color-brand);
+  color: var(--color-white);
+}
+
+.showcase-nav {
+  border: 1px solid var(--color-border);
+  transition: background-color 0.2s ease, opacity 0.2s ease;
+}
+
+.showcase-nav:hover:not(:disabled) {
+  background-color: var(--color-hover);
+}
+
+.showcase-nav:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .category-card__img,
+  .category-card__arrow {
+    transition: none;
+  }
+  .category-card:hover .category-card__img,
+  .category-card:focus-visible .category-card__img {
+    transform: none;
+  }
+}
+
+/* ================================
+   404 page (colors only; layout lives in the component)
+   ================================ */
+:root {
+  --color-notfound-bg: color-mix(in srgb, var(--color-brand) 5%, var(--color-background));
+  --color-notfound-orb: color-mix(in srgb, var(--color-brand) 9%, transparent);
+}
+
+.notfound {
+  background-color: var(--color-notfound-bg);
+  color: var(--color-foreground);
+}
+
+.nf-orb {
+  background-color: var(--color-notfound-orb);
+  filter: blur(48px);
+}
+
+.nf-arch {
+  box-shadow: 0 0 0 0.02em var(--color-brand), 0 1.2em 2.4em -1.4em var(--color-shadow-soft);
+  background-color: var(--color-showcase-empty);
+}
+
+/* Standalone pages hide the site footer (the 404 page marks itself with data-standalone-page) */
+body:has([data-standalone-page]) .footer {
+  display: none;
+}
+
+@keyframes nf-rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes nf-float {
+  0%,
+  100% {
+    transform: translateY(-2%);
+  }
+  50% {
+    transform: translateY(2%);
+  }
+}
+
+.nf-rise {
+  animation: nf-rise 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.nf-float {
+  animation: nf-float 8s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nf-rise,
+  .nf-float {
+    animation: none;
+  }
+}
+
+/* ================================
+   Product showcase (colors only; layout lives in the components)
+   ================================ */
+
+/* Carousel track: --pc-cols columns x --pc-rows rows per view (mobile up to 2 cols, tablet up to 3, desktop --pc-cols).
+   Cards flow down each column then across, and the track snaps to column boundaries. */
+.product-track {
+  --gap: 0.75rem;
+  --cols: min(2, var(--pc-cols, 4));
+  display: grid;
+  grid-auto-flow: column;
+  grid-template-rows: repeat(var(--pc-rows, 1), auto);
+  grid-auto-columns: calc((100% - (var(--cols) - 1) * var(--gap)) / var(--cols));
+  gap: var(--gap);
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+}
+
+.product-track::-webkit-scrollbar {
+  display: none;
+}
+
+.product-track--static {
+  overflow: hidden;
+}
+
+.product-track__item {
+  scroll-snap-align: start;
+}
+
+@media (min-width: 640px) {
+  .product-track {
+    --gap: 1rem;
+    --cols: min(3, var(--pc-cols, 4));
+  }
+}
+
+@media (min-width: 1024px) {
+  .product-track {
+    --gap: 1.25rem;
+    --cols: var(--pc-cols, 4);
+  }
+}
+
+.product-card {
+  background-color: var(--color-product-tile);
+  border-radius: var(--radius-card);
+  color: var(--color-foreground);
+}
+
+.product-card__media {
+  border-radius: calc(var(--radius-card) - 0.25rem);
+}
+
+.product-card__name {
+  color: var(--color-foreground);
+}
+
+.product-card__badge {
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+}
+
+.product-card__img {
+  transition: transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.product-card:hover .product-card__img,
+.product-card:focus-visible .product-card__img {
+  transform: scale(1.04);
+}
+
+.product-card:focus-visible,
+.pc-nav:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 3px;
+}
+
+.product-skeleton__line {
+  background-color: var(--color-product-skeleton);
+}
+
+.pc-nav {
+  background-color: var(--color-product-tile);
+  color: var(--color-foreground);
+  border: 1px solid transparent;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.pc-nav--next {
+  background-color: var(--color-brand);
+  color: var(--color-background);
+}
+
+.pc-nav:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.pc-nav:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .product-card__img,
+  .pc-nav {
+    transition: none;
+  }
+  .product-card:hover .product-card__img,
+  .product-card:focus-visible .product-card__img,
+  .pc-nav:hover:not(:disabled) {
+    transform: none;
+  }
+}
+
+/* ================================
+   Cart drawer + navbar count (colors only; layout lives in the components)
+   ================================ */
+.cart-drawer {
+  visibility: hidden;
+  transition: visibility 0s linear 0.35s;
+}
+
+.cart-drawer[data-open="true"] {
+  visibility: visible;
+  transition-delay: 0s;
+}
+
+.cart-drawer__backdrop {
+  background-color: var(--color-cart-backdrop);
+  opacity: 0;
+  transition: opacity 0.35s ease;
+}
+
+.cart-drawer[data-open="true"] .cart-drawer__backdrop {
+  opacity: 1;
+}
+
+.cart-drawer__panel {
+  background-color: var(--color-cart-bg);
+  color: var(--color-foreground);
+  box-shadow: -12px 0 32px -12px var(--color-shadow-soft);
+  transform: translateX(100%);
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.cart-drawer[data-open="true"] .cart-drawer__panel {
+  transform: translateX(0);
+}
+
+.cart-divider {
+  border-color: var(--color-cart-line);
+}
+
+header.cart-divider {
+  border-bottom: 1px solid var(--color-cart-line);
+}
+
+footer.cart-divider {
+  border-top: 1px solid var(--color-cart-line);
+  background-color: var(--color-cart-bg);
+}
+
+.cart-line + .cart-line {
+  border-top: 1px solid var(--color-cart-line);
+}
+
+.cart-thumb {
+  background-color: var(--color-product-tile);
+  border-radius: calc(var(--radius-card) - 0.5rem);
+}
+
+.cart-link {
+  color: var(--color-foreground);
+}
+
+.cart-link:hover {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.cart-link:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.cart-qty {
+  border: 1px solid var(--color-cart-line);
+}
+
+.cart-qty__btn:hover:not(:disabled),
+.cart-close:hover {
+  background-color: var(--color-hover);
+}
+
+.cart-qty__btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.cart-drawer a:focus-visible,
+.cart-drawer button:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.cart-empty-mark {
+  background-color: var(--color-product-tile);
+  color: var(--color-brand);
+}
+
+.cart-count {
+  background-color: var(--color-cart-badge);
+  color: var(--color-cart-badge-text);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cart-drawer,
+  .cart-drawer__backdrop,
+  .cart-drawer__panel {
+    transition: none;
+  }
+}
+
+/* ================================
+   Toasts (Sonner, restyled; colors come from the --color-toast-* tokens)
+   ================================ */
+[data-sonner-toaster] .app-toast[data-sonner-toast] {
+  --toast-bg: var(--color-toast-success);
+  --toast-fg: var(--color-toast-success-text);
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.875rem 2.5rem 0.875rem 0.875rem;
+  background: var(--toast-bg);
+  color: var(--toast-fg);
+  border: 1px solid var(--toast-bg);
+  border-radius: calc(var(--radius-card) - 0.375rem);
+  box-shadow: 0 12px 28px -12px var(--color-toast-shadow), 0 2px 6px -2px var(--color-toast-shadow);
+  font-family: inherit;
+  font-size: 0.875rem;
+  line-height: 1.35;
+}
+
+[data-sonner-toaster] .app-toast--error[data-sonner-toast] {
+  --toast-bg: var(--color-toast-error);
+  --toast-fg: var(--color-toast-error-text);
+}
+
+/* Icon: a react-icons check (success) or alert (error) in the toast text color */
+[data-sonner-toaster] .app-toast [data-icon] {
+  flex: none;
+  width: 1.25rem;
+  height: 1.25rem;
+  margin: 0;
+  align-items: center;
+  justify-content: center;
+  color: var(--toast-fg);
+}
+
+[data-sonner-toaster] .app-toast [data-content] {
+  gap: 0;
+}
+
+[data-sonner-toaster] .app-toast [data-title] {
+  color: var(--toast-fg);
+  font-weight: 500;
+}
+
+/* Close: a quiet inline "x" at the right, instead of Sonner's floating corner badge.
+   (Selectors are strengthened to beat Sonner's own [data-styled] rules.) */
+[data-sonner-toaster][data-sonner-theme] .app-toast[data-sonner-toast] [data-close-button] {
+  top: 50%;
+  right: 0.5rem;
+  left: auto;
+  width: 1.75rem;
+  height: 1.75rem;
+  transform: translateY(-50%);
+  border: 0;
+  border-radius: 9999px;
+  background: transparent;
+  color: var(--toast-fg);
+  opacity: 0.85;
+}
+
+[data-sonner-toaster][data-sonner-theme] .app-toast[data-sonner-toast]:hover [data-close-button]:hover,
+[data-sonner-toaster][data-sonner-theme] .app-toast[data-sonner-toast] [data-close-button]:focus-visible {
+  background: color-mix(in srgb, var(--toast-fg) 20%, transparent);
+  color: var(--toast-fg);
+  opacity: 1;
+}
+
+[data-sonner-toaster][data-sonner-theme] .app-toast[data-sonner-toast] [data-close-button]:focus-visible,
+[data-sonner-toaster][data-sonner-theme] .app-toast[data-sonner-toast] [data-button]:focus-visible {
+  outline: 2px solid var(--toast-fg);
+  outline-offset: 1px;
+}
+
+/* Optional action (e.g. "Choose options"): inverted pill */
+[data-sonner-toaster][data-sonner-theme] .app-toast[data-sonner-toast] [data-button] {
+  height: 1.75rem;
+  border-radius: 9999px;
+  background: var(--toast-fg);
+  color: var(--toast-bg);
+  font-weight: 500;
+}
+
+/* Keep toasts inside small viewports */
+[data-sonner-toaster] .app-toast[data-sonner-toast] {
+  max-width: calc(100vw - 1.5rem);
+}
+
+/* Subtle entrance/exit: Sonner's slide is short (it already fades); drop it for reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  [data-sonner-toaster] .app-toast[data-sonner-toast],
+  [data-sonner-toaster] [data-sonner-toast] {
+    transition: opacity 0.01s !important;
+    animation: none !important;
+  }
+}
+
+/* ================================
+   Skincare video section + reveal (colors only; layout lives in the components)
+   ================================ */
+.skv-pill {
+  background-color: var(--color-showcase-empty);
+  color: var(--color-brand);
+}
+
+.skv-heading__line {
+  color: var(--color-foreground);
+}
+
+.skv-heading__accent {
+  color: var(--color-brand);
+}
+
+.skv-text {
+  color: var(--color-editorial-text);
+}
+
+.skv-cta {
+  background-color: var(--color-brand);
+  color: var(--color-white);
+  box-shadow: 0 16px 28px -16px var(--color-shadow-soft);
+  transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+.skv-cta:hover {
+  transform: translateY(-2px);
+  opacity: 0.94;
+}
+
+.skv-cta:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 3px;
+}
+
+.skv-cta__arrow {
+  background-color: color-mix(in srgb, var(--color-white) 22%, transparent);
+}
+
+.skv-card {
+  background-color: var(--color-brand);
+  color: var(--color-white);
+  border-radius: calc(var(--radius-card) * 1.4);
+  box-shadow: 0 28px 48px -28px var(--color-shadow-soft);
+  isolation: isolate;
+}
+
+.skv-card__video {
+  transition: transform 0.9s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@media (hover: hover) and (min-width: 1024px) {
+  .skv-card:hover .skv-card__video {
+    transform: scale(1.04);
+  }
+}
+
+.skv-card__shade {
+  background: linear-gradient(to top, var(--color-showcase-overlay) 0%, transparent 55%);
+}
+
+.skv-card__eyebrow {
+  color: color-mix(in srgb, var(--color-white) 78%, transparent);
+}
+
+.skv-card__title {
+  color: var(--color-white);
+}
+
+/* Fade-up on scroll: only elements still below the fold get hidden (see RevealOnView) */
+.reveal[data-reveal="pending"] {
+  opacity: 0;
+  transform: translateY(18px);
+}
+
+.reveal[data-reveal="shown"] {
+  opacity: 1;
+  transform: none;
+  transition: opacity 0.8s ease var(--reveal-delay, 0ms), transform 0.8s cubic-bezier(0.22, 1, 0.36, 1) var(--reveal-delay, 0ms);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal[data-reveal],
+  .skv-card__video,
+  .skv-cta {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+  .skv-card:hover .skv-card__video {
+    transform: none;
+  }
 }
