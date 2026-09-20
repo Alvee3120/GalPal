@@ -69,6 +69,13 @@
   --color-auth-button: var(--color-brand);
   --color-auth-button-text: var(--color-white);
 
+  /* Shape */
+  --radius-card: 1.25rem;
+
+  /* Category showcase */
+  --color-showcase-overlay: color-mix(in srgb, var(--color-black) 60%, transparent);
+  --color-showcase-empty: color-mix(in srgb, var(--color-brand) 8%, var(--color-background));
+
   /* Kept for existing usages */
   --background: var(--color-background);
   --foreground: var(--color-foreground);
@@ -360,4 +367,93 @@ body {
 .account-menu__item--danger:hover,
 .account-menu__item--danger:focus-visible {
   background-color: color-mix(in srgb, var(--color-danger) 10%, transparent);
+}
+
+/* ================================
+   Category showcase (colors only; layout lives in the components)
+   ================================ */
+.showcase-muted {
+  color: var(--color-muted);
+}
+
+.category-skeleton {
+  background-color: var(--color-showcase-empty);
+  border-radius: var(--radius-card);
+}
+
+.category-card {
+  background-color: var(--color-showcase-empty);
+  border-radius: var(--radius-card);
+  color: var(--color-white);
+  isolation: isolate;
+}
+
+.category-card__overlay {
+  background: linear-gradient(to top, var(--color-showcase-overlay) 0%, transparent 55%);
+}
+
+.category-card__img {
+  transition: transform 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.category-card:hover .category-card__img,
+.category-card:focus-visible .category-card__img {
+  transform: scale(1.05);
+}
+
+.category-card__arrow {
+  border: 1px solid currentColor;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.category-card:hover .category-card__arrow,
+.category-card:focus-visible .category-card__arrow {
+  background-color: var(--color-white);
+  color: var(--color-brand);
+}
+
+.category-card:focus-visible,
+.showcase-nav:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 3px;
+}
+
+/* No image from the backend: tinted tile with brand-colored text instead of the dark overlay */
+.category-card--empty {
+  color: var(--color-brand);
+}
+
+.category-card--empty .category-card__overlay {
+  display: none;
+}
+
+.category-card--empty:hover .category-card__arrow,
+.category-card--empty:focus-visible .category-card__arrow {
+  background-color: var(--color-brand);
+  color: var(--color-white);
+}
+
+.showcase-nav {
+  border: 1px solid var(--color-border);
+  transition: background-color 0.2s ease, opacity 0.2s ease;
+}
+
+.showcase-nav:hover:not(:disabled) {
+  background-color: var(--color-hover);
+}
+
+.showcase-nav:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .category-card__img,
+  .category-card__arrow {
+    transition: none;
+  }
+  .category-card:hover .category-card__img,
+  .category-card:focus-visible .category-card__img {
+    transform: none;
+  }
 }
