@@ -259,7 +259,9 @@ def test_delete_is_blocked_by_products(admin_client, monkeypatch):
     r = admin_client.delete(f"{CATEGORIES}{c.id}/")
     assert r.status_code == 409 and r.json()["error"]["code"] == "category_has_products"
     assert r.json()["error"]["details"] == {"products_count": 7}
-    assert admin_client.get(f"{CATEGORIES}{c.id}/").json()["products_count"] == 7
+    # The delete guard's count comes from the (mocked) relation; the serializer's `products_count`
+    # is a real DB annotation, covered separately in test_products_count_is_a_real_annotation.
+    assert admin_client.get(f"{CATEGORIES}{c.id}/").json()["products_count"] == 0
 
 
 def test_delete_with_move_children_to_root(admin_client):
@@ -424,3 +426,18 @@ def test_tag_names_are_unique_ignoring_case_and_required(admin_client):
     assert "name" in details(admin_client.post(TAGS, {"name": "VEGAN"}, format="json"))
     assert "name" in details(admin_client.post(TAGS, {}, format="json"))
     assert "name" in details(admin_client.post(TAGS, {"name": "x" * 61}, format="json"))
+
+
+def test_products_count_is_a_real_annotation_not_a_per_row_query(admin_client, django_assert_max_num_queries):
+    from apps.catalog.tests.factories import ProductFactory
+
+    category = CategoryFactory()
+    products = ProductFactory.create_batch(3)
+    for product in products:
+        product.categories.set([category])
+    with django_assert_max_num_queries(6):
+        body = admin_client.get(f"{CATEGORIES}{category.id}/").json()
+    assert body["products_count"] == 3
+    CategoryFactory.create_batch(10)
+    with django_assert_max_num_queries(6):
+        admin_client.get(CATEGORIES)

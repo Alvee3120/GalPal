@@ -110,6 +110,22 @@ def test_sweep_finds_the_admin_routes():
     for route in ["/api/v1/admin/categories/", "/api/v1/admin/categories/1/", "/api/v1/admin/categories/tree/",
                   "/api/v1/admin/brands/", "/api/v1/admin/brands/1/", "/api/v1/admin/tags/", "/api/v1/admin/tags/1/"]:
         assert route in routes, route  # Module 3
+    for route in ["/api/v1/admin/hero-slider-config/", "/api/v1/admin/hero-banners/", "/api/v1/admin/hero-banners/1/", "/api/v1/admin/hero-banners/reorder/"]:
+        assert route in routes, route  # Module 5
+    for route in ["/api/v1/admin/videos/", "/api/v1/admin/videos/1/", "/api/v1/admin/products/picker/"]:
+        assert route in routes, route  # Module 6
+    for route in ["/api/v1/admin/coupons/", "/api/v1/admin/coupons/1/", "/api/v1/admin/coupon-usages/", "/api/v1/admin/coupon-usages/1/"]:
+        assert route in routes, route  # Module 8
+    for route in [
+        "/api/v1/admin/products/", "/api/v1/admin/products/1/", "/api/v1/admin/products/1/duplicate/",
+        "/api/v1/admin/products/bulk/activate/", "/api/v1/admin/products/bulk/deactivate/", "/api/v1/admin/products/bulk/stock/",
+        "/api/v1/admin/products/1/images/", "/api/v1/admin/products/1/images/1/", "/api/v1/admin/products/1/images/reorder/",
+        "/api/v1/admin/products/1/variants/", "/api/v1/admin/products/1/variants/1/",
+        "/api/v1/admin/product-attributes/", "/api/v1/admin/product-attributes/1/",
+        "/api/v1/admin/attribute-values/", "/api/v1/admin/attribute-values/1/",
+        "/api/v1/admin/stock-movements/", "/api/v1/admin/stock/adjust/",
+    ]:
+        assert route in routes, route  # Module 4
     assert not any("<" in r or "(" in r or "^" in r or "$" in r for r in routes), routes
     assert CCE_ALLOWED_ADMIN_PREFIXES == ("/api/v1/admin/orders/",)
 

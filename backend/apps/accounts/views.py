@@ -1,3 +1,5 @@
+import logging
+
 from django.utils.decorators import method_decorator
 from drf_spectacular.utils import OpenApiResponse, extend_schema, extend_schema_view
 from rest_framework import generics, mixins, status, viewsets
@@ -35,6 +37,8 @@ from .serializers import (
     UserSerializer,
 )
 
+logger = logging.getLogger(__name__)
+
 ERR = ErrorResponseSerializer
 AUTH_ERRORS = {
     400: OpenApiResponse(ERR, description="Validation error"),
@@ -44,11 +48,25 @@ AUTH_ERRORS = {
 
 
 def auth_payload(user, request):
+    _merge_guest_cart(request, user)
     return {
         **services.issue_tokens(user),
         "must_change_password": user.must_change_password,
         "user": UserSerializer(user, context={"request": request}).data,
     }
+
+
+def _merge_guest_cart(request, user):
+    """Fold a guest's cart (Module 7) into their account right after login/registration."""
+    from apps.cart.services import merge_guest_cart_into_user, token_from_request
+
+    token = token_from_request(request)
+    if token is None:
+        return
+    try:
+        merge_guest_cart_into_user(token, user)
+    except Exception:  # noqa: BLE001 - a cart merge problem must never block login
+        logger.warning("Could not merge guest cart into user %s", user.pk, exc_info=True)
 
 
 # --- Authentication -------------------------------------------------------------------

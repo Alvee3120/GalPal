@@ -59,7 +59,9 @@ class AdminCategoryViewSet(_AdminModelViewSet):
     ordering = ["sort_order", "name"]
 
     def get_queryset(self):
-        return Category.objects.select_related("parent").annotate(children_count=Count("children"))
+        return Category.objects.select_related("parent").annotate(
+            children_count=Count("children", distinct=True), products_count=Count("products", distinct=True)
+        )
 
     def destroy(self, request, *args, **kwargs):
         category = self.get_object()

@@ -23,9 +23,16 @@ urlpatterns = [
     path("api/v1/admin/", include("apps.accounts.urls_admin")),  # before the storefront includes
     path("api/v1/admin/", include("apps.site_settings.urls_admin")),
     path("api/v1/admin/", include("apps.catalog.urls_admin")),
+    path("api/v1/admin/", include("apps.banners.urls_admin")),
+    path("api/v1/admin/", include("apps.videos.urls_admin")),
+    path("api/v1/admin/", include("apps.coupons.urls_admin")),
     path("api/v1/", include("apps.accounts.urls")),
     path("api/v1/", include("apps.site_settings.urls")),
     path("api/v1/", include("apps.catalog.urls")),
+    path("api/v1/", include("apps.banners.urls")),
+    path("api/v1/", include("apps.videos.urls")),
+    path("api/v1/", include("apps.cart.urls")),
+    path("api/v1/", include("apps.coupons.urls")),
 ]
 
 if settings.DEBUG:
