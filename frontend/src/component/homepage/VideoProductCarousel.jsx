@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import Image from "next/image";
-import TapToPlayVideo from "./TapToPlayVideo";
+import ShoppableVideoPlayer from "./ShoppableVideoPlayer";
 import ProductSlot from "./ProductSlot";
 import SectionHeader from "@/component/shared/SectionHeader";
 import CarouselArrows from "@/component/shared/CarouselArrows";
@@ -12,7 +12,7 @@ const DRAG_THRESHOLD = 5; // px of mouse movement before a press becomes a drag
 const PRODUCT_RESUME_MS = 8000; // a video’s product rotation stays paused this long after the visitor touched it
 
 // One horizontal row of shoppable videos, each with ONE fixed product container underneath.
-// - Videos never autoplay or loop (see TapToPlayVideo). A video’s products rotate inside its own container every
+// - Videos never autoplay or loop and have sound + their own controls (see ShoppableVideoPlayer). A video’s products rotate inside its own container every
 //   `productRotateMs`; each video rotates independently and rotation never moves the row.
 // - The row is a native scroll container (touch swipe, trackpad and wheel just work); only the row scrolls, never the page.
 // - When the items do not all fit, the list is rendered three times (clones are aria-hidden/inert) and the scroll
@@ -243,7 +243,7 @@ export default function VideoProductCarousel({ items, currencySymbol, title, des
                 <article>
                   <div className="vc-video relative aspect-[9/16] overflow-hidden">
                     {item.videoUrl ? (
-                      <TapToPlayVideo src={item.videoUrl} poster={item.thumbnail} label={`${item.title} video`} className="absolute inset-0 h-full w-full object-cover" />
+                      <ShoppableVideoPlayer src={item.videoUrl} poster={item.thumbnail} label={`${item.title} video`} className="absolute inset-0 h-full w-full object-cover" />
                     ) : (
                       item.thumbnail && <Image src={item.thumbnail} alt={`${item.title} video`} fill unoptimized draggable={false} sizes="(min-width: 1024px) 24vw, 70vw" className="object-cover" />
                     )}

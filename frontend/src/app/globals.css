@@ -1074,36 +1074,114 @@ footer.cart-divider {
 /* ================================
    Shoppable video: tap-to-play + fixed product slot (colors only; layout lives in the components)
    ================================ */
+/* Big play button shown while the video is paused / not started / finished */
 .vc-play {
-  cursor: pointer;
-  background: transparent;
-  border: 0;
-}
-
-.vc-play__icon {
   background-color: var(--color-video-control-bg);
   color: var(--color-video-control-fg);
+  border: 0;
+  cursor: pointer;
   box-shadow: 0 10px 24px -10px var(--color-shadow-soft);
+  transition: scale 0.25s ease; /* `scale`, not transform: Tailwind centres the button with the translate property */
+}
+
+.vc-play:hover {
+  scale: 1.06;
+}
+
+.vc-play:focus-visible,
+.vc-ctl:focus-visible,
+.vc-range:focus-visible {
+  outline: 2px solid var(--color-white);
+  outline-offset: 2px;
+}
+
+/* Control bar over a soft bottom gradient; hidden until hover / focus / tap */
+.vc-controls {
+  color: var(--color-white);
+  background: linear-gradient(to top, var(--color-showcase-overlay) 0%, transparent 100%);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(6px);
   transition: opacity 0.25s ease, transform 0.25s ease;
 }
 
-.vc-play:hover .vc-play__icon {
-  transform: scale(1.06);
-}
-
-/* While playing, the pause icon stays out of the way until the video is hovered/focused */
-.vc-play__icon--playing {
-  opacity: 0;
-}
-
-.vc-play:hover .vc-play__icon--playing,
-.vc-play:focus-visible .vc-play__icon--playing {
+/* keyboard focus keeps the bar up; a tap-focus (touch/mouse) must not, or it would never auto-hide */
+.vc-controls:has(:focus-visible),
+.vc-controls[data-revealed="true"] {
   opacity: 1;
+  pointer-events: auto;
+  transform: none;
 }
 
-.vc-play:focus-visible {
-  outline: 2px solid var(--color-focus);
-  outline-offset: -4px;
+@media (hover: hover) {
+  .vc-video:hover .vc-controls {
+    opacity: 1;
+    pointer-events: auto;
+    transform: none;
+  }
+}
+
+.vc-ctl {
+  color: var(--color-white);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+
+.vc-ctl:hover {
+  background-color: color-mix(in srgb, var(--color-white) 20%, transparent);
+}
+
+.vc-time {
+  color: color-mix(in srgb, var(--color-white) 85%, transparent);
+}
+
+/* Sliders (seek + volume): filled track, round thumb. touch-action none so a finger drag moves the slider, not the row */
+.vc-range {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 1.25rem;
+  background: transparent;
+  cursor: pointer;
+  touch-action: none;
+}
+
+.vc-range::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 9999px;
+  background: linear-gradient(to right, var(--color-white) var(--fill, 0%), color-mix(in srgb, var(--color-white) 30%, transparent) var(--fill, 0%));
+}
+
+.vc-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 0.75rem;
+  height: 0.75rem;
+  margin-top: -4px;
+  border: 0;
+  border-radius: 9999px;
+  background-color: var(--color-white);
+  box-shadow: 0 1px 4px var(--color-shadow-soft);
+}
+
+.vc-range::-moz-range-track {
+  height: 4px;
+  border-radius: 9999px;
+  background-color: color-mix(in srgb, var(--color-white) 30%, transparent);
+}
+
+.vc-range::-moz-range-progress {
+  height: 4px;
+  border-radius: 9999px;
+  background-color: var(--color-white);
+}
+
+.vc-range::-moz-range-thumb {
+  width: 0.75rem;
+  height: 0.75rem;
+  border: 0;
+  border-radius: 9999px;
+  background-color: var(--color-white);
 }
 
 /* ONE fixed-size product container per video: it never resizes, only its content slides */
@@ -1181,7 +1259,8 @@ footer.cart-divider {
     from { opacity: 1; }
     to { opacity: 0; }
   }
-  .vc-play__icon,
+  .vc-play,
+  .vc-controls,
   .vc-dot {
     transition: none;
   }
