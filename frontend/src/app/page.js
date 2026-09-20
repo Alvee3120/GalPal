@@ -1,10 +1,17 @@
 import { Suspense } from "react";
 import Banner from "@/component/homepage/Banner";
 import Marquee from "@/component/homepage/Marquee";
-import CategoryShowcase, { CategoryShowcaseSkeleton } from "@/component/homepage/CategoryShowcase";
+import CategoryShowcase, {
+  CategoryShowcaseSkeleton,
+} from "@/component/homepage/CategoryShowcase";
 import SkincareVideoSection from "@/component/homepage/SkincareVideoSection";
-import CategoryProductShowcase, { ProductShowcaseSkeleton } from "@/component/homepage/CategoryProductShowcase";
+import CategoryProductShowcase, {
+  ProductShowcaseSkeleton,
+} from "@/component/homepage/CategoryProductShowcase";
 import TrendingProducts from "@/component/homepage/TrendingProducts";
+import ShoppableVideoCarousel, {
+  VideoCarouselSkeleton,
+} from "@/component/homepage/ShoppableVideoCarousel";
 
 export default function Home() {
   return (
@@ -21,31 +28,35 @@ export default function Home() {
           title="Makeup"
           description=""
           productLimit={8}
-          rows = {1}
+          rows={1}
         />
         <CategoryProductShowcase
           category="skincare"
           title="Skincare"
           description=""
           productLimit={8}
-          rows = {1}
+          rows={1}
         />
       </Suspense>
 
-       <SkincareVideoSection />
+      <SkincareVideoSection />
 
-        <Suspense fallback={<ProductShowcaseSkeleton />}>
+      <Suspense fallback={<ProductShowcaseSkeleton />}>
         <CategoryProductShowcase
           category="accessories"
           title="Accessories"
           description=""
           productLimit={8}
-          rows = {1}
+          rows={1}
         />
       </Suspense>
 
       <Suspense fallback={<ProductShowcaseSkeleton />}>
         <TrendingProducts productLimit={8} />
+      </Suspense>
+
+      <Suspense fallback={<VideoCarouselSkeleton />}>
+        <ShoppableVideoCarousel />
       </Suspense>
     </main>
   );

@@ -1,12 +1,17 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { GoCheck, GoPlus } from "react-icons/go";
 import { useCart } from "@/component/cart/CartProvider";
 
 const ADDED_MS = 1800;
 
 // "Add to Cart" for any product card. Calls the shared cart, then opens the shared drawer.
-export default function AddToCartButton({ product }) {
+// A successful add shows no toast: the cart drawer opening and the button briefly changing ("Added ✓" / a check icon)
+// are the confirmation. Failures are still announced by a toast (raised in the cart).
+//   default  full-width "Add to Cart" pill
+//   compact  round icon-only "+" button for the compact product card (e.g. under a shoppable video)
+export default function AddToCartButton({ product, compact = false }) {
   const { addItem, openCart } = useCart();
   const [status, setStatus] = useState("idle"); // idle | adding | added
   const timer = useRef(null);
@@ -30,6 +35,29 @@ export default function AddToCartButton({ product }) {
     timer.current = setTimeout(() => setStatus("idle"), ADDED_MS);
   }
 
+  const ariaLabel = outOfStock ? `${product.name} is out of stock` : `Add ${product.name} to cart`;
+
+  if (compact) {
+    return (
+      <div className="shrink-0">
+        <button
+          ref={buttonRef}
+          type="button"
+          onClick={handleAdd}
+          disabled={outOfStock || status === "adding"}
+          aria-label={ariaLabel}
+          title={outOfStock ? "Sold out" : "Add to cart"}
+          className="auth-btn auth-btn--primary flex h-10 w-10 items-center justify-center rounded-full transition-transform duration-200 active:scale-[0.94] motion-reduce:transition-none motion-reduce:active:scale-100"
+        >
+          {status === "added" ? <GoCheck className="h-5 w-5" aria-hidden="true" /> : <GoPlus className="h-5 w-5" aria-hidden="true" />}
+        </button>
+        <span className="sr-only" aria-live="polite">
+          {status === "added" ? `${product.name} added to cart` : ""}
+        </span>
+      </div>
+    );
+  }
+
   const label = outOfStock ? "Out of stock" : status === "adding" ? "Adding..." : status === "added" ? "Added ✓" : "Add to Cart";
 
   return (
@@ -39,7 +67,7 @@ export default function AddToCartButton({ product }) {
         type="button"
         onClick={handleAdd}
         disabled={outOfStock || status === "adding"}
-        aria-label={outOfStock ? `${product.name} is out of stock` : `Add ${product.name} to cart`}
+        aria-label={ariaLabel}
         className="auth-btn auth-btn--primary w-full rounded-full px-4 py-2.5 text-sm font-medium transition-transform duration-200 active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100"
       >
         <span aria-live="polite">{label}</span>

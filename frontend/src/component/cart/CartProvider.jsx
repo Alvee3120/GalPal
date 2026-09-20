@@ -85,13 +85,13 @@ export function CartProvider({ children, currencySymbol = "" }) {
     });
 
   // Adds `quantity` more of a product (the backend increases an existing line instead of duplicating it).
-  // `productSlug` lets the "choose options" toast link to the product page. Returns { ok }.
+  // `productSlug` lets the "choose options" toast link to the product page. Success has no toast (the drawer opens and the
+  // button confirms it); failures are always toasted. Returns { ok }.
   const addItem = useCallback(
     async (productId, quantity = 1, { productSlug } = {}) => {
       mutated.current = true;
       try {
         setCart(await cartApi("/items/", { method: "POST", body: JSON.stringify({ product_id: productId, quantity }) }));
-        notify.success("Added to cart!");
         return { ok: true };
       } catch (err) {
         if (err.details?.variant_id) {
@@ -140,8 +140,7 @@ export function CartProvider({ children, currencySymbol = "" }) {
       setCart((c) => withItems(c, c.items.filter((i) => i.id !== itemId)));
       setPending(itemId, true);
       try {
-        setCart(await cartApi(`/items/${itemId}/`, { method: "DELETE" }));
-        notify.success("Product removed from cart.");
+        setCart(await cartApi(`/items/${itemId}/`, { method: "DELETE" })); // no success toast: the line disappearing is the feedback
       } catch (err) {
         setCart(before);
         notify.error(messageFor(err, "Unable to remove product from cart."));

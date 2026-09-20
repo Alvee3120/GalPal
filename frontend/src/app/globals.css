@@ -98,6 +98,10 @@
   /* Skincare video section */
   --color-editorial-text: color-mix(in srgb, var(--color-foreground) 82%, transparent);
 
+  /* Shoppable videos: play/pause button drawn over a video */
+  --color-video-control-bg: color-mix(in srgb, var(--color-background) 90%, transparent);
+  --color-video-control-fg: var(--color-foreground);
+
   /* Kept for existing usages */
   --background: var(--color-background);
   --foreground: var(--color-foreground);
@@ -978,5 +982,207 @@ footer.cart-divider {
   }
   .skv-card:hover .skv-card__video {
     transform: none;
+  }
+}
+
+/* ================================
+   Shoppable video carousel (colors only; layout lives in the components)
+   ================================ */
+/* One horizontal row that scrolls on its own (never the page): ~1.4 items on phones, 2.6 on tablets, 4.2 on desktop,
+   so the next item always peeks in. --n = items in view, --nf = its whole-number part (gaps between them). */
+.vc-track {
+  --gap: 0.75rem;
+  --n: 1.4;
+  --nf: 1;
+  display: flex;
+  gap: var(--gap);
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+}
+
+.vc-track::-webkit-scrollbar {
+  display: none;
+}
+
+.vc-track--static {
+  overflow: hidden;
+}
+
+.vc-track[data-scrollable="true"] {
+  cursor: grab;
+}
+
+.vc-track[data-dragging="true"] {
+  scroll-snap-type: none;
+  cursor: grabbing;
+  user-select: none;
+}
+
+.vc-track img,
+.vc-track video {
+  -webkit-user-drag: none;
+  user-select: none;
+}
+
+.vc-item {
+  flex: 0 0 calc((100% - var(--nf) * var(--gap)) / var(--n));
+  min-width: 0;
+  scroll-snap-align: start;
+}
+
+@media (min-width: 640px) {
+  .vc-track {
+    --gap: 1rem;
+    --n: 2.6;
+    --nf: 2;
+  }
+}
+
+@media (min-width: 1024px) {
+  .vc-track {
+    --gap: 1.25rem;
+    --n: 4.2;
+    --nf: 4;
+  }
+}
+
+.vc-video {
+  background-color: var(--color-showcase-empty);
+  border-radius: calc(var(--radius-card) * 1.1);
+  box-shadow: 0 18px 32px -22px var(--color-shadow-soft);
+  isolation: isolate;
+}
+
+/* Compact product card (variant of the shared ProductCard): slim, white, bordered */
+.product-card--compact {
+  background-color: var(--color-background);
+  border: 1px solid var(--color-border);
+  border-radius: calc(var(--radius-card) - 0.25rem);
+}
+
+.product-card__price {
+  color: var(--color-brand);
+}
+
+.product-card__chip {
+  background-color: var(--color-showcase-empty);
+  color: var(--color-brand);
+}
+
+/* ================================
+   Shoppable video: tap-to-play + fixed product slot (colors only; layout lives in the components)
+   ================================ */
+.vc-play {
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+}
+
+.vc-play__icon {
+  background-color: var(--color-video-control-bg);
+  color: var(--color-video-control-fg);
+  box-shadow: 0 10px 24px -10px var(--color-shadow-soft);
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.vc-play:hover .vc-play__icon {
+  transform: scale(1.06);
+}
+
+/* While playing, the pause icon stays out of the way until the video is hovered/focused */
+.vc-play__icon--playing {
+  opacity: 0;
+}
+
+.vc-play:hover .vc-play__icon--playing,
+.vc-play:focus-visible .vc-play__icon--playing {
+  opacity: 1;
+}
+
+.vc-play:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: -4px;
+}
+
+/* ONE fixed-size product container per video: it never resizes, only its content slides */
+.vc-slot {
+  height: 6.5rem;
+}
+
+.vc-slot__layer {
+  will-change: transform, opacity;
+}
+
+.vc-slot__layer--in {
+  animation: vc-slide-in 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.vc-slot__layer--out {
+  animation: vc-slide-out 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+  pointer-events: none;
+}
+
+@keyframes vc-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(70%);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes vc-slide-out {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-70%);
+  }
+}
+
+/* Product pickers under the slot */
+.vc-dot {
+  width: 0.375rem;
+  height: 0.375rem;
+  background-color: color-mix(in srgb, var(--color-foreground) 22%, transparent);
+  transition: width 0.3s ease, background-color 0.3s ease;
+}
+
+.vc-dot-hit[aria-current="true"] .vc-dot {
+  width: 1rem;
+  background-color: var(--color-brand);
+}
+
+.vc-dot-hit:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 1px;
+  border-radius: 9999px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* No sliding: products simply cross-fade */
+  .vc-slot__layer--in {
+    animation: vc-fade-in 0.3s ease both;
+  }
+  .vc-slot__layer--out {
+    animation: vc-fade-out 0.3s ease both;
+  }
+  @keyframes vc-fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes vc-fade-out {
+    from { opacity: 1; }
+    to { opacity: 0; }
+  }
+  .vc-play__icon,
+  .vc-dot {
+    transition: none;
   }
 }
