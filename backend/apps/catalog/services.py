@@ -1,13 +1,25 @@
-"""Catalog business logic: category tree integrity, visibility, and safe deletion."""
+"""Catalog business logic: category tree integrity, visibility, safe deletion, and products
+(pricing/stock rules, variant option uniqueness, duplication)."""
 
 from django.core.exceptions import ValidationError
+from django.core.files.base import ContentFile
 from django.db import transaction
 from django.utils import timezone
 
-from apps.core.utils import discard_file
+from apps.core.utils import discard_file, unique_slugify
 
 from .exceptions import Conflict
-from .models import Category
+from .models import (
+    AttributeValue,
+    Category,
+    Product,
+    ProductCategory,
+    ProductImage,
+    ProductStatus,
+    ProductVariant,
+    StockMovement,
+    StockStatus,
+)
 
 ROOT = "root"  # `move_children_to=root` re-parents children to the top level
 
@@ -34,6 +46,11 @@ def _ancestor_ids(node_id, parent_map):
         chain.append(node_id)
         node_id = parent_map.get(node_id)
     return chain
+
+
+def parent_map():
+    """Public wrapper around `_parent_map()`, for callers outside this module (e.g. filters)."""
+    return _parent_map()
 
 
 def descendant_ids(category_id, parent_map):
@@ -200,3 +217,200 @@ def _reparent_children(category, children, target):
             "move_children_to", f"The target already has a category named: {', '.join(clashes)}.", "name_clash"
         )
     Category.objects.filter(parent=category).update(parent=target, updated_at=timezone.now())
+
+
+# --- products: SKU, categories, variant options -------------------------------------------
+
+
+def assert_unique_sku(sku, *, exclude_product=None, exclude_variant=None):
+    """
+    SKUs are unique across the whole catalog (products and variants share one namespace), so a
+    warehouse barcode never points at two different things. Raises a `ValidationError` on `sku`.
+    """
+    products = Product.all_objects.filter(sku=sku)
+    if exclude_product is not None:
+        products = products.exclude(pk=exclude_product.pk)
+    variants = ProductVariant.objects.filter(sku=sku)
+    if exclude_variant is not None:
+        variants = variants.exclude(pk=exclude_variant.pk)
+    if products.exists() or variants.exists():
+        raise field_error("sku", "This SKU is already in use.", "duplicate_sku")
+
+
+@transaction.atomic
+def set_categories(product, category_ids, primary_id=None):
+    """
+    Replace `product`'s categories with `category_ids`, marking `primary_id` as the primary one
+    (defaulting to the first id when there is at least one category and none was specified).
+    """
+    category_ids = list(dict.fromkeys(category_ids))  # de-duplicate, keep order
+    if primary_id is not None and primary_id not in category_ids:
+        raise field_error("primary_category", "The primary category must be one of the selected categories.", "invalid_primary")
+    found = set(Category.objects.filter(pk__in=category_ids).values_list("pk", flat=True))
+    missing = [i for i in category_ids if i not in found]
+    if missing:
+        raise field_error("categories", f"Unknown category id(s): {missing}.", "not_found")
+
+    primary_id = primary_id or (category_ids[0] if category_ids else None)
+    ProductCategory.objects.filter(product=product).exclude(category_id__in=category_ids).delete()
+    for category_id in category_ids:
+        ProductCategory.objects.update_or_create(
+            product=product, category_id=category_id, defaults={"is_primary": category_id == primary_id}
+        )
+
+
+def option_signature(attribute_value_ids):
+    return ",".join(str(i) for i in sorted(attribute_value_ids))
+
+
+@transaction.atomic
+def set_variant_options(variant, attribute_value_ids):
+    """
+    Set a variant's attribute-value combination, enforcing that no two variants of the same
+    product share the same combination (the model's unique constraint is the backstop for races).
+    """
+    attribute_value_ids = list(dict.fromkeys(attribute_value_ids))
+    found = set(AttributeValue.objects.filter(pk__in=attribute_value_ids).values_list("pk", flat=True))
+    missing = [i for i in attribute_value_ids if i not in found]
+    if missing:
+        raise field_error("attribute_values", f"Unknown attribute value id(s): {missing}.", "not_found")
+
+    signature = option_signature(attribute_value_ids)
+    clash = ProductVariant.objects.filter(product=variant.product, option_signature=signature)
+    if variant.pk is not None:
+        clash = clash.exclude(pk=variant.pk)
+    if clash.exists():
+        raise field_error(
+            "attribute_values", "Another variant of this product already uses this combination.", "duplicate_combination"
+        )
+    variant.option_signature = signature
+    variant.save(update_fields=["option_signature"])
+    variant.attribute_values.set(attribute_value_ids)
+
+
+# --- products: stock -----------------------------------------------------------------------
+
+
+@transaction.atomic
+def adjust_stock(*, product, variant=None, quantity_change, reason, reference="", note="", user=None):
+    """
+    Apply `quantity_change` to a product's or a variant's stock and write a `StockMovement`.
+
+    Locks the row so concurrent sales can't oversell. Refuses to go negative, and refuses
+    altogether when stock isn't managed for the target (turn on `manage_stock` first).
+    """
+    target = variant or product
+    model = type(target)
+    locked = model.objects.select_for_update().get(pk=target.pk)
+    if not locked.manage_stock:
+        raise field_error("quantity_change", "Stock is not managed for this item.", "stock_not_managed")
+
+    new_balance = locked.stock_quantity + quantity_change
+    if new_balance < 0:
+        raise field_error(
+            "quantity_change", f"Not enough stock: only {locked.stock_quantity} on hand.", "insufficient_stock"
+        )
+
+    locked.stock_quantity = new_balance
+    update_fields = ["stock_quantity"]
+    if variant is None and locked.stock_status != StockStatus.BACKORDER:
+        locked.stock_status = StockStatus.IN_STOCK if new_balance > 0 else StockStatus.OUT_OF_STOCK
+        update_fields.append("stock_status")
+    locked.save(update_fields=update_fields)
+
+    movement = StockMovement.objects.create(
+        product=variant.product if variant else product,
+        variant=variant,
+        quantity_change=quantity_change,
+        balance_after=new_balance,
+        reason=reason,
+        reference=reference,
+        note=note,
+        user=user,
+    )
+    return locked, movement
+
+
+# --- products: bulk actions & duplication ---------------------------------------------------
+
+
+@transaction.atomic
+def bulk_set_status(product_ids, status):
+    updated = Product.objects.filter(pk__in=product_ids).update(status=status, updated_at=timezone.now())
+    return updated
+
+
+def _copy_image(field_file):
+    """A new, independent copy of an uploaded image file (so duplicates never share storage)."""
+    if not field_file:
+        return None
+    field_file.open("rb")
+    try:
+        return ContentFile(field_file.read(), name=field_file.name.rsplit("/", 1)[-1])
+    finally:
+        field_file.close()
+
+
+def _unique_sku(base):
+    candidate, counter = f"{base}-copy", 1
+    while Product.all_objects.filter(sku=candidate).exists() or ProductVariant.objects.filter(sku=candidate).exists():
+        counter += 1
+        candidate = f"{base}-copy-{counter}"
+    return candidate
+
+
+_COPY_EXCLUDED = {
+    "id", "name", "slug", "sku", "stock_quantity", "average_rating", "review_count", "status",
+    "created_at", "updated_at", "is_deleted", "deleted_at", "feature_image", "og_image",
+}
+
+
+@transaction.atomic
+def duplicate_product(product):
+    """
+    Deep-copy a product: scalar fields, categories, tags, gallery images and variants (each with
+    an independent copy of its image file). The duplicate is always a draft with zero stock, a
+    fresh SKU (`<sku>-copy`, de-duplicated) and no rating/review history, ready for the admin to
+    finish and publish.
+    """
+    fields = {
+        f.attname: getattr(product, f.attname)
+        for f in Product._meta.concrete_fields
+        if f.name not in _COPY_EXCLUDED
+    }
+    copy = Product(
+        **fields,
+        name=f"{product.name} (Copy)",
+        slug=unique_slugify(Product, f"{product.name} (Copy)"),
+        sku=_unique_sku(product.sku),
+        status=ProductStatus.DRAFT,
+        stock_quantity=0,
+        feature_image=_copy_image(product.feature_image),
+        og_image=_copy_image(product.og_image),
+    )
+    copy.save()
+
+    copy.tags.set(product.tags.all())
+    for link in product.category_links.all():
+        ProductCategory.objects.create(product=copy, category_id=link.category_id, is_primary=link.is_primary)
+
+    for image in product.images.all():
+        copied = _copy_image(image.image)
+        if copied:
+            ProductImage.objects.create(product=copy, image=copied, alt_text=image.alt_text, sort_order=image.sort_order)
+
+    for variant in product.variants.all():
+        new_variant = ProductVariant.objects.create(
+            product=copy,
+            option_signature=variant.option_signature,
+            sku=_unique_sku(variant.sku),
+            regular_price=variant.regular_price,
+            discount_price=variant.discount_price,
+            stock_quantity=0,
+            manage_stock=variant.manage_stock,
+            is_active=variant.is_active,
+            image=_copy_image(variant.image),
+        )
+        new_variant.attribute_values.set(variant.attribute_values.all())
+
+    return copy

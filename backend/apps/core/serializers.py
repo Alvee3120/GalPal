@@ -6,6 +6,22 @@ from rest_framework import serializers
 from .utils import discard_path, resolve_slug
 
 
+class BooleanField(serializers.BooleanField):
+    """
+    Fixes a DRF gotcha for every ModelSerializer in this project (patched in
+    `apps.core.apps.CoreConfig.ready`).
+
+    DRF's `BooleanField` sets `default_empty_html = False`, assuming HTML checkbox semantics for
+    form-encoded bodies: a key that's simply absent means "unchecked". That silently overrides a
+    model's default (e.g. `is_active=True`) on any multipart request that omits the field — which
+    is exactly what happens on a create/update that only sends an image file and leaves booleans
+    out. Resetting it to `empty` (every other field type's value) restores the ordinary "field
+    missing -> use the default" behaviour for JSON and multipart bodies alike.
+    """
+
+    default_empty_html = serializers.empty
+
+
 class ErrorDetailSerializer(serializers.Serializer):
     status = serializers.IntegerField(help_text="HTTP status code.")
     code = serializers.CharField(help_text="Stable machine-readable error code.")

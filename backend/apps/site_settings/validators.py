@@ -3,9 +3,9 @@
 import re
 
 from django.core.exceptions import ValidationError
-from django.core.validators import RegexValidator, URLValidator
+from django.core.validators import RegexValidator
 
-from apps.core.validators import normalize_bd_phone
+from apps.core.validators import normalize_bd_phone, validate_http_url  # noqa: F401 (re-exported)
 
 validate_hex_color = RegexValidator(
     r"^#(?:[0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$",
@@ -21,14 +21,6 @@ validate_gtm_id = RegexValidator(r"^GTM-[A-Z0-9]{4,12}$", "A GTM container ID lo
 validate_tiktok_pixel_id = RegexValidator(
     r"^[A-Za-z0-9]{8,32}$", "A TikTok pixel ID is 8-32 letters/digits.", code="invalid_tiktok_pixel_id"
 )
-
-_http_url = URLValidator(schemes=["http", "https"], message="Enter a valid http:// or https:// URL.")
-
-
-def validate_http_url(value):
-    """Only http(s) links: rejects javascript:, data:, ftp: and friends."""
-    _http_url(value)
-
 
 def normalize_hex_color(value):
     """`#abc` -> `#AABBCC`, `#d6336c` -> `#D6336C`. Assumes the value passed `validate_hex_color`."""

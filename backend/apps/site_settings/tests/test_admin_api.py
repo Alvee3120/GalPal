@@ -287,3 +287,12 @@ def test_patching_other_fields_leaves_images_alone(auth_client, admin_user):
     name = SiteSettings.objects.get().logo.name
     patch(client, {"tagline": "x"})
     assert SiteSettings.objects.get().logo.name == name
+
+
+def test_multipart_update_without_booleans_does_not_reset_them(auth_client, admin_user):
+    """Regression: DRF's BooleanField used to treat an absent multipart field as False."""
+    client = auth_client(admin_user)
+    patch(client, {"guest_checkout_enabled": False, "maintenance_mode": True})
+    r = patch(client, {"logo": png("logo.png")}, format="multipart")
+    assert r.status_code == 200
+    assert r.json()["guest_checkout_enabled"] is False and r.json()["maintenance_mode"] is True

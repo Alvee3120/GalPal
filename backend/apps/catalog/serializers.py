@@ -100,8 +100,9 @@ class AdminCategorySerializer(SlugSerializerMixin, ReplacedFilesMixin, serialize
     slug = slug_field()
     slug_reserved = CATEGORY_RESERVED_SLUGS
     file_fields = ("image",)
+    # Annotated by the view's queryset (`Count(..., distinct=True)`), not a per-row query.
     children_count = serializers.IntegerField(read_only=True, default=0)
-    products_count = serializers.SerializerMethodField()
+    products_count = serializers.IntegerField(read_only=True, default=0)
 
     class Meta:
         model = Category
@@ -112,9 +113,6 @@ class AdminCategorySerializer(SlugSerializerMixin, ReplacedFilesMixin, serialize
         read_only_fields = ["id", "children_count", "products_count", "created_at", "updated_at"]
         # the model's UniqueConstraints are checked by `validate` with friendlier messages
         validators = []
-
-    def get_products_count(self, obj) -> int:
-        return obj.product_count()
 
     def validate_name(self, value):
         return value.strip()
