@@ -4,10 +4,34 @@ import ProductImage from "./ProductImage";
 import AddToCartButton from "./AddToCartButton";
 
 // Reusable product tile. `product` is an item from the backend's /products/ list.
-// The link covers the photo and text; the Add to Cart button sits below it (a button must not live inside a link).
-export default function ProductCard({ product, currencySymbol = "" }) {
+// The link covers the photo and text; the Add to Cart button sits outside it (a button must not live inside a link).
+//   variant="compact"  a slim horizontal card (thumbnail | name + price | Add), used under shoppable videos.
+//                      Same data, same link, same image handling, same cart button as the default tile.
+export default function ProductCard({ product, currencySymbol = "", variant = "default", className = "" }) {
   const { name, slug, feature_image: image, effective_price, regular_price, on_sale, discount_percentage, in_stock, brand, primary_category } = product;
   const info = brand?.name ?? primary_category?.name;
+  const discounted = on_sale && regular_price !== effective_price;
+
+  if (variant === "compact") {
+    return (
+      <article className={`product-card product-card--compact group flex items-center gap-3 p-2.5 ${className}`}>
+        <Link href={`/products/${slug}`} className="product-card__link flex min-w-0 flex-1 items-center gap-3 rounded-[inherit]">
+          <div className="product-card__media relative h-14 w-14 shrink-0 overflow-hidden sm:h-16 sm:w-16">
+            <ProductImage src={image} alt={name} tight />
+          </div>
+          <div className="min-w-0">
+            <h3 className="product-card__name line-clamp-2 text-sm font-medium leading-snug">{name}</h3>
+            <p className="mt-0.5 flex flex-wrap items-baseline gap-x-1.5 text-sm">
+              <span className="product-card__price font-semibold">{formatPrice(effective_price, currencySymbol)}</span>
+              {discounted && <span className="showcase-muted text-xs line-through">{formatPrice(regular_price, currencySymbol)}</span>}
+              {discounted && discount_percentage > 0 && <span className="product-card__chip rounded-full px-1.5 py-0.5 text-[0.625rem] font-medium">-{discount_percentage}%</span>}
+            </p>
+          </div>
+        </Link>
+        <AddToCartButton product={product} compact />
+      </article>
+    );
+  }
 
   return (
     <article className="product-card group flex h-full flex-col p-3 sm:p-4">
@@ -33,7 +57,7 @@ export default function ProductCard({ product, currencySymbol = "" }) {
           </div>
           <p className="shrink-0 text-sm sm:text-right sm:text-base">
             <span className="font-semibold">{formatPrice(effective_price, currencySymbol)}</span>
-            {on_sale && regular_price !== effective_price && (
+            {discounted && (
               <span className="showcase-muted ml-2 text-xs line-through sm:ml-0 sm:block">
                 {formatPrice(regular_price, currencySymbol)}
               </span>
