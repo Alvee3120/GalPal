@@ -23,9 +23,7 @@ function Checkbox({ checked, onChange, label, count }) {
   );
 }
 
-// The full "Filter Options" panel: categories, price, promotions, availability. Every control just navigates
-// to a new /shop URL (see lib/shopQuery) — the product grid is a server component that reads that URL, so
-// there is nothing else to keep in sync. Rendered once in the desktop sidebar and once inside the mobile drawer.
+
 export default function ShopFilters({ categories, priceBounds, currencySymbol, searchParams }) {
   const router = useRouter();
   const go = (changes) => router.push(buildShopHref(searchParams, changes));
