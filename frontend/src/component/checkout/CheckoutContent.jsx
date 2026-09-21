@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCart } from "@/component/cart/CartProvider";
 import ProductImage from "@/component/shared/ProductImage";
+import SelectField from "@/component/shared/SelectField";
 import { notify } from "@/lib/notify";
 import { messageFor } from "@/lib/apiError";
 import formatPrice from "@/lib/formatPrice";
@@ -13,6 +14,7 @@ import { normalizeBdPhone } from "@/lib/phone";
 import { BD_CITIES } from "@/lib/bdLocations";
 import { calculateDeliveryCharge, DHAKA_ZONES, isDhaka } from "@/lib/delivery";
 import { validateCheckout } from "@/lib/checkoutValidation";
+import { addressToValues, initialValuesFor, rememberCheckoutAddress, useCheckoutAccount } from "@/lib/checkoutAccount";
 
 const SHOP_ROUTE = "/shop";
 const PLACE_ORDER_ERROR = "Unable to place your order. Please try again.";
@@ -58,25 +60,64 @@ function EmptyState() {
   );
 }
 
-// The /checkout page: contact + delivery form (left) and the order summary built from the SAME cart state as the
-// drawer and the cart page (useCart) (right; below the form on mobile). The delivery charge comes only from
-// calculateDeliveryCharge(); what is sent to the server is city + zone, never an amount.
+const OTHER_ADDRESS = "+ Use another address";
+
+// Labels for the saved-address picker; a duplicate label gets a number so each option stays distinct.
+function addressOptions(addresses) {
+  const seen = new Map();
+  return addresses.map((a) => {
+    const base = `${a.label ? `${a.label} - ` : ""}${a.address_line}`;
+    const count = (seen.get(base) ?? 0) + 1;
+    seen.set(base, count);
+    return { address: a, label: count > 1 ? `${base} (${count})` : base };
+  });
+}
+
+// The /checkout page. Guest vs logged-in is decided here:
+//   guest      -> empty form + "Save details to track orders" (on by default; makes the email required)
+//   logged in  -> the form is prefilled from the customer's saved details (existing /account/profile + default
+//                 address), with no save checkbox and no account-creation text; every field stays editable.
 export default function CheckoutContent() {
+  const { items, loading } = useCart();
+  const account = useCheckoutAccount();
+
+  if (loading || account.status === "loading") return <Skeleton />;
+  if (items.length === 0) return <EmptyState />;
+  return <CheckoutForm account={account.status === "authed" ? account : null} />;
+}
+
+// Contact + delivery form (left) and the order summary built from the SAME cart state as the drawer and the cart page
+// (useCart) (right; below the form on mobile). The delivery charge comes only from calculateDeliveryCharge(); what is
+// sent to the server is the form's city + zone, never an amount, and never a saved address the customer didn't pick.
+function CheckoutForm({ account }) {
   const router = useRouter();
-  const { items, itemCount, subtotal, discount, currencySymbol, loading, refreshCart } = useCart();
-  const [values, setValues] = useState(INITIAL);
+  const { items, itemCount, subtotal, discount, currencySymbol, refreshCart } = useCart();
+  const loggedIn = account !== null;
+  const [values, setValues] = useState(() => (loggedIn ? initialValuesFor(account.profile, account.addresses) : INITIAL));
+  const options = loggedIn ? addressOptions(account.addresses) : [];
+  const [savedChoice, setSavedChoice] = useState(() => {
+    const preferred = options.find((o) => o.address.is_default) ?? options[0];
+    return preferred ? preferred.label : "";
+  });
   const [submitting, setSubmitting] = useState(false);
   const submittingRef = useRef(false); // blocks a double-click before React re-renders the disabled button
+  const emailLocked = loggedIn && Boolean(account.profile.email); // the account's own email is not a new-account field
 
   const set = (name) => (e) => setValues((v) => ({ ...v, [name]: e.target.value }));
 
   // Leaving Dhaka clears the zone (it is hidden and must not linger); entering Dhaka starts with no zone chosen.
-  function changeCity(e) {
-    setValues((v) => ({ ...v, city: e.target.value, zone: "" }));
+  function changeCity(city) {
+    setValues((v) => ({ ...v, city, zone: "" }));
   }
 
-  if (loading) return <Skeleton />;
-  if (items.length === 0) return <EmptyState />;
+  // Picking a saved address fills the address fields as a starting point (still editable); "use another address" clears them.
+  function chooseSaved(label) {
+    setSavedChoice(label);
+    const picked = options.find((o) => o.label === label);
+    setValues((v) =>
+      picked ? { ...v, ...addressToValues(picked.address, account.profile) } : { ...v, address: "", city: "", zone: "" },
+    );
+  }
 
   const deliveryCharge = calculateDeliveryCharge(values.city, values.zone);
   const orderTotal = Number(subtotal) - Number(discount) + (deliveryCharge ?? 0);
@@ -88,7 +129,8 @@ export default function CheckoutContent() {
     e.preventDefault();
     if (submittingRef.current) return;
 
-    const problem = validateCheckout(values, { itemCount, hasUnavailable });
+    // A logged-in customer already has the account, so "save details" never applies (and never forces an email).
+    const problem = validateCheckout({ ...values, saveDetails: loggedIn ? false : values.saveDetails }, { itemCount, hasUnavailable });
     if (problem) {
       notify.error(problem);
       return;
@@ -108,7 +150,8 @@ export default function CheckoutContent() {
           district: values.city,
           area: dhaka ? values.zone : "",
           note: values.note.trim() || null,
-          save_details: values.saveDetails,
+          // Only a guest chooses this; a logged-in customer is identified by their session, not by anything sent here.
+          ...(loggedIn ? {} : { save_details: values.saveDetails }),
         }),
         cache: "no-store",
       });
@@ -118,6 +161,7 @@ export default function CheckoutContent() {
         return;
       }
       notify.success("Order placed successfully!");
+      if (loggedIn) await rememberCheckoutAddress(values, account.addresses);
       await refreshCart();
       router.push(`/order-confirmation${data?.order_number ? `?number=${encodeURIComponent(data.order_number)}` : ""}`);
     } catch {
@@ -141,35 +185,38 @@ export default function CheckoutContent() {
             <input id="checkout-phone" name="tel" type="tel" inputMode="tel" autoComplete="tel" placeholder="Enter your phone number" value={values.phone} onChange={set("phone")} className="checkout-input rounded-lg px-3 py-2.5 text-sm" />
           </Field>
           <div className="sm:col-span-2">
-            <Field id="checkout-email" label="Email" required={values.saveDetails} optional={!values.saveDetails}>
-              <input id="checkout-email" name="email" type="email" autoComplete="email" placeholder="Enter your email address" value={values.email} onChange={set("email")} className="checkout-input rounded-lg px-3 py-2.5 text-sm" />
+            <Field id="checkout-email" label="Email" required={!loggedIn && values.saveDetails} optional={!loggedIn ? !values.saveDetails : !emailLocked}>
+              <input
+                id="checkout-email"
+                name="email"
+                type="email"
+                autoComplete="email"
+                placeholder="Enter your email address"
+                value={values.email}
+                onChange={set("email")}
+                readOnly={emailLocked}
+                className="checkout-input rounded-lg px-3 py-2.5 text-sm read-only:cursor-default read-only:opacity-70"
+              />
             </Field>
           </div>
+          {options.length > 0 && (
+            <div className="sm:col-span-2">
+              <Field id="checkout-saved-address" label="Saved Address">
+                <SelectField id="checkout-saved-address" value={savedChoice} onChange={chooseSaved} options={[...options.map((o) => o.label), OTHER_ADDRESS]} placeholder="Choose a saved address" />
+              </Field>
+            </div>
+          )}
           <div className="sm:col-span-2">
             <Field id="checkout-address" label="Address" required>
               <input id="checkout-address" name="street-address" type="text" autoComplete="street-address" placeholder="Enter your full delivery address" value={values.address} onChange={set("address")} className="checkout-input rounded-lg px-3 py-2.5 text-sm" />
             </Field>
           </div>
           <Field id="checkout-city" label="City" required>
-            <select id="checkout-city" name="city" autoComplete="address-level2" value={values.city} onChange={changeCity} className="checkout-input rounded-lg px-3 py-2.5 text-sm">
-              <option value="">Select City</option>
-              {BD_CITIES.map((city) => (
-                <option key={city} value={city}>
-                  {city}
-                </option>
-              ))}
-            </select>
+            <SelectField id="checkout-city" name="city" value={values.city} onChange={changeCity} options={BD_CITIES} placeholder="Select City" />
           </Field>
           {dhaka && (
             <Field id="checkout-zone" label="Zone" required>
-              <select id="checkout-zone" name="zone" value={values.zone} onChange={set("zone")} className="checkout-input rounded-lg px-3 py-2.5 text-sm">
-                <option value="">Select Zone</option>
-                {DHAKA_ZONES.map((zone) => (
-                  <option key={zone} value={zone}>
-                    {zone}
-                  </option>
-                ))}
-              </select>
+              <SelectField id="checkout-zone" name="zone" value={values.zone} onChange={(zone) => setValues((v) => ({ ...v, zone }))} options={DHAKA_ZONES} placeholder="Select Zone" />
             </Field>
           )}
           <div className="sm:col-span-2">
@@ -179,19 +226,21 @@ export default function CheckoutContent() {
           </div>
         </div>
 
-        <label htmlFor="checkout-save" className="mt-6 flex cursor-pointer items-start gap-3">
-          <input
-            id="checkout-save"
-            type="checkbox"
-            checked={values.saveDetails}
-            onChange={(e) => setValues((v) => ({ ...v, saveDetails: e.target.checked }))}
-            className="shop-checkbox mt-1 h-4 w-4 shrink-0"
-          />
-          <span>
-            <span className="block text-sm font-medium">Save details to track orders</span>
-            <span className="showcase-muted block text-xs">We&apos;ll create an account using your email to make your next order faster.</span>
-          </span>
-        </label>
+        {!loggedIn && (
+          <label htmlFor="checkout-save" className="mt-6 flex cursor-pointer items-start gap-3">
+            <input
+              id="checkout-save"
+              type="checkbox"
+              checked={values.saveDetails}
+              onChange={(e) => setValues((v) => ({ ...v, saveDetails: e.target.checked }))}
+              className="shop-checkbox mt-1 h-4 w-4 shrink-0"
+            />
+            <span>
+              <span className="block text-sm font-medium">Save details to track orders</span>
+              <span className="showcase-muted block text-xs">We&apos;ll create an account using your email to make your next order faster.</span>
+            </span>
+          </label>
+        )}
       </form>
 
       <aside className="order-summary rounded-2xl p-5 sm:p-6 lg:sticky lg:top-24">

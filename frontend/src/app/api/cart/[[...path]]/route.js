@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { backendFetch } from "@/lib/backendAuth";
 
 // Thin proxy to the backend cart API (GET /cart/, POST /cart/items/, PATCH|DELETE /cart/items/{id}/,
 // POST|DELETE /cart/coupon/). The backend URL stays server-side; the guest cart token lives in an httpOnly
@@ -29,13 +30,14 @@ async function handler(request, { params }) {
   const headers = { Accept: "application/json", "Content-Type": "application/json" };
   const cartToken = store.get("cart_token")?.value;
   if (cartToken) headers["X-Cart-Token"] = cartToken;
-  const access = store.get("access_token")?.value;
 
   let res;
   try {
-    res = await callBackend(url, method, body, access ? { ...headers, Authorization: `Bearer ${access}` } : headers);
-    // An expired access token must not break the cart: retry as a guest.
-    if (res.status === 401 && access) res = await callBackend(url, method, body, headers);
+    // A logged-in customer's short-lived access token is renewed from their refresh token (backendAuth) so their cart
+    // doesn't silently turn into an empty guest cart after 15 minutes; a guest just sends the cart token.
+    res = await backendFetch(`/cart/${path.length ? `${path.join("/")}/` : ""}`, { method, body, headers: cartToken ? { "X-Cart-Token": cartToken } : {} });
+    // If the session is really gone, the cart must still work: retry as a guest.
+    if (res.status === 401) res = await callBackend(url, method, body, headers);
   } catch {
     return Response.json({ error: { message: "We couldn't reach the cart service." } }, { status: 502 });
   }

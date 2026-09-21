@@ -3,7 +3,10 @@
 import { useMemo, useState } from "react";
 import Image from "next/image";
 import { useCart } from "@/component/cart/CartProvider";
+import { FaStar } from "react-icons/fa";
+import { FiCheckCircle } from "react-icons/fi";
 import NotifyMeButton from "@/component/shared/NotifyMeButton";
+import ProductAccordion from "./ProductAccordion";
 import formatPrice from "@/lib/formatPrice";
 
 // Groups every variant's attribute_values by attribute, e.g. { id, name: "Shade", values: [{id, value}, ...] }.
@@ -78,11 +81,6 @@ export default function ProductDetailContent({ product, currencySymbol }) {
           ) : (
             <Image src="/assets/galpal/navlogo.svg" alt="" fill sizes="45vw" className="object-contain p-[20%] opacity-20" />
           )}
-          {discounted && priceSource.discount_percentage > 0 && (
-            <span className="product-card__badge absolute left-3 top-3 rounded-full px-3 py-1 text-xs font-medium">
-              {priceSource.discount_percentage}% OFF
-            </span>
-          )}
         </div>
         {gallery.length > 1 && (
           <div className="mt-3 flex gap-2 overflow-x-auto">
@@ -102,19 +100,38 @@ export default function ProductDetailContent({ product, currencySymbol }) {
       </div>
 
       <div>
-        {product.brand?.name && <p className="showcase-muted text-sm">{product.brand.name}</p>}
-        <h1 className="custom-font mt-1 text-2xl sm:text-3xl">{product.name}</h1>
+        {(product.brand?.name || product.primary_category?.name) && (
+          <p className="showcase-muted text-xs uppercase tracking-widest">{product.brand?.name ?? product.primary_category.name}</p>
+        )}
+        <h1 className="custom-font mt-2 text-3xl leading-tight sm:text-4xl">{product.name}</h1>
 
-        <p className="mt-3 flex items-baseline gap-2 text-2xl">
-          <span className="font-semibold">{formatPrice(priceSource.effective_price, currencySymbol)}</span>
-          {discounted && <span className="showcase-muted text-base line-through">{formatPrice(priceSource.regular_price, currencySymbol)}</span>}
+        {product.review_count > 0 && (
+          <p className="mt-3 flex items-center gap-2 text-sm">
+            <span className="flex gap-0.5" role="img" aria-label={`Rated ${Number(product.average_rating).toFixed(1)} out of 5`}>
+              {[1, 2, 3, 4, 5].map((n) => (
+                <FaStar key={n} className={`h-3.5 w-3.5 ${n <= Math.round(Number(product.average_rating)) ? "detail-star--on" : "detail-star--off"}`} aria-hidden="true" />
+              ))}
+            </span>
+            <span className="showcase-muted">{product.review_count} {product.review_count === 1 ? "review" : "reviews"}</span>
+          </p>
+        )}
+
+        <p className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-1">
+          <span className="text-lg font-semibold">{formatPrice(priceSource.effective_price, currencySymbol)}</span>
+          {discounted && <span className="showcase-muted text-sm line-through">{formatPrice(priceSource.regular_price, currencySymbol)}</span>}
+          {discounted && priceSource.discount_percentage > 0 && (
+            <span className="product-card__chip rounded-full px-2 py-0.5 text-xs font-medium">{priceSource.discount_percentage}%</span>
+          )}
         </p>
 
         {product.short_description && <p className="showcase-muted mt-4 text-sm leading-relaxed">{product.short_description}</p>}
+        {(selectedVariant?.sku ?? product.sku) && (
+          <p className="showcase-muted mt-2 text-xs">SKU: {selectedVariant?.sku ?? product.sku}</p>
+        )}
 
         {attributeGroups.map((group) => (
-          <fieldset key={group.id} className="mt-5">
-            <legend className="text-sm font-medium">{group.name}</legend>
+          <fieldset key={group.id} className="mt-6">
+            <legend className="text-xs">{group.name}:</legend>
             <div className="mt-2 flex flex-wrap gap-2" role="group" aria-label={group.name}>
               {group.values.map((value) => (
                 <button
@@ -122,7 +139,7 @@ export default function ProductDetailContent({ product, currencySymbol }) {
                   type="button"
                   aria-pressed={selected[group.id] === value.id}
                   onClick={() => setSelected((s) => ({ ...s, [group.id]: value.id }))}
-                  className="variant-pill rounded-full px-4 py-1.5 text-sm"
+                  className="variant-pill min-w-24 flex-1 rounded-full px-4 py-2 text-center text-sm"
                 >
                   {value.value}
                 </button>
@@ -159,7 +176,7 @@ export default function ProductDetailContent({ product, currencySymbol }) {
           )}
 
           {actionState === "add" && (
-            <button type="button" onClick={handleAddToCart} disabled={adding} className="auth-btn auth-btn--primary flex-1 rounded-full py-3 text-sm font-medium">
+            <button type="button" onClick={handleAddToCart} disabled={adding} className="auth-btn auth-btn--primary flex-1 rounded-full py-3 text-sm font-medium uppercase tracking-wider">
               {adding ? "Adding..." : "Add to Cart"}
             </button>
           )}
@@ -189,9 +206,18 @@ export default function ProductDetailContent({ product, currencySymbol }) {
           )}
         </div>
 
-        {product.full_description && (
-          <div className="mt-8 border-t pt-6 text-sm leading-relaxed" dangerouslySetInnerHTML={{ __html: product.full_description }} />
+        {product.tags?.length > 0 && (
+          <ul className="detail-tags mt-6 flex flex-wrap gap-x-4 gap-y-2 rounded-xl px-4 py-3 text-xs">
+            {product.tags.map((tag) => (
+              <li key={tag.id} className="flex items-center gap-1.5">
+                <FiCheckCircle className="h-4 w-4 shrink-0" aria-hidden="true" />
+                {tag.name}
+              </li>
+            ))}
+          </ul>
         )}
+
+        <ProductAccordion product={product} />
       </div>
     </div>
   );
