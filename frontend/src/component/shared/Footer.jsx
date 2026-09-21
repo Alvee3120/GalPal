@@ -40,12 +40,12 @@ function SocialIcon({ children }) {
 const socials = [
   {
     label: "Facebook",
-    href: "#",
+    href: "https://www.facebook.com/profile.php?id=61573438213041",
     icon: <path d="M14 8h3V4h-3a4 4 0 0 0-4 4v3H7v4h3v6h4v-6h3l1-4h-4V8Z" />,
   },
   {
     label: "YouTube",
-    href: "#",
+    href: null, // no account yet: hidden until a URL is set
     icon: (
       <>
         <rect x="3" y="6" width="18" height="12" rx="4" />
@@ -55,12 +55,12 @@ const socials = [
   },
   {
     label: "X",
-    href: "#",
+    href: null, // no account yet: hidden until a URL is set
     icon: <path d="M4 4l16 16M20 4 4 20" />,
   },
   {
     label: "Instagram",
-    href: "#",
+    href: "https://www.instagram.com/galpal.bd/",
     icon: (
       <>
         <rect x="4" y="4" width="16" height="16" rx="5" />
@@ -108,10 +108,12 @@ export default function Footer() {
               safety, and visible results.
             </p>
             <ul className="mt-6 flex items-center gap-2">
-              {socials.map((s) => (
+              {socials.filter((s) => s.href).map((s) => (
                 <li key={s.label}>
                   <a
                     href={s.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
                     aria-label={s.label}
                     className="footer-icon flex h-8 w-8 items-center justify-center rounded-full transition-colors"
                   >

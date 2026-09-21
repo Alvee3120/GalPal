@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { FiCheck, FiX } from "react-icons/fi";
 import formatPrice from "@/lib/formatPrice";
+import { DELIVERY_CHARGES } from "@/lib/delivery";
 
 const CHECKOUT_ROUTE = "/checkout";
 
@@ -73,6 +74,19 @@ export default function OrderSummary({ subtotal, discount, coupon, couponBusy, c
         <span className="text-base font-semibold">Total</span>
         <span className="text-xl font-semibold">{formatPrice(grandTotal, currencySymbol)}</span>
       </div>
+
+      <dl className="delivery-rates mt-4 flex flex-col gap-1.5 rounded-xl px-4 py-3 text-sm">
+        <div className="flex items-center justify-between">
+          <dt>Inside Dhaka</dt>
+          <dd>
+            {formatPrice(DELIVERY_CHARGES.dhakaSadar, currencySymbol)} - {formatPrice(DELIVERY_CHARGES.dhakaOuterZones, currencySymbol)}
+          </dd>
+        </div>
+        <div className="flex items-center justify-between">
+          <dt>Outside Dhaka</dt>
+          <dd>{formatPrice(DELIVERY_CHARGES.outsideDhaka, currencySymbol)}</dd>
+        </div>
+      </dl>
 
       <p className="showcase-muted mt-3 text-xs">Shipping and taxes are calculated at checkout.</p>
 

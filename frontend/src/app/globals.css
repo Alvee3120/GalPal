@@ -629,6 +629,11 @@ body:has([data-standalone-page]) .footer {
   border-radius: calc(var(--radius-card) - 0.25rem);
 }
 
+/* Full-width photo: the card's own rounded corners (with overflow hidden) shape the top edge. */
+.product-card__media--bleed {
+  border-radius: 0;
+}
+
 .product-card__name {
   color: var(--color-foreground);
 }
@@ -868,10 +873,10 @@ footer.cart-divider {
 }
 
 .variant-pill {
-  border: 1px solid var(--color-auth-line);
-  color: var(--color-auth-text);
-  background-color: transparent;
-  transition: border-color 0.2s ease, background-color 0.2s ease, color 0.2s ease;
+  border: 1px solid transparent;
+  color: var(--color-foreground);
+  background-color: var(--color-product-tile);
+  transition: border-color 0.2s ease, background-color 0.2s ease;
 }
 
 .variant-pill:hover {
@@ -880,8 +885,95 @@ footer.cart-divider {
 
 .variant-pill[aria-pressed="true"] {
   border-color: var(--color-brand);
+  background-color: color-mix(in srgb, var(--color-brand) 10%, var(--color-background));
+}
+
+.variant-pill:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.detail-tags {
+  background-color: var(--color-product-tile);
+  color: var(--color-foreground);
+}
+
+.detail-tags svg {
+  color: var(--color-brand);
+}
+
+.product-accordion > details {
+  border-top: 1px solid var(--color-cart-line);
+}
+
+.product-accordion > details:last-child {
+  border-bottom: 1px solid var(--color-cart-line);
+}
+
+.product-accordion summary:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+/* Body text of the Details / User Guide / Ingredients sections; also wins over grey colours pasted into the rich text. */
+.accordion-text,
+.accordion-text * {
+  color: var(--color-foreground) !important;
+}
+
+.detail-section {
+  border-color: var(--color-cart-line);
+}
+
+.review-card {
+  background-color: var(--color-background);
+  border: 1px solid var(--color-cart-line);
+  box-shadow: 0 6px 20px -8px var(--color-shadow-soft);
+}
+
+.review-avatar {
+  background-color: color-mix(in srgb, var(--color-brand) 12%, var(--color-background));
+  color: var(--color-brand);
+}
+
+.review-bar {
+  background-color: var(--color-product-tile);
+}
+
+.review-bar__fill {
   background-color: var(--color-brand);
-  color: var(--color-white);
+  transition: width 0.4s ease;
+}
+
+.review-nav {
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+  border: 1px solid var(--color-cart-line);
+  box-shadow: 0 4px 12px -4px var(--color-shadow-soft);
+  transition: background-color 0.2s ease;
+}
+
+.review-nav:hover:not(:disabled) {
+  background-color: var(--color-hover);
+}
+
+.review-nav:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.review-nav:focus-visible,
+.review-star-btn:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.detail-star--on {
+  color: var(--color-brand);
+}
+
+.detail-star--off {
+  color: var(--color-border);
 }
 
 .product-card__action--notify {
@@ -1384,6 +1476,24 @@ footer.cart-divider {
   border-color: var(--color-border);
 }
 
+.shop-category-children {
+  border-color: var(--color-cart-line);
+}
+
+.shop-category-toggle {
+  color: var(--color-muted);
+}
+
+.shop-category-toggle:hover {
+  background-color: var(--color-hover);
+  color: var(--color-foreground);
+}
+
+.shop-category-toggle:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 1px;
+}
+
 .shop-checkbox {
   accent-color: var(--color-brand);
 }
@@ -1591,6 +1701,42 @@ footer.cart-divider {
 .order-summary dl div,
 .order-summary > div.border-t {
   border-color: var(--color-cart-line);
+}
+
+.delivery-rates {
+  background-color: var(--color-product-tile);
+  color: var(--color-muted);
+}
+
+.checkout-card {
+  background-color: var(--color-background);
+  border: 1px solid var(--color-cart-line);
+}
+
+.checkout-lines > li + li {
+  border-top: 1px solid var(--color-cart-line);
+}
+
+.checkout-input {
+  width: 100%;
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+  border: 1px solid var(--color-cart-line);
+  transition: border-color 0.2s ease;
+}
+
+.checkout-input::placeholder {
+  color: var(--color-muted);
+}
+
+.checkout-input:hover {
+  border-color: var(--color-border);
+}
+
+.checkout-input:focus-visible {
+  border-color: var(--color-brand);
+  outline: 2px solid var(--color-focus);
+  outline-offset: 1px;
 }
 
 .cart-voucher-input {

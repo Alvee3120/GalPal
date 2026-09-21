@@ -43,7 +43,7 @@ export default function Home() {
 
       <Suspense fallback={<ProductShowcaseSkeleton />}>
         <CategoryProductShowcase
-          category="accessories"
+          category="acsosories"
           title="Accessories"
           description=""
           productLimit={8}
