@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import Link from "next/link";
+import { FiTrash2 } from "react-icons/fi";
 import formatPrice from "@/lib/formatPrice";
 import { variantLabel } from "@/lib/cartItem";
 import ProductImage from "@/component/shared/ProductImage";
@@ -69,8 +70,15 @@ function CartLine({ item, symbol, busy, onQuantity, onRemove, onNavigate }) {
               {icon("M12 5v14M5 12h14")}
             </button>
           </div>
-          <button type="button" onClick={() => onRemove(item.id)} disabled={busy} aria-label={`Remove ${product.name} from cart`} className="cart-link showcase-muted text-xs underline underline-offset-4">
-            Remove
+          <button
+            type="button"
+            onClick={() => onRemove(item.id)}
+            disabled={busy}
+            aria-label={`Remove ${product.name} from cart`}
+            title="Remove"
+            className="cart-remove-btn flex h-9 w-9 items-center justify-center rounded-full"
+          >
+            <FiTrash2 className="h-4 w-4" aria-hidden="true" />
           </button>
         </div>
       </div>
