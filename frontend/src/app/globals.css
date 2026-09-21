@@ -1593,6 +1593,42 @@ footer.cart-divider {
   border-color: var(--color-cart-line);
 }
 
+.delivery-rates {
+  background-color: var(--color-product-tile);
+  color: var(--color-muted);
+}
+
+.checkout-card {
+  background-color: var(--color-background);
+  border: 1px solid var(--color-cart-line);
+}
+
+.checkout-lines > li + li {
+  border-top: 1px solid var(--color-cart-line);
+}
+
+.checkout-input {
+  width: 100%;
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+  border: 1px solid var(--color-cart-line);
+  transition: border-color 0.2s ease;
+}
+
+.checkout-input::placeholder {
+  color: var(--color-muted);
+}
+
+.checkout-input:hover {
+  border-color: var(--color-border);
+}
+
+.checkout-input:focus-visible {
+  border-color: var(--color-brand);
+  outline: 2px solid var(--color-focus);
+  outline-offset: 1px;
+}
+
 .cart-voucher-input {
   background-color: var(--color-background);
   color: var(--color-foreground);
