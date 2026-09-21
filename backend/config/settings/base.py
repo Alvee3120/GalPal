@@ -56,6 +56,7 @@ INSTALLED_APPS = [
     "apps.videos",
     "apps.cart",
     "apps.coupons",
+    "apps.shipping",
 ]
 
 MIDDLEWARE = [
@@ -155,6 +156,11 @@ else:
 
 # How long the site-settings row is cached. Saving invalidates it immediately, but a per-process
 # cache can't be invalidated in the *other* worker processes, so without Redis keep it short.
+# Shipping (Module 9): the zone/method index is cached and invalidated on every change; the ceiling
+# is a sanity check on an Admin-typed charge (a stray extra zero should be an error, not an order).
+SHIPPING_CACHE_TTL = env.int("SHIPPING_CACHE_TTL", default=3600 if REDIS_URL else 30)
+SHIPPING_MAX_CHARGE = env("SHIPPING_MAX_CHARGE", default="5000.00")
+
 SITE_SETTINGS_CACHE_TTL = env.int("SITE_SETTINGS_CACHE_TTL", default=3600 if REDIS_URL else 30)
 
 # --- Email / SMS ------------------------------------------------------------
@@ -307,6 +313,8 @@ SPECTACULAR_SETTINGS = {
         {"name": "Cart", "description": "Storefront cart: guests use an X-Cart-Token header, logged-in customers use their account."},
         {"name": "Coupons", "description": "Apply or remove a coupon on the current cart."},
         {"name": "Admin – Coupons", "description": "Admin only: coupon CRUD and usage history."},
+        {"name": "Shipping", "description": "Delivery zones, methods, districts and the delivery-charge calculator."},
+        {"name": "Admin – Shipping", "description": "Admin only: delivery zones (charges, coverage, thresholds), charge history and delivery methods."},
     ],
 }
 

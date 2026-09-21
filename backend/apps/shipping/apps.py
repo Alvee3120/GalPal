@@ -1,0 +1,11 @@
+from django.apps import AppConfig
+
+
+class ShippingConfig(AppConfig):
+    default_auto_field = "django.db.models.BigAutoField"
+    name = "apps.shipping"
+    label = "shipping"
+    verbose_name = "Shipping & Delivery"
+
+    def ready(self):
+        from . import signals  # noqa: F401
