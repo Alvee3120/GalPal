@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import Link from "next/link";
 import formatPrice from "@/lib/formatPrice";
+import { variantLabel } from "@/lib/cartItem";
 import ProductImage from "@/component/shared/ProductImage";
 import { useCart } from "./CartProvider";
 
@@ -18,13 +19,6 @@ const icon = (d, className = "h-4 w-4") => (
     <path d={d} />
   </svg>
 );
-
-// "Shade: Rose" style summary of a cart line's variant, if it has one.
-function variantLabel(variant) {
-  const values = variant?.attribute_values;
-  if (!Array.isArray(values) || values.length === 0) return "";
-  return values.map((v) => (typeof v === "string" ? v : `${v.attribute}: ${v.value}`)).join(", ");
-}
 
 function CartLine({ item, symbol, busy, onQuantity, onRemove, onNavigate }) {
   const { product, variant, quantity, unit_price, line_total, is_available, available_quantity } = item;
