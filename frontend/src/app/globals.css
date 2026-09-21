@@ -102,6 +102,13 @@
   --color-video-control-bg: color-mix(in srgb, var(--color-background) 90%, transparent);
   --color-video-control-fg: var(--color-foreground);
 
+  /* Shop page */
+  --color-shop-hero-bg: color-mix(in srgb, var(--color-foreground) 4%, var(--color-background));
+  --color-shop-sidebar-bg: color-mix(in srgb, var(--color-foreground) 3%, var(--color-background));
+  --color-shop-range-track: var(--color-border);
+  --color-shop-range-fill: var(--color-brand);
+  --color-rating: #e0a11a; /* star gold: no existing token covers this, added alongside --color-danger/--color-success */
+
   /* Kept for existing usages */
   --background: var(--color-background);
   --foreground: var(--color-foreground);
@@ -686,28 +693,35 @@ body:has([data-standalone-page]) .footer {
 
 /* ================================
    Cart drawer + navbar count (colors only; layout lives in the components)
+   Shop's mobile filter drawer (component/shop/MobileFilterDrawer.jsx) shares this same slide-in-from-right
+   mechanic under its own .shop-drawer* class names, so the two are never ambiguous to a class-name query.
    ================================ */
-.cart-drawer {
+.cart-drawer,
+.shop-drawer {
   visibility: hidden;
   transition: visibility 0s linear 0.35s;
 }
 
-.cart-drawer[data-open="true"] {
+.cart-drawer[data-open="true"],
+.shop-drawer[data-open="true"] {
   visibility: visible;
   transition-delay: 0s;
 }
 
-.cart-drawer__backdrop {
+.cart-drawer__backdrop,
+.shop-drawer__backdrop {
   background-color: var(--color-cart-backdrop);
   opacity: 0;
   transition: opacity 0.35s ease;
 }
 
-.cart-drawer[data-open="true"] .cart-drawer__backdrop {
+.cart-drawer[data-open="true"] .cart-drawer__backdrop,
+.shop-drawer[data-open="true"] .shop-drawer__backdrop {
   opacity: 1;
 }
 
-.cart-drawer__panel {
+.cart-drawer__panel,
+.shop-drawer__panel {
   background-color: var(--color-cart-bg);
   color: var(--color-foreground);
   box-shadow: -12px 0 32px -12px var(--color-shadow-soft);
@@ -715,7 +729,8 @@ body:has([data-standalone-page]) .footer {
   transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.cart-drawer[data-open="true"] .cart-drawer__panel {
+.cart-drawer[data-open="true"] .cart-drawer__panel,
+.shop-drawer[data-open="true"] .shop-drawer__panel {
   transform: translateX(0);
 }
 
@@ -770,7 +785,11 @@ footer.cart-divider {
 }
 
 .cart-drawer a:focus-visible,
-.cart-drawer button:focus-visible {
+.cart-drawer button:focus-visible,
+.cart-drawer input:focus-visible,
+.shop-drawer a:focus-visible,
+.shop-drawer button:focus-visible,
+.shop-drawer input:focus-visible {
   outline: 2px solid var(--color-focus);
   outline-offset: 2px;
 }
@@ -788,7 +807,10 @@ footer.cart-divider {
 @media (prefers-reduced-motion: reduce) {
   .cart-drawer,
   .cart-drawer__backdrop,
-  .cart-drawer__panel {
+  .cart-drawer__panel,
+  .shop-drawer,
+  .shop-drawer__backdrop,
+  .shop-drawer__panel {
     transition: none;
   }
 }
@@ -1264,4 +1286,164 @@ footer.cart-divider {
   .vc-dot {
     transition: none;
   }
+}
+
+/* ================================
+   Shop page (colors only; layout lives in the components)
+   ================================ */
+.shop-hero {
+  background-color: var(--color-shop-hero-bg);
+}
+
+.shop-sidebar {
+  background-color: var(--color-shop-sidebar-bg);
+  max-height: calc(100dvh - 6rem);
+  overflow-y: auto;
+}
+
+.shop-filter-group {
+  border-color: var(--color-border);
+}
+
+.shop-checkbox {
+  accent-color: var(--color-brand);
+}
+
+.shop-checkbox:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+/* Dual price slider: two overlaid <input type=range>; only their thumbs are interactive */
+.shop-range__track {
+  background-color: var(--color-shop-range-track);
+}
+
+.shop-range__fill {
+  background-color: var(--color-shop-range-fill);
+}
+
+.shop-range__input {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 1.25rem;
+  margin: 0;
+  background: transparent;
+  pointer-events: none;
+}
+
+.shop-range__input::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  pointer-events: auto;
+  width: 1rem;
+  height: 1rem;
+  margin-top: 0.125rem;
+  border: 2px solid var(--color-background);
+  border-radius: 9999px;
+  background-color: var(--color-brand);
+  box-shadow: 0 1px 4px var(--color-shadow-soft);
+  cursor: pointer;
+}
+
+.shop-range__input::-moz-range-thumb {
+  pointer-events: auto;
+  width: 1rem;
+  height: 1rem;
+  border: 2px solid var(--color-background);
+  border-radius: 9999px;
+  background-color: var(--color-brand);
+  box-shadow: 0 1px 4px var(--color-shadow-soft);
+  cursor: pointer;
+}
+
+.shop-range__input::-webkit-slider-runnable-track,
+.shop-range__input::-moz-range-track {
+  background: transparent;
+}
+
+.shop-range__input:focus-visible::-webkit-slider-thumb {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+/* Sort dropdown */
+.shop-sort__select {
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+  border: 1px solid var(--color-border);
+}
+
+.shop-sort__select:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 1px;
+}
+
+/* Active filter tags */
+.shop-tag {
+  background-color: var(--color-brand);
+  color: var(--color-white);
+  transition: opacity 0.2s ease;
+}
+
+.shop-tag:hover,
+.shop-tag:focus-visible {
+  opacity: 0.85;
+  outline: 2px solid var(--color-focus);
+  outline-offset: 1px;
+}
+
+.shop-clear-all {
+  color: var(--color-brand);
+}
+
+/* Mobile filter drawer trigger */
+.shop-filter-toggle {
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+  border: 1px solid var(--color-border);
+}
+
+.shop-filter-toggle__count {
+  background-color: var(--color-brand);
+  color: var(--color-white);
+}
+
+/* Pagination */
+.shop-page-btn {
+  color: var(--color-foreground);
+  border: 1px solid var(--color-border);
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.shop-page-btn:hover {
+  background-color: var(--color-hover);
+}
+
+.shop-page-btn[aria-current="page"] {
+  background-color: var(--color-brand);
+  color: var(--color-white);
+  border-color: var(--color-brand);
+}
+
+.shop-page-btn:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.shop-page-gap {
+  color: var(--color-muted);
+}
+
+.shop-empty {
+  background-color: var(--color-shop-sidebar-bg);
+}
+
+/* Star rating */
+.star-rating__stars {
+  color: var(--color-rating);
+}
+
+.star-rating__score {
+  color: var(--color-foreground);
 }

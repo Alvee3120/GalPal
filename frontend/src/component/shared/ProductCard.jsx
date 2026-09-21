@@ -2,13 +2,16 @@ import Link from "next/link";
 import formatPrice from "@/lib/formatPrice";
 import ProductImage from "./ProductImage";
 import AddToCartButton from "./AddToCartButton";
+import StarRating from "./StarRating";
 
 // Reusable product tile. `product` is an item from the backend's /products/ list.
 // The link covers the photo and text; the Add to Cart button sits outside it (a button must not live inside a link).
 //   variant="compact"  a slim horizontal card (thumbnail | name + price | Add), used under shoppable videos.
 //                      Same data, same link, same image handling, same cart button as the default tile.
-export default function ProductCard({ product, currencySymbol = "", variant = "default", className = "" }) {
-  const { name, slug, feature_image: image, effective_price, regular_price, on_sale, discount_percentage, in_stock, brand, primary_category } = product;
+//   showRating         adds the star rating under the name (opt-in: only the Shop grid asks for it, so the
+//                      homepage carousels keep their current, rating-free look).
+export default function ProductCard({ product, currencySymbol = "", variant = "default", className = "", showRating = false }) {
+  const { name, slug, feature_image: image, effective_price, regular_price, on_sale, discount_percentage, in_stock, brand, primary_category, average_rating, review_count } = product;
   const info = brand?.name ?? primary_category?.name;
   const discounted = on_sale && regular_price !== effective_price;
 
@@ -54,6 +57,7 @@ export default function ProductCard({ product, currencySymbol = "", variant = "d
           <div className="min-w-0">
             <h3 className="product-card__name line-clamp-2 text-sm font-medium leading-snug sm:text-base">{name}</h3>
             {info && <p className="showcase-muted mt-0.5 truncate text-xs">{info}</p>}
+            {showRating && <StarRating rating={average_rating} count={Number(review_count) || 0} className="mt-1" />}
           </div>
           <p className="shrink-0 text-sm sm:text-right sm:text-base">
             <span className="font-semibold">{formatPrice(effective_price, currencySymbol)}</span>
