@@ -815,6 +815,86 @@ footer.cart-divider {
 }
 
 /* ================================
+   Notify Me modal (colors only; layout lives in the component)
+   Centered dialog sharing the drawer's visibility/backdrop mechanic, scaling in instead of sliding.
+   ================================ */
+.stock-modal {
+  visibility: hidden;
+  transition: visibility 0s linear 0.25s;
+}
+
+.stock-modal[data-open="true"] {
+  visibility: visible;
+  transition-delay: 0s;
+}
+
+.stock-modal__backdrop {
+  background-color: var(--color-cart-backdrop);
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+
+.stock-modal[data-open="true"] .stock-modal__backdrop {
+  opacity: 1;
+}
+
+.stock-modal__panel {
+  background-color: var(--color-auth-card);
+  color: var(--color-auth-text);
+  box-shadow: 0 20px 44px -12px var(--color-shadow-soft);
+  transform: scale(0.96);
+  opacity: 0;
+  transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.25s ease;
+}
+
+.stock-modal[data-open="true"] .stock-modal__panel {
+  transform: scale(1);
+  opacity: 1;
+}
+
+.stock-modal a:focus-visible,
+.stock-modal button:focus-visible,
+.stock-modal input:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stock-modal,
+  .stock-modal__backdrop,
+  .stock-modal__panel {
+    transition: none;
+  }
+}
+
+.variant-pill {
+  border: 1px solid var(--color-auth-line);
+  color: var(--color-auth-text);
+  background-color: transparent;
+  transition: border-color 0.2s ease, background-color 0.2s ease, color 0.2s ease;
+}
+
+.variant-pill:hover {
+  border-color: var(--color-brand);
+}
+
+.variant-pill[aria-pressed="true"] {
+  border-color: var(--color-brand);
+  background-color: var(--color-brand);
+  color: var(--color-white);
+}
+
+.product-card__action--notify {
+  background-color: transparent;
+  color: var(--color-brand);
+  border-color: var(--color-brand);
+}
+
+.product-card__action--notify:hover:not(:disabled) {
+  background-color: color-mix(in srgb, var(--color-brand) 8%, transparent);
+}
+
+/* ================================
    Toasts (Sonner, restyled; colors come from the --color-toast-* tokens)
    ================================ */
 [data-sonner-toaster] .app-toast[data-sonner-toast] {

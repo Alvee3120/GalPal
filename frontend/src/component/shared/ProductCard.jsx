@@ -1,7 +1,7 @@
 import Link from "next/link";
 import formatPrice from "@/lib/formatPrice";
 import ProductImage from "./ProductImage";
-import AddToCartButton from "./AddToCartButton";
+import ProductCardAction from "./ProductCardAction";
 
 // Reusable product tile. `product` is an item from the backend's /products/ list.
 // The link covers the photo and text; the Add to Cart button sits outside it (a button must not live inside a link).
@@ -28,7 +28,7 @@ export default function ProductCard({ product, currencySymbol = "", variant = "d
             </p>
           </div>
         </Link>
-        <AddToCartButton product={product} compact />
+        <ProductCardAction product={product} compact />
       </article>
     );
   }
@@ -45,7 +45,7 @@ export default function ProductCard({ product, currencySymbol = "", variant = "d
           )}
           {in_stock === false && (
             <span className="product-card__badge absolute bottom-2 left-2 rounded-full px-3 py-1 text-xs font-medium sm:bottom-3 sm:left-3">
-              Out of stock
+              Out of Stock
             </span>
           )}
         </div>
@@ -67,7 +67,7 @@ export default function ProductCard({ product, currencySymbol = "", variant = "d
       </Link>
 
       <div className="mt-auto">
-        <AddToCartButton product={product} />
+        <ProductCardAction product={product} />
       </div>
     </article>
   );

@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { notify } from "@/lib/notify";
+import { messageFor } from "@/lib/apiError";
 
 const EMPTY_CART = { items: [], item_count: 0, subtotal: "0.00", discount: "0.00", coupon: null, total: "0.00" };
 
@@ -24,13 +25,6 @@ async function cartApi(path, options = {}) {
     throw Object.assign(new Error("request failed"), { status: res.status, details: data?.error?.details ?? null });
   }
   return data;
-}
-
-// User-facing text for a failed cart call: the backend's own validation message when it sent one for a
-// 4xx (e.g. "Product not found."), otherwise the caller's friendly fallback. Never raw errors.
-function messageFor(err, fallback) {
-  const detail = err.details && Object.values(err.details).flat().find((m) => typeof m === "string" && m.length <= 160);
-  return err.status >= 400 && err.status < 500 && detail ? detail : fallback;
 }
 
 // Local recompute used for instant (optimistic) quantity/remove updates; the server's cart replaces it right after.
@@ -90,13 +84,16 @@ export function CartProvider({ children, currencySymbol = "" }) {
     });
 
   // Adds `quantity` more of a product (the backend increases an existing line instead of duplicating it).
+  // `variantId` is required for a product that has variants (the backend rejects a variant-less add for one).
   // `productSlug` lets the "choose options" toast link to the product page. Success has no toast (the drawer opens and the
   // button confirms it); failures are always toasted. Returns { ok }.
   const addItem = useCallback(
-    async (productId, quantity = 1, { productSlug } = {}) => {
+    async (productId, quantity = 1, { productSlug, variantId } = {}) => {
       mutated.current = true;
       try {
-        setCart(await cartApi("/items/", { method: "POST", body: JSON.stringify({ product_id: productId, quantity }) }));
+        const body = { product_id: productId, quantity };
+        if (variantId) body.variant_id = variantId;
+        setCart(await cartApi("/items/", { method: "POST", body: JSON.stringify(body) }));
         return { ok: true };
       } catch (err) {
         if (err.details?.variant_id) {
