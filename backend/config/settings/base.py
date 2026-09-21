@@ -57,6 +57,7 @@ INSTALLED_APPS = [
     "apps.cart",
     "apps.coupons",
     "apps.shipping",
+    "apps.orders",
 ]
 
 MIDDLEWARE = [
@@ -160,6 +161,14 @@ else:
 # is a sanity check on an Admin-typed charge (a stray extra zero should be an error, not an order).
 SHIPPING_CACHE_TTL = env.int("SHIPPING_CACHE_TTL", default=3600 if REDIS_URL else 30)
 SHIPPING_MAX_CHARGE = env("SHIPPING_MAX_CHARGE", default="5000.00")
+
+# Orders (Module 10). Guards on *storefront* checkout only; staff-entered orders get a warning instead.
+ORDER_DUPLICATE_WINDOW_SECONDS = env.int("ORDER_DUPLICATE_WINDOW_SECONDS", default=300)  # same phone + same items
+ORDER_MAX_PER_PHONE_PER_HOUR = env.int("ORDER_MAX_PER_PHONE_PER_HOUR", default=5)
+CHECKOUT_THROTTLE_RATE = env("CHECKOUT_THROTTLE_RATE", default="30/hour")  # per client IP
+ORDER_TRACK_THROTTLE_RATE = env("ORDER_TRACK_THROTTLE_RATE", default="30/hour")  # per client IP
+# Payment methods a customer may choose today; Module 11 adds "online" once a gateway exists.
+ENABLED_PAYMENT_METHODS = ("cod",)
 
 SITE_SETTINGS_CACHE_TTL = env.int("SITE_SETTINGS_CACHE_TTL", default=3600 if REDIS_URL else 30)
 
@@ -292,6 +301,10 @@ SPECTACULAR_SETTINGS = {
         "UserRoleEnum": "apps.accounts.models.User.Role",
         "StaffRoleEnum": "apps.accounts.serializers.STAFF_ROLE_CHOICES",
         "ProductStatusEnum": "apps.catalog.models.ProductStatus",
+        "OrderStatusEnum": "apps.orders.models.OrderStatus",
+        "OrderSourceEnum": "apps.orders.models.OrderSource",
+        "PaymentMethodEnum": "apps.orders.models.PaymentMethod",
+        "PaymentStatusEnum": "apps.orders.models.PaymentStatus",
     },
     "TAGS": [
         {"name": "System", "description": "Health and operational endpoints."},
@@ -314,6 +327,8 @@ SPECTACULAR_SETTINGS = {
         {"name": "Coupons", "description": "Apply or remove a coupon on the current cart."},
         {"name": "Admin – Coupons", "description": "Admin only: coupon CRUD and usage history."},
         {"name": "Shipping", "description": "Delivery zones, methods, districts and the delivery-charge calculator."},
+        {"name": "Checkout & Orders", "description": "Checkout, the customer's own orders, and guest order tracking."},
+        {"name": "Admin – Orders", "description": "Admin and CCE: the order module (manual orders, status, notes, edits, invoice, helpers). The only admin area CCE can reach."},
         {"name": "Admin – Shipping", "description": "Admin only: delivery zones (charges, coverage, thresholds), charge history and delivery methods."},
     ],
 }

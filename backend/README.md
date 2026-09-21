@@ -311,6 +311,46 @@ endpoint must declare `permission_classes = [AllowAny]` explicitly.
   `shipping_charge`); the "has orders" delete guard finds the orders through that `related_name`. Ignore
   any shipping charge the client sends. A delivery-method FK needs `related_name="orders"` too.
 
+## Orders & checkout (Module 10)
+
+- **Checkout** (`POST /checkout/`, customer or guest): the items come from the cart; the client sends only
+  contact, address, coupon, `payment_method`, `delivery_method` and (guests) `save_details`. **Every amount is
+  computed on the server** (catalog prices, coupon discount, Module 9 delivery charge, tax %, total) and copied
+  onto the order as a snapshot (contact, address, item names/SKUs/prices, zone name and charge, coupon code).
+  `source` is always `website`; anything else the client sends (source, charge, status...) is ignored.
+  Guests get 403 `guest_checkout_disabled` if Site Settings turned guest checkout off.
+- **Save my details**: with `save_details=true` (guest, and "allow checkout account creation" on) an `email` is
+  required and, inside the same transaction, an account is created (`created_via_checkout`,
+  `must_change_password`, default address) and the order linked to it. The generated password is emailed
+  **after commit** ("Your GalPal account details"); an email failure is logged (never with the password) and the
+  order still succeeds. If the phone/email already has an account, nothing is created or attached and the
+  response looks the same (`account_created: false`). Staff-entered orders never create accounts.
+  Celery isn't installed yet; `orders/notifications.py` is the seam Module 16 turns into a task + `NotificationLog`.
+- **Stock**: deducted **when the order is placed** and restored on cancel, fail or return, using what each line
+  actually took (`OrderItem.stock_deducted`), exactly once (`Order.stock_released_at`). Backorder lines take only
+  what is on the shelf; unmanaged stock is untouched.
+- **Coupons**: checked and redeemed under the coupon's row lock in the order's transaction (limits hold under
+  concurrency); `first_order_only` is enforced here (cancelled/failed orders don't count). Cancelled/failed
+  orders release their coupon use; returned ones keep it. A coupon on the cart that stopped applying is dropped;
+  one typed at checkout that doesn't apply is a 400.
+- **Status flow**: pending → confirmed → processing → shipped → delivered; cancel from pending/confirmed/processing,
+  failed from anywhere before delivered, returned from shipped/delivered; cancelled/returned/failed are final.
+  Every change is an `OrderStatusHistory` row (who/when/note). Customers can cancel only while pending/confirmed.
+- **Guards** (storefront only): the same phone + same items within 5 minutes is a 409 `duplicate_order`; a phone
+  is capped at 5 orders/hour (429); checkout and tracking are throttled per IP. A per-phone advisory lock makes
+  these checks race-free. Staff-entered orders only get a `warnings` entry.
+- **Customer API**: `GET /orders/`, `GET /orders/{number}/`, `POST /orders/{number}/cancel/`; guests track with
+  `POST /orders/track/ {order_number, phone}` (a wrong number and a wrong phone give the same 404).
+- **Staff API** (`/admin/orders/`, Admin + CCE, the only admin area a CCE can reach): list with filters
+  (`status`, `source`, `payment_status`, `created_by`, `is_manual`, `date_from/date_to`, `search`), detail, create a
+  manual order (`source` required; charge resolved from the address), `PATCH` a pending order (items/address; totals,
+  coupon and shipping recalculated atomically), `POST .../status/`, `.../notes/`, `GET .../invoice/`, and read-only
+  `helpers/products/`, `helpers/shipping/`, `helpers/customers/`. **Admin only** even inside orders: `DELETE`
+  (finished orders only, soft delete) and `POST .../shipping-override/` (reason required, logged in the history).
+- Payment fields (`payment_method`, `payment_status`) are carried but owned by Module 11; only `cod` is enabled.
+- Settings: `ORDER_DUPLICATE_WINDOW_SECONDS`, `ORDER_MAX_PER_PHONE_PER_HOUR`, `CHECKOUT_THROTTLE_RATE`,
+  `ORDER_TRACK_THROTTLE_RATE`, `ENABLED_PAYMENT_METHODS`.
+
 ## Shared cloud setup (team development)
 
 So everyone works against the same data and images instead of re-seeding locally. **Cloudflare has
