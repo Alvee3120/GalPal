@@ -2,11 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 
-// Silent looping video: autoplay + muted + loop + playsInline, no controls, no play button.
-// React does not always write the `muted` attribute into server HTML, and browsers only autoplay muted
-// videos, so it is set as a property before play() is called. Playback pauses while off-screen (saves CPU/battery).
-//   poster  image shown until the first frame is ready (e.g. the backend thumbnail)
-//   lazy    do not download the video until it is near the viewport (for rows with many videos)
+
 export default function AutoplayVideo({ src, poster, lazy = false, className }) {
   const ref = useRef(null);
   const [active, setActive] = useState(!lazy);
