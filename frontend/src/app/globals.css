@@ -629,6 +629,11 @@ body:has([data-standalone-page]) .footer {
   border-radius: calc(var(--radius-card) - 0.25rem);
 }
 
+/* Full-width photo: the card's own rounded corners (with overflow hidden) shape the top edge. */
+.product-card__media--bleed {
+  border-radius: 0;
+}
+
 .product-card__name {
   color: var(--color-foreground);
 }
@@ -1469,6 +1474,24 @@ footer.cart-divider {
 
 .shop-filter-group {
   border-color: var(--color-border);
+}
+
+.shop-category-children {
+  border-color: var(--color-cart-line);
+}
+
+.shop-category-toggle {
+  color: var(--color-muted);
+}
+
+.shop-category-toggle:hover {
+  background-color: var(--color-hover);
+  color: var(--color-foreground);
+}
+
+.shop-category-toggle:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 1px;
 }
 
 .shop-checkbox {

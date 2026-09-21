@@ -34,10 +34,10 @@ export default function ProductCard({ product, currencySymbol = "", variant = "d
   }
 
   return (
-    <article className="product-card group flex h-full flex-col p-3 sm:p-4">
+    <article className="product-card group flex h-full flex-col overflow-hidden">
       <Link href={`/products/${slug}`} className="product-card__link block rounded-[inherit]">
-        <div className="product-card__media relative aspect-square overflow-hidden">
-          <ProductImage src={image} alt={name} />
+        <div className="product-card__media product-card__media--bleed relative aspect-square overflow-hidden">
+          <ProductImage src={image} alt={name} bleed />
           {on_sale && discount_percentage > 0 && (
             <span className="product-card__badge absolute left-2 top-2 rounded-full px-3 py-1 text-xs font-medium sm:left-3 sm:top-3">
               {discount_percentage}% OFF
@@ -50,7 +50,7 @@ export default function ProductCard({ product, currencySymbol = "", variant = "d
           )}
         </div>
 
-        <div className="mt-3 flex flex-col gap-1 sm:mt-4 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
+        <div className="mt-3 flex flex-col gap-1 px-3 sm:mt-4 sm:flex-row sm:px-4 sm:items-start sm:justify-between sm:gap-3">
           <div className="min-w-0">
             <h3 className="product-card__name line-clamp-2 text-sm font-medium leading-snug sm:text-base">{name}</h3>
             {info && <p className="showcase-muted mt-0.5 truncate text-xs">{info}</p>}
@@ -66,7 +66,7 @@ export default function ProductCard({ product, currencySymbol = "", variant = "d
         </div>
       </Link>
 
-      <div className="mt-auto">
+      <div className="mt-auto px-3 pb-3 sm:px-4 sm:pb-4">
         <ProductCardAction product={product} />
       </div>
     </article>

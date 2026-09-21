@@ -1,12 +1,16 @@
 import Link from "next/link";
-import { buildShopHref, PROMOTIONS } from "@/lib/shopQuery";
+import { buildShopHref, flattenCategories, parseCategories, PROMOTIONS, toggleCategoryParam } from "@/lib/shopQuery";
 
 // Plain links (no client JS needed): each tag removes just its own filter, "Clear All" drops them all.
 export default function ActiveFilters({ searchParams, categories, priceBounds, currencySymbol }) {
   const tags = [];
 
-  const category = categories.find((c) => c.slug === searchParams.category);
-  if (category) tags.push({ key: "category", label: category.name, href: buildShopHref(searchParams, { category: null }) });
+  // One tag per selected category; each removes only its own slug.
+  const known = flattenCategories(categories);
+  for (const slug of parseCategories(searchParams.category)) {
+    const category = known.find((c) => c.slug === slug);
+    if (category) tags.push({ key: `category:${slug}`, label: category.name, href: buildShopHref(searchParams, { category: toggleCategoryParam(searchParams.category, slug) }) });
+  }
 
   const min = searchParams.price_min ? Number(searchParams.price_min) : null;
   const max = searchParams.price_max ? Number(searchParams.price_max) : null;

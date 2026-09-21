@@ -1,25 +1,21 @@
-import { SHOP_PAGE_SIZE } from "./shopQuery";
+import { parseCategories, SHOP_PAGE_SIZE } from "./shopQuery";
 
 const API_BASE_URL = process.env.API_BASE_URL ?? "http://192.168.68.129:8000/api/v1";
 const REVALIDATE_SECONDS = 60;
 const DEFAULT_PRICE_BOUNDS = { min: 0, max: 10000 }; // fallback if the bounds lookup below fails
 
-// Parent categories for the sidebar (their `category` filter value already covers their sub-categories too).
+// The whole visible category tree for the sidebar: top-level categories, each with its nested `children` (the backend's
+// /categories/tree/, one unpaginated response). A parent's `category` filter value already covers its sub-categories too.
 export async function getShopCategories() {
-  const categories = [];
-  let url = `${API_BASE_URL}/categories/?top_level=true`;
   try {
-    while (url) {
-      const res = await fetch(url, { next: { revalidate: REVALIDATE_SECONDS } });
-      if (!res.ok) throw new Error(`Categories API responded ${res.status}`);
-      const data = await res.json();
-      categories.push(...(data.results ?? []).filter((c) => c.parent === null));
-      url = data.next;
-    }
+    const res = await fetch(`${API_BASE_URL}/categories/tree/`, { next: { revalidate: REVALIDATE_SECONDS } });
+    if (!res.ok) throw new Error(`Categories API responded ${res.status}`);
+    const tree = await res.json();
+    return Array.isArray(tree) ? tree : [];
   } catch (error) {
     console.error("Failed to load shop categories:", error);
+    return [];
   }
-  return categories;
 }
 
 // The cheapest and most expensive in-stock product set the slider's bounds, instead of a guessed cap.
@@ -54,8 +50,56 @@ function buildProductsUrl(searchParams) {
   return { url: `${API_BASE_URL}/products/?${params}`, page };
 }
 
+// Several categories at once. The backend's product `category` filter takes a single slug, so each selected category is
+// fetched with the same other filters (all pages), the results are de-duplicated (a parent and its child overlap), then
+// sorted and paged here the way the backend would: newest first by default; price by effective price; rating; popularity
+// = best sellers first, then review count (the backend's own formula).
+const popularity = (p) => (p.is_bestseller ? 1_000_000 : 0) + (Number(p.review_count) || 0);
+const SORTERS = {
+  price: (a, b) => Number(a.effective_price) - Number(b.effective_price),
+  "-price": (a, b) => Number(b.effective_price) - Number(a.effective_price),
+  rating: (a, b) => Number(b.average_rating) - Number(a.average_rating),
+  popularity: (a, b) => popularity(b) - popularity(a),
+};
+
+async function fetchEveryPage(firstUrl) {
+  const results = [];
+  for (let url = firstUrl; url; ) {
+    const res = await fetch(url, { next: { revalidate: REVALIDATE_SECONDS } });
+    if (!res.ok) throw new Error(`Products API responded ${res.status}`);
+    const data = await res.json();
+    results.push(...(data.results ?? []));
+    url = data.next;
+  }
+  return results;
+}
+
+async function getProductsInCategories(searchParams, slugs) {
+  const page = Math.max(1, Number(searchParams.page) || 1);
+  try {
+    const lists = await Promise.all(
+      slugs.map((slug) => {
+        const { url } = buildProductsUrl({ ...searchParams, category: slug, page: undefined, ordering: undefined });
+        const full = new URL(url);
+        full.searchParams.set("page_size", "100"); // the API's maximum page size
+        return fetchEveryPage(full.toString());
+      }),
+    );
+    const merged = [...new Map(lists.flat().map((product) => [product.id, product])).values()];
+    const sorter = SORTERS[searchParams.ordering];
+    merged.sort((a, b) => (sorter?.(a, b) || 0) || b.id - a.id);
+    const start = (page - 1) * SHOP_PAGE_SIZE;
+    return { products: merged.slice(start, start + SHOP_PAGE_SIZE), count: merged.length, page, error: false };
+  } catch (error) {
+    console.error("Failed to load shop products:", error);
+    return { products: [], count: 0, page, error: true };
+  }
+}
+
 export async function getShopProducts(searchParams) {
-  const { url, page } = buildProductsUrl(searchParams);
+  const slugs = parseCategories(searchParams.category);
+  if (slugs.length > 1) return getProductsInCategories(searchParams, slugs);
+  const { url, page } = buildProductsUrl({ ...searchParams, category: slugs[0] });
   try {
     const res = await fetch(url, { next: { revalidate: REVALIDATE_SECONDS } });
     if (!res.ok) throw new Error(`Products API responded ${res.status}`);
