@@ -46,10 +46,11 @@ export default function ProductCardAction({ product, compact = false }) {
       <NotifyMeButton
         productId={product.id}
         productName={product.name}
+        compact={compact}
         ariaLabel={`Notify me when ${product.name} is back in stock`}
         className={
           compact
-            ? "auth-btn product-card__action--notify flex h-10 items-center justify-center rounded-full px-3 text-xs font-medium"
+            ? "auth-btn product-card__action--notify flex h-10 w-10 items-center justify-center rounded-full text-xs font-medium"
             : "auth-btn product-card__action--notify w-full rounded-full px-4 py-2.5 text-sm font-medium"
         }
       />
