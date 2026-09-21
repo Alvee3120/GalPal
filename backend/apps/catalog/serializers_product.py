@@ -100,7 +100,7 @@ class PublicProductListSerializer(_ComputedProductFields, serializers.ModelSeria
         fields = [
             "id", "name", "slug", "feature_image", "brand", "primary_category",
             "regular_price", "discount_price", "effective_price", "discount_percentage", "on_sale",
-            "sku", "in_stock", "is_featured", "is_new_arrival", "is_bestseller",
+            "sku", "in_stock", "has_variants", "is_featured", "is_new_arrival", "is_bestseller",
             "gender", "skin_type", "average_rating", "review_count",
         ]
         read_only_fields = fields
@@ -125,7 +125,7 @@ class PublicProductDetailSerializer(PublicProductListSerializer):
             "short_description", "full_description", "user_guide",
             "categories", "tags", "images", "variants",
             "key_ingredients", "ingredients", "size_value", "size_unit", "country_of_origin",
-            "manufacture_date", "expiry_date", "has_variants",
+            "manufacture_date", "expiry_date",
             "meta_title", "meta_description", "og_image",
             "breadcrumb", "related_products",
         ]
