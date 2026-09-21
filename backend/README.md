@@ -274,3 +274,65 @@ endpoint must declare `permission_classes = [AllowAny]` explicitly.
   guest at cart time (a cart has no phone until checkout). Both are stored/configurable now.
 - Admin: `/admin/coupons/` CRUD (a coupon that has been used can't be deleted, only deactivated)
   and `/admin/coupon-usages/` (filter `?coupon=<id>`).
+
+## Shared cloud setup (team development)
+
+So everyone works against the same data and images instead of re-seeding locally. **Cloudflare has
+no hosted PostgreSQL** (its D1 is SQLite-based, and Hyperdrive only accelerates a Postgres you
+already run elsewhere), so the database and the file storage come from two different places:
+
+| Need | Use | Why |
+|---|---|---|
+| Shared Postgres | **Neon** (free tier), Supabase, Railway, Render... any Postgres | Django only needs a `DATABASE_URL` |
+| Shared images/videos | **Cloudflare R2** | S3-compatible, free tier, no egress fees |
+
+**Do both together.** Database rows store a file *path*; if the database is shared but each person
+keeps files on their own disk, everyone else sees broken images.
+
+### 1. Shared Postgres (example: Neon)
+
+1. One person creates a project at neon.tech, then copies the **direct** connection string (not the
+   `-pooler` one: Django keeps its own connections) and adds `?sslmode=require`.
+2. Every developer puts it in their own `backend/.env` (never commit it):
+   `DATABASE_URL=postgres://USER:PASSWORD@ep-xxxx.REGION.aws.neon.tech/DBNAME?sslmode=require`
+3. **One person, once:** `python manage.py migrate`, `python manage.py createsuperuser`,
+   `python manage.py seed_catalog`.
+4. Free-tier databases sleep when idle, so the first request after a pause is slow; connections are
+   health-checked so it doesn't error (`CONN_HEALTH_CHECKS`).
+
+Rules that keep a shared database from biting you:
+- **Migrations:** the database has one schema. Whoever adds a migration applies it, and everyone else
+  pulls before running. Don't run `migrate` from a branch that's behind, or one that has migrations
+  the others don't.
+- **Never** `dropdb`, `migrate <app> zero`, or `seed_catalog --flush` against the shared database
+  without telling the team.
+- `pytest` **never** uses the shared database or bucket, whatever `.env` says: it uses a local
+  Postgres (`TEST_DATABASE_URL`, default `postgres://galpal:galpal@localhost:5432/galpal`) and temp files.
+
+### 2. Cloudflare R2
+
+1. Cloudflare dashboard, then **R2 Object Storage**. Enable it (Cloudflare may ask for a payment
+   method; the free tier is 10 GB).
+2. **Create bucket**, e.g. `galpal-media`.
+3. Bucket, then **Settings**, then **Public access**: enable the **r2.dev subdomain**. Copy the host,
+   e.g. `pub-1a2b3c.r2.dev` (fine for development; use a custom domain in production).
+4. R2 overview, then **Manage API Tokens**, then **Create API token**: permission **Object Read & Write**,
+   scoped to just this bucket. Copy the *Access Key ID*, *Secret Access Key*, and your *Account ID*.
+5. Every developer adds to `backend/.env`:
+   ```
+   USE_S3=True
+   AWS_ACCESS_KEY_ID=...
+   AWS_SECRET_ACCESS_KEY=...
+   AWS_STORAGE_BUCKET_NAME=galpal-media
+   AWS_S3_ENDPOINT_URL=https://<ACCOUNT_ID>.r2.cloudflarestorage.com
+   AWS_S3_CUSTOM_DOMAIN=pub-1a2b3c.r2.dev
+   ```
+   The app refuses to start if the R2 endpoint is set without `AWS_S3_CUSTOM_DOMAIN`.
+6. Upload something via the admin API and open the returned image URL in a browser.
+
+**Sharing the secrets:** send `.env` values through a password manager or a private message, never
+through git, an issue, or a public chat. Give the token only Object Read & Write on this one bucket.
+
+### Moving your existing local data
+Simplest is a fresh start on the shared setup (step 3 above with R2 on): local rows point at files
+on your disk, which the team can't see. Your local `media/` folder and local database are unaffected.

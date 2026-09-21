@@ -9,3 +9,5 @@ staticfiles/
 .DS_Store
 .idea/
 .vscode/
+.neon
+node_modules/

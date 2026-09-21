@@ -5,10 +5,12 @@ Environment-specific behaviour lives in dev.py / prod.py / test.py. Secrets and
 per-deployment values come from environment variables (or backend/.env).
 """
 
+import re
 from datetime import timedelta
 from pathlib import Path
 
 import environ
+from django.core.exceptions import ImproperlyConfigured
 from corsheaders.defaults import default_headers
 
 # backend/ (the directory containing manage.py)
@@ -89,13 +91,18 @@ TEMPLATES = [
 
 # --- Database ---------------------------------------------------------------
 
-DATABASES = {
-    "default": env.db(
-        "DATABASE_URL", default="postgres://galpal:galpal@localhost:5432/galpal"
-    )
-}
+# Neon's tooling writes both a pooled `DATABASE_URL` (pgbouncer, transaction pooling) and a
+# `DATABASE_URL_UNPOOLED`. Django wants the direct one: it keeps its own connections and relies on
+# session features (server-side cursors, SET TIME ZONE) that transaction pooling breaks.
+_database_url = env("DATABASE_URL_UNPOOLED", default="") or env(
+    "DATABASE_URL", default="postgres://galpal:galpal@localhost:5432/galpal"
+)
+DATABASES = {"default": env.db_url_config(_database_url)}
 DATABASES["default"]["CONN_MAX_AGE"] = env.int("DB_CONN_MAX_AGE", default=60)
 DATABASES["default"]["ATOMIC_REQUESTS"] = False  # services own their transactions
+# Ping a persistent connection before reusing it. Essential for cloud Postgres (Neon and friends
+# suspend idle databases and drop connections), otherwise the first request after a pause fails.
+DATABASES["default"]["CONN_HEALTH_CHECKS"] = True
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
@@ -183,18 +190,38 @@ STORAGES = {
     "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
 }
 
-# Optional S3-compatible media storage (AWS S3, MinIO, DigitalOcean Spaces, R2...).
-# Local filesystem is used unless USE_S3=True.
+# Optional S3-compatible media storage: Cloudflare R2, AWS S3, MinIO, DigitalOcean Spaces...
+# Local filesystem is used unless USE_S3=True. See README "Shared cloud setup" for R2.
 USE_S3 = env.bool("USE_S3", default=False)
+
+
+def _token(name, default=""):
+    """An env value that can never contain spaces (bucket, endpoint, region, host...), read up to
+    the first whitespace so a trailing `# comment` copied from .env.example can't leak into it."""
+    parts = (env(name, default=default) or "").split()
+    return parts[0] if parts else ""
+
+
 if USE_S3:
     AWS_ACCESS_KEY_ID = env("AWS_ACCESS_KEY_ID")
     AWS_SECRET_ACCESS_KEY = env("AWS_SECRET_ACCESS_KEY")
-    AWS_STORAGE_BUCKET_NAME = env("AWS_STORAGE_BUCKET_NAME")
-    AWS_S3_ENDPOINT_URL = env("AWS_S3_ENDPOINT_URL", default=None)
-    AWS_S3_REGION_NAME = env("AWS_S3_REGION_NAME", default=None)
-    AWS_S3_CUSTOM_DOMAIN = env("AWS_S3_CUSTOM_DOMAIN", default=None)
+    AWS_STORAGE_BUCKET_NAME = _token("AWS_STORAGE_BUCKET_NAME")
+    AWS_S3_ENDPOINT_URL = _token("AWS_S3_ENDPOINT_URL").rstrip("/") or None
+    # R2 has a single pseudo-region called "auto"; a custom endpoint without a region confuses boto3.
+    AWS_S3_REGION_NAME = _token("AWS_S3_REGION_NAME") or ("auto" if AWS_S3_ENDPOINT_URL else None)
+    # The PUBLIC host that serves the files, e.g. pub-abc123.r2.dev or media.example.com. Host only;
+    # a pasted "https://host/" is tolerated. (The R2 API endpoint above is private, so it can't be
+    # used for image URLs.)
+    AWS_S3_CUSTOM_DOMAIN = re.sub(r"^https?://", "", _token("AWS_S3_CUSTOM_DOMAIN")).rstrip("/") or None
+    if AWS_S3_ENDPOINT_URL and "r2.cloudflarestorage.com" in AWS_S3_ENDPOINT_URL and not AWS_S3_CUSTOM_DOMAIN:
+        raise ImproperlyConfigured(
+            "Cloudflare R2 needs AWS_S3_CUSTOM_DOMAIN: the public host of the bucket (its r2.dev "
+            "subdomain or a custom domain). Without it every image URL would point at the private "
+            "API endpoint and 403."
+        )
+    AWS_S3_SIGNATURE_VERSION = "s3v4"
     AWS_QUERYSTRING_AUTH = False  # media is public; return plain, cacheable URLs
-    AWS_DEFAULT_ACL = None
+    AWS_DEFAULT_ACL = None  # R2 has no ACLs and rejects the header
     STORAGES["default"] = {"BACKEND": "storages.backends.s3.S3Storage"}
 
 # Upload limits (see apps.core.validators)
