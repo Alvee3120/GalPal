@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import ShopHero from "@/component/shop/ShopHero";
+import PageHero from "@/component/shared/PageHero";
 import ShopFilters from "@/component/shop/ShopFilters";
 import MobileFilterDrawer from "@/component/shop/MobileFilterDrawer";
 import ActiveFilters from "@/component/shop/ActiveFilters";
@@ -57,7 +57,7 @@ export default async function ShopPage({ searchParams }) {
 
   return (
     <main>
-      <ShopHero />
+      <PageHero title="Shop" />
 
       <div className="mx-auto w-full max-w-7xl px-4 pb-16 sm:px-6 lg:px-8">
         <div className="mb-5 lg:hidden">

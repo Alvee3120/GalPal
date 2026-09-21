@@ -107,7 +107,6 @@
   --color-shop-sidebar-bg: color-mix(in srgb, var(--color-foreground) 3%, var(--color-background));
   --color-shop-range-track: var(--color-border);
   --color-shop-range-fill: var(--color-brand);
-  --color-rating: #e0a11a; /* star gold: no existing token covers this, added alongside --color-danger/--color-success */
 
   /* Kept for existing usages */
   --background: var(--color-background);
@@ -1367,16 +1366,44 @@ footer.cart-divider {
   outline-offset: 2px;
 }
 
-/* Sort dropdown */
-.shop-sort__select {
+/* Sort dropdown: a custom listbox (see SortDropdown.jsx), not a native <select> whose open state a
+   mobile browser could render with its own oversized, unstyleable OS picker UI. */
+.shop-sort__trigger {
   background-color: var(--color-background);
   color: var(--color-foreground);
   border: 1px solid var(--color-border);
 }
 
-.shop-sort__select:focus-visible {
+.shop-sort__trigger:hover {
+  background-color: var(--color-hover);
+}
+
+.shop-sort__trigger:focus-visible,
+.shop-sort__item:focus-visible {
   outline: 2px solid var(--color-focus);
   outline-offset: 1px;
+}
+
+.shop-sort__menu {
+  background-color: var(--color-navbar-solid);
+  color: var(--color-navbar-solid-text);
+  border: 1px solid var(--color-border);
+  box-shadow: 0 10px 15px -3px var(--color-shadow-soft);
+}
+
+.shop-sort__item {
+  color: inherit;
+}
+
+.shop-sort__item[aria-selected="true"] {
+  color: var(--color-brand);
+  font-weight: 600;
+}
+
+.shop-sort__item:hover,
+.shop-sort__item:focus-visible {
+  background-color: var(--color-hover);
+  outline: none;
 }
 
 /* Active filter tags */
@@ -1439,11 +1466,86 @@ footer.cart-divider {
   background-color: var(--color-shop-sidebar-bg);
 }
 
-/* Star rating */
-.star-rating__stars {
-  color: var(--color-rating);
+/* ================================
+   Cart page (colors only; layout lives in the components)
+   ================================ */
+.cart-table-card,
+.order-summary {
+  background-color: var(--color-background);
+  border: 1px solid var(--color-cart-line);
 }
 
-.star-rating__score {
+.cart-table__head-row {
+  border-bottom: 1px solid var(--color-cart-line);
+  color: var(--color-muted);
+}
+
+.cart-table__row + .cart-table__row {
+  border-top: 1px solid var(--color-cart-line);
+}
+
+.cart-item-card {
+  background-color: var(--color-background);
+  border: 1px solid var(--color-cart-line);
+}
+
+.cart-remove-btn {
+  color: var(--color-danger);
+  border: 1px solid var(--color-cart-line);
+  transition: background-color 0.2s ease;
+}
+
+.cart-remove-btn:hover:not(:disabled) {
+  background-color: color-mix(in srgb, var(--color-danger) 10%, transparent);
+}
+
+.cart-remove-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.order-summary fieldset {
+  border-color: var(--color-cart-line);
+}
+
+.order-summary dl div,
+.order-summary > div.border-t {
+  border-color: var(--color-cart-line);
+}
+
+.cart-voucher-input {
+  background-color: var(--color-background);
   color: var(--color-foreground);
+  border: 1px solid var(--color-cart-line);
+}
+
+.cart-voucher-input::placeholder {
+  color: var(--color-muted);
+}
+
+.cart-voucher-input:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 1px;
+}
+
+.cart-voucher-input:disabled {
+  opacity: 0.6;
+}
+
+.cart-coupon-chip {
+  background-color: color-mix(in srgb, var(--color-success) 10%, transparent);
+  color: var(--color-success);
+}
+
+.cart-coupon-chip__remove {
+  color: inherit;
+  transition: background-color 0.2s ease;
+}
+
+.cart-coupon-chip__remove:hover:not(:disabled) {
+  background-color: color-mix(in srgb, var(--color-success) 20%, transparent);
+}
+
+.cart-warranty-note {
+  color: var(--color-muted);
 }

@@ -1,14 +1,17 @@
 import { cookies } from "next/headers";
 
-// Thin proxy to the backend cart API (GET /cart/, POST /cart/items/, PATCH|DELETE /cart/items/{id}/).
-// The backend URL stays server-side; the guest cart token lives in an httpOnly cookie (so the cart survives
-// refreshes), and the logged-in user's JWT (from the auth cookie) is attached when present.
+// Thin proxy to the backend cart API (GET /cart/, POST /cart/items/, PATCH|DELETE /cart/items/{id}/,
+// POST|DELETE /cart/coupon/). The backend URL stays server-side; the guest cart token lives in an httpOnly
+// cookie (so the cart survives refreshes), and the logged-in user's JWT (from the auth cookie) is attached
+// when present.
 const API_BASE_URL = process.env.API_BASE_URL ?? "http://192.168.68.129:8000/api/v1";
 const BACKEND_ORIGIN = new URL(API_BASE_URL).origin;
 const CART_TOKEN_MAX_AGE = 60 * 60 * 24 * 30;
 
 const isCartPath = (path) =>
-  path.length === 0 || (path[0] === "items" && path.length <= 2 && (path[1] === undefined || /^\d+$/.test(path[1])));
+  path.length === 0 ||
+  (path[0] === "items" && path.length <= 2 && (path[1] === undefined || /^\d+$/.test(path[1]))) ||
+  (path[0] === "coupon" && path.length === 1);
 
 async function callBackend(url, method, body, headers) {
   return fetch(url, { method, headers, body, cache: "no-store" });

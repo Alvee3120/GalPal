@@ -27,7 +27,7 @@ export default function ShopProductGrid({ products, currencySymbol }) {
   return (
     <div className="shop-grid grid grid-cols-2 gap-4 sm:gap-5 md:grid-cols-3">
       {products.map((product) => (
-        <ProductCard key={product.id} product={product} currencySymbol={currencySymbol} showRating />
+        <ProductCard key={product.id} product={product} currencySymbol={currencySymbol} />
       ))}
     </div>
   );

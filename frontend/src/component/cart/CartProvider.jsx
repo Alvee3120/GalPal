@@ -4,7 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { useRouter } from "next/navigation";
 import { notify } from "@/lib/notify";
 
-const EMPTY_CART = { items: [], item_count: 0, subtotal: "0.00" };
+const EMPTY_CART = { items: [], item_count: 0, subtotal: "0.00", discount: "0.00", coupon: null, total: "0.00" };
 
 // Calls the /api/cart proxy. On failure throws an Error carrying `status` (0 = network) and the API's
 // field `details`; callers turn that into a friendly toast via messageFor(), never by showing err.message.
@@ -53,6 +53,10 @@ export function CartProvider({ children, currencySymbol = "" }) {
   const [cart, setCart] = useState(EMPTY_CART);
   const [isOpen, setIsOpen] = useState(false);
   const [pendingIds, setPendingIds] = useState(() => new Set());
+  const [couponBusy, setCouponBusy] = useState(false);
+  // True only until the initial cart fetch settles. The drawer never needs this (it opens well after that
+  // fetch has finished); the Cart page reads it to avoid flashing "Your cart is empty" before real data arrives.
+  const [loading, setLoading] = useState(true);
   const triggerRef = useRef(null); // element that opened the drawer, focused again on close
   const mutated = useRef(false); // a mutation started: ignore a slower initial load
 
@@ -62,7 +66,8 @@ export function CartProvider({ children, currencySymbol = "" }) {
       .then((data) => {
         if (!mutated.current) setCart(data);
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, []);
 
   // `trigger` is the element to refocus on close (a button that was disabled while adding has lost focus by then).
@@ -151,11 +156,57 @@ export function CartProvider({ children, currencySymbol = "" }) {
     [cart],
   );
 
+  // Applies a coupon code (the backend validates it against the cart's current contents) or, with no code,
+  // removes whichever coupon is applied. Success shows a toast: unlike add/remove-item, nothing else on the
+  // page (no drawer opening, no line disappearing) confirms it happened.
+  const applyCoupon = useCallback(async (code) => {
+    setCouponBusy(true);
+    try {
+      const data = await cartApi("/coupon/", { method: "POST", body: JSON.stringify({ code }) });
+      setCart(data);
+      notify.success(`Coupon "${data.coupon?.code ?? code}" applied!`);
+      return { ok: true };
+    } catch (err) {
+      notify.error(messageFor(err, "That coupon code isn't valid."));
+      return { ok: false };
+    } finally {
+      setCouponBusy(false);
+    }
+  }, []);
+
+  const removeCoupon = useCallback(async () => {
+    setCouponBusy(true);
+    try {
+      setCart(await cartApi("/coupon/", { method: "DELETE" }));
+      notify.success("Coupon removed.");
+    } catch (err) {
+      notify.error(messageFor(err, "Unable to remove the coupon."));
+    } finally {
+      setCouponBusy(false);
+    }
+  }, []);
+
+  // Re-reads the cart from the server (e.g. to pick up a change made in another tab). Returns { ok }.
+  const refreshCart = useCallback(async () => {
+    try {
+      setCart(await cartApi("/"));
+      return { ok: true };
+    } catch (err) {
+      notify.error(messageFor(err, "Unable to refresh your cart."));
+      return { ok: false };
+    }
+  }, []);
+
   const value = useMemo(
     () => ({
       items: cart.items,
       itemCount: cart.item_count,
       subtotal: cart.subtotal,
+      discount: cart.discount,
+      coupon: cart.coupon,
+      total: cart.total,
+      couponBusy,
+      loading,
       currencySymbol,
       isOpen,
       pendingIds,
@@ -164,8 +215,11 @@ export function CartProvider({ children, currencySymbol = "" }) {
       addItem,
       setQuantity,
       removeItem,
+      applyCoupon,
+      removeCoupon,
+      refreshCart,
     }),
-    [cart, currencySymbol, isOpen, pendingIds, openCart, closeCart, addItem, setQuantity, removeItem],
+    [cart, couponBusy, loading, currencySymbol, isOpen, pendingIds, openCart, closeCart, addItem, setQuantity, removeItem, applyCoupon, removeCoupon, refreshCart],
   );
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
