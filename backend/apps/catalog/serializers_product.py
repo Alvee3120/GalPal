@@ -123,6 +123,7 @@ class PublicProductDetailSerializer(PublicProductListSerializer):
         fields = [
             *PublicProductListSerializer.Meta.fields,
             "short_description", "full_description", "user_guide",
+            "sale_start_at", "sale_end_at",
             "categories", "tags", "images", "variants",
             "key_ingredients", "ingredients", "size_value", "size_unit", "country_of_origin",
             "manufacture_date", "expiry_date",

@@ -7,6 +7,7 @@ import { FaStar } from "react-icons/fa";
 import { FiCheckCircle } from "react-icons/fi";
 import NotifyMeButton from "@/component/shared/NotifyMeButton";
 import ProductAccordion from "./ProductAccordion";
+import SaleCountdown from "./SaleCountdown";
 import formatPrice from "@/lib/formatPrice";
 
 // Groups every variant's attribute_values by attribute, e.g. { id, name: "Shade", values: [{id, value}, ...] }.
@@ -123,6 +124,11 @@ export default function ProductDetailContent({ product, currencySymbol }) {
             <span className="product-card__chip rounded-full px-2 py-0.5 text-xs font-medium">{priceSource.discount_percentage}%</span>
           )}
         </p>
+
+        {/* Only for a product that really has a sale price AND both sale dates; the component itself hides for invalid dates or once the sale is over. */}
+        {priceSource.discount_price != null && product.sale_start_at && product.sale_end_at && (
+          <SaleCountdown saleStartAt={product.sale_start_at} saleEndAt={product.sale_end_at} className="mt-4" />
+        )}
 
         {product.short_description && <p className="showcase-muted mt-4 text-sm leading-relaxed">{product.short_description}</p>}
         {(selectedVariant?.sku ?? product.sku) && (
