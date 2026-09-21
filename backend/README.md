@@ -249,8 +249,8 @@ endpoint must declare `permission_classes = [AllowAny]` explicitly.
   (quantities combined, capped at whatever stock still allows) and the guest cart is deleted. A
   merge problem never blocks login — see `apps.accounts.views._merge_guest_cart`.
 - `discount` is always `"0.00"` until Module 8 (coupons); `shipping` is a placeholder shape
-  (`{"amount": null, "note": "Calculated at checkout"}`) until Module 9 (delivery zones) — both
-  field names are stable now so neither module needs a breaking response change later.
+  (`{"amount": null, "note": "Calculated at checkout"}`); Module 9 added the calculator
+  (`POST /shipping/calculate/`) but the cart response keeps this shape — both field names are stable.
 - Endpoints: `GET /cart/`, `POST /cart/items/` (add — increases an existing line, doesn't replace
   it), `PATCH /cart/items/{id}/` (set an absolute quantity), `DELETE /cart/items/{id}/`.
 
@@ -274,6 +274,42 @@ endpoint must declare `permission_classes = [AllowAny]` explicitly.
   guest at cart time (a cart has no phone until checkout). Both are stored/configurable now.
 - Admin: `/admin/coupons/` CRUD (a coupon that has been used can't be deleted, only deactivated)
   and `/admin/coupon-usages/` (filter `?coupon=<id>`).
+
+## Shipping & delivery (Module 9)
+
+- **Zones**: each `DeliveryZone` has a `charge` (Admin-editable, `0`–`SHIPPING_MAX_CHARGE`, default
+  ৳5000, a typo guard), a delivery estimate (`estimated_days_min/max` or a text label), an optional
+  **free-shipping threshold override** (blank = use the global one from Site Settings, `0` = never
+  free), `is_active`, `sort_order` and `is_default`. Seeded (data migration, and re-runnable with
+  `python manage.py seed_shipping`): **Inside Dhaka ৳70** (the Dhaka district) and **Outside Dhaka ৳120**
+  (the default: every district nobody else covers), plus the 64 districts and the Standard/Express
+  methods. Re-running never overwrites an edited charge; `seed_shipping --reset-charges` restores
+  ৳70/৳120 on purpose (and logs it).
+- **Matching**: a zone covers districts wholly (`areas: []`) or only listed areas/thanas of one, which is
+  how Dhaka is split into city and outer Dhaka without a new model. Area rule beats whole-district
+  beats default; matching ignores case, punctuation and "District", and knows common spellings
+  (Chittagong/Chattogram, Comilla/Cumilla...). An unknown district gets the default zone.
+- **Calculation** (`services.calculate_shipping(address, cart_subtotal, coupon, delivery_method=)`),
+  always on the server: zone charge (+ method extra) → free if the subtotal **reaches** the zone/global
+  threshold → free if the cart's coupon grants free shipping. Free means the whole charge is `0`,
+  method extra included. The subtotal is the pre-discount item total.
+- **Storefront**: `GET /shipping/zones/`, `/shipping/methods/`, `/shipping/districts/` (short lists,
+  unpaginated) and `POST /shipping/calculate/ {district, area?, subtotal?, delivery_method?}`; leave
+  `subtotal` out to use the caller's cart, whose valid coupon is then considered. The cart's own
+  `shipping` field is still the placeholder; checkout is where the real charge is stored.
+- **Admin only** (CCE gets 403): `/admin/shipping/zones/` CRUD, `PATCH .../{id}/charge/` (the quick
+  "change delivery fee" edit), `GET .../{id}/history/`, and `/admin/shipping/methods/` CRUD. The default
+  zone can't be deleted, deactivated or un-defaulted (make another zone the default; the swap is
+  atomic), and a zone or method that orders used can't be deleted, only deactivated.
+- **History**: every charge change (and a zone's starting charge) is a `ShippingChargeHistory` row
+  with who/old/new/when; it outlives a deleted zone. Module 18's audit log can read it.
+- **Caching**: the active zones/districts/methods are cached (Redis) and dropped by signals on any
+  save/delete, including Django-admin and shell edits, so a new charge applies to the very next
+  calculation. A cache outage falls back to the database.
+- **For Module 10 (Orders)**: call `calculate_shipping` at checkout and store the result as the order's
+  snapshot (`shipping_zone` FK **SET_NULL** with `related_name="orders"`, `shipping_zone_name`,
+  `shipping_charge`); the "has orders" delete guard finds the orders through that `related_name`. Ignore
+  any shipping charge the client sends. A delivery-method FK needs `related_name="orders"` too.
 
 ## Shared cloud setup (team development)
 
