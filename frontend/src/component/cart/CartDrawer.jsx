@@ -5,6 +5,7 @@ import Link from "next/link";
 import { FiTrash2 } from "react-icons/fi";
 import formatPrice from "@/lib/formatPrice";
 import { variantLabel } from "@/lib/cartItem";
+import { cartLineIssue, isAtCartLimit } from "@/lib/stockLimit";
 import ProductImage from "@/component/shared/ProductImage";
 import { useCart } from "./CartProvider";
 
@@ -22,9 +23,10 @@ const icon = (d, className = "h-4 w-4") => (
 );
 
 function CartLine({ item, symbol, busy, onQuantity, onRemove, onNavigate }) {
-  const { product, variant, quantity, unit_price, line_total, is_available, available_quantity } = item;
+  const { product, variant, quantity, unit_price, line_total } = item;
   const label = variantLabel(variant);
-  const atMax = typeof available_quantity === "number" && quantity >= available_quantity;
+  const atMax = isAtCartLimit(item);
+  const issue = cartLineIssue(item);
 
   return (
     <li className="cart-line flex gap-3 py-4 sm:gap-4">
@@ -44,7 +46,7 @@ function CartLine({ item, symbol, busy, onQuantity, onRemove, onNavigate }) {
           <p className="shrink-0 text-sm font-semibold">{formatPrice(line_total, symbol)}</p>
         </div>
 
-        {!is_available && <p className="auth-error mt-1 text-xs">No longer available</p>}
+        {issue && <p className="auth-error mt-1 text-xs font-medium">{issue}</p>}
 
         <div className="mt-auto flex items-center justify-between gap-3 pt-2">
           <div className="cart-qty inline-flex items-center rounded-full">
@@ -93,6 +95,7 @@ export default function CartDrawer() {
   const panelRef = useRef(null);
   const closeRef = useRef(null);
   const isEmpty = items.length === 0;
+  const checkoutDisabled = itemCount === 0 || !items.some((item) => item.is_available !== false);
 
   // Escape closes, Tab stays inside the drawer, the page behind does not scroll.
   useEffect(() => {
@@ -187,7 +190,12 @@ export default function CartDrawer() {
                 <Link href={CART_ROUTE} onClick={leave} className="auth-btn auth-btn--outline rounded-full px-6 py-3 text-center text-sm font-medium">
                   View Cart
                 </Link>
-                <Link href={CHECKOUT_ROUTE} onClick={leave} className="auth-btn auth-btn--primary rounded-full px-6 py-3 text-center text-sm font-medium">
+                <Link
+                  href={CHECKOUT_ROUTE}
+                  onClick={leave}
+                  aria-disabled={checkoutDisabled}
+                  className={`auth-btn auth-btn--primary rounded-full px-6 py-3 text-center text-sm font-medium ${checkoutDisabled ? "pointer-events-none opacity-50" : ""}`}
+                >
                   Checkout
                 </Link>
               </div>

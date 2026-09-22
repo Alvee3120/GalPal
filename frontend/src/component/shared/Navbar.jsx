@@ -215,6 +215,10 @@ export default function Navbar() {
       ? "navbar--scrolled"
       : "navbar--solid";
 
+  // The dashboard has its own header/sidebar (DashboardShell) — after every hook above, so the hook order never
+  // changes between renders of this component.
+  if (pathname.startsWith("/dashboard")) return null;
+
   return (
     <header
       className={`navbar ${position} z-50 transition-[background-color,color,box-shadow,backdrop-filter] duration-300 ease-out motion-reduce:transition-none ${surface}`}

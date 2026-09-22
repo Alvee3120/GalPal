@@ -9,6 +9,8 @@ import NotifyMeButton from "@/component/shared/NotifyMeButton";
 import ProductAccordion from "./ProductAccordion";
 import SaleCountdown from "./SaleCountdown";
 import formatPrice from "@/lib/formatPrice";
+import { notify } from "@/lib/notify";
+import { getStockCap, quantityInCart, remainingToAdd } from "@/lib/stockLimit";
 
 // Groups every variant's attribute_values by attribute, e.g. { id, name: "Shade", values: [{id, value}, ...] }.
 function buildAttributeGroups(variants) {
@@ -26,7 +28,7 @@ function buildAttributeGroups(variants) {
 // using the SAME three-case rule as the product card (Add to Cart / choose a variant / Notify Me),
 // just evaluated against the selected variant instead of the product as a whole.
 export default function ProductDetailContent({ product, currencySymbol }) {
-  const { addItem, openCart } = useCart();
+  const { addItem, openCart, items } = useCart();
   const [selected, setSelected] = useState({});
   const [quantity, setQuantity] = useState(1);
   const [adding, setAdding] = useState(false);
@@ -65,8 +67,30 @@ export default function ProductDetailContent({ product, currencySymbol }) {
     actionState = selectedVariant.in_stock === false ? "notify" : "add";
   }
 
+  // Same rule everywhere in the app (lib/stockLimit.js): cap = the selected variant's own stock if it has one,
+  // else the product's; `in_stock` alone isn't enough here because it stays true even once every unit is already
+  // sitting in THIS cart (stock isn't actually deducted until an order is placed).
+  const stockCap = getStockCap(selectedVariant ?? product);
+  const alreadyInCart = quantityInCart(items, product.id, selectedVariant?.id);
+  const remaining = actionState === "add" ? remainingToAdd(stockCap, alreadyInCart) : Infinity;
+  const maxedOut = actionState === "add" && remaining <= 0;
+  const atStepperMax = quantity >= remaining;
+
+  function pickAttribute(groupId, valueId) {
+    setSelected((s) => ({ ...s, [groupId]: valueId }));
+    setQuantity(1); // a different variant may allow a different amount; never carry over a stale, possibly-too-high quantity
+  }
+
   async function handleAddToCart() {
     if (adding) return;
+    if (maxedOut) {
+      notify.error(stockCap === 1 ? "Only 1 item is available in stock." : `Only ${stockCap} items are available in stock.`);
+      return;
+    }
+    if (quantity > remaining) {
+      notify.error(remaining === 1 ? "Only 1 more item can be added." : `Only ${remaining} more items can be added.`);
+      return;
+    }
     setAdding(true);
     const result = await addItem(product.id, quantity, { productSlug: product.slug, variantId: selectedVariant?.id });
     setAdding(false);
@@ -144,7 +168,7 @@ export default function ProductDetailContent({ product, currencySymbol }) {
                   key={value.id}
                   type="button"
                   aria-pressed={selected[group.id] === value.id}
-                  onClick={() => setSelected((s) => ({ ...s, [group.id]: value.id }))}
+                  onClick={() => pickAttribute(group.id, value.id)}
                   className="variant-pill min-w-24 flex-1 rounded-full px-4 py-2 text-center text-sm"
                 >
                   {value.value}
@@ -172,7 +196,8 @@ export default function ProductDetailContent({ product, currencySymbol }) {
               </span>
               <button
                 type="button"
-                onClick={() => setQuantity((q) => q + 1)}
+                onClick={() => setQuantity((q) => Math.min(q + 1, Math.max(1, remaining)))}
+                disabled={atStepperMax}
                 aria-label="Increase quantity"
                 className="cart-qty__btn flex h-10 w-10 items-center justify-center rounded-full text-lg"
               >
@@ -182,8 +207,13 @@ export default function ProductDetailContent({ product, currencySymbol }) {
           )}
 
           {actionState === "add" && (
-            <button type="button" onClick={handleAddToCart} disabled={adding} className="auth-btn auth-btn--primary flex-1 rounded-full py-3 text-sm font-medium uppercase tracking-wider">
-              {adding ? "Adding..." : "Add to Cart"}
+            <button
+              type="button"
+              onClick={handleAddToCart}
+              disabled={adding || maxedOut}
+              className="auth-btn auth-btn--primary flex-1 rounded-full py-3 text-sm font-medium uppercase tracking-wider"
+            >
+              {adding ? "Adding..." : maxedOut ? "Max in Cart" : "Add to Cart"}
             </button>
           )}
 

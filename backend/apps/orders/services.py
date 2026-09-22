@@ -66,7 +66,7 @@ TRANSITIONS = {
 }
 STOCK_RELEASING = {S.CANCELLED, S.FAILED, S.RETURNED}  # the goods never left, or came back
 COUPON_RELEASING = {S.CANCELLED, S.FAILED}  # a coupon isn't "used" by an order that never happened
-CUSTOMER_CANCELLABLE = {S.PENDING, S.CONFIRMED}
+CUSTOMER_CANCELLABLE = {S.PENDING}  # once staff confirms an order, the customer can no longer cancel it themselves
 OVERRIDABLE_SHIPPING = {S.PENDING, S.CONFIRMED, S.PROCESSING}  # before it has shipped
 DELETABLE = {S.CANCELLED, S.FAILED, S.RETURNED}
 INACTIVE_FOR_GUARDS = [S.CANCELLED, S.FAILED]  # such orders don't count as "duplicates" or "previous orders"
@@ -419,9 +419,18 @@ def checkout(*, cart, user, data, ip_address=None):
     if data["payment_method"] not in settings.ENABLED_PAYMENT_METHODS:
         raise field_error("payment_method", "This payment method is not available.", "payment_method_unavailable")
 
-    items = list(cart.items.select_related("product", "variant")) if cart is not None else []
-    if not items:
+    all_items = list(cart.items.select_related("product", "variant")) if cart is not None else []
+    if not all_items:
         raise field_error("cart", "Your cart is empty.", "cart_empty")
+
+    # Only items the cart itself currently considers available are eligible for the order — the same live
+    # check cart_services.summarize() uses to decide what counts toward the cart's own subtotal, so a line
+    # that's already excluded from what the customer sees they'll pay for is never silently ordered either.
+    # An out-of-stock/unavailable line is skipped, not allowed to fail the whole checkout, and is left in
+    # the cart afterward instead of being deleted with the rest.
+    items = [item for item in all_items if cart_services.line_price(item)[1]]
+    if not items:
+        raise field_error("cart", "All items in your cart are currently out of stock.", "cart_all_unavailable")
 
     # "Save my details" only means anything for a guest, and only while the store allows it.
     create_account = bool(is_guest and data.get("save_details") and site.allow_checkout_account_creation)
@@ -439,7 +448,9 @@ def checkout(*, cart, user, data, ip_address=None):
             coupon_is_optional=not typed_code, delivery_method=data.get("delivery_method", ""),
             customer=user, ip_address=ip_address, min_order_amount=site.min_order_amount, create_account=create_account,
         )
-        cart.items.all().delete()
+        # Only the lines that actually became order items leave the cart; anything skipped for being
+        # unavailable stays, exactly as it was, for the customer to see or remove themselves.
+        cart.items.filter(pk__in=[i.pk for i in items]).delete()
         if cart.coupon_id:
             cart.coupon = None
             cart.save(update_fields=["coupon", "updated_at"])

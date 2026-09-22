@@ -186,13 +186,17 @@ _ADDRESS = ["customer_name", "phone", "division", "district", "area", "address_l
 
 class OrderListSerializer(serializers.ModelSerializer):
     item_count = serializers.SerializerMethodField()
+    can_cancel = serializers.SerializerMethodField()
 
     class Meta:
         model = Order
-        fields = ["number", "status", "payment_method", "payment_status", "item_count", "grand_total", "created_at"]
+        fields = ["number", "status", "payment_method", "payment_status", "item_count", "can_cancel", "grand_total", "created_at"]
 
     def get_item_count(self, obj) -> int:
         return obj.item_count
+
+    def get_can_cancel(self, obj) -> bool:
+        return obj.status in services.CUSTOMER_CANCELLABLE
 
 
 class PublicOrderSerializer(serializers.ModelSerializer):

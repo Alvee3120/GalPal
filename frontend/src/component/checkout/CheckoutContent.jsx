@@ -122,7 +122,8 @@ function CheckoutForm({ account }) {
   const deliveryCharge = calculateDeliveryCharge(values.city, values.zone);
   const orderTotal = Number(subtotal) - Number(discount) + (deliveryCharge ?? 0);
   const hasDiscount = Number(discount) > 0;
-  const hasUnavailable = items.some((item) => item.is_available === false);
+  const availableCount = items.filter((item) => item.is_available !== false).length;
+  const hasUnavailable = availableCount < items.length;
   const dhaka = isDhaka(values.city);
 
   async function handleSubmit(e) {
@@ -130,7 +131,7 @@ function CheckoutForm({ account }) {
     if (submittingRef.current) return;
 
     // A logged-in customer already has the account, so "save details" never applies (and never forces an email).
-    const problem = validateCheckout({ ...values, saveDetails: loggedIn ? false : values.saveDetails }, { itemCount, hasUnavailable });
+    const problem = validateCheckout({ ...values, saveDetails: loggedIn ? false : values.saveDetails }, { itemCount, availableCount });
     if (problem) {
       notify.error(problem);
       return;
@@ -143,13 +144,14 @@ function CheckoutForm({ account }) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          full_name: values.fullName.trim(),
+          // Field names match the backend's real CheckoutSerializer/AddressInputMixin exactly.
+          name: values.fullName.trim(),
           phone: normalizeBdPhone(values.phone),
-          email: values.email.trim() || null,
-          address: values.address.trim(),
+          ...(values.email.trim() ? { email: values.email.trim() } : {}),
           district: values.city,
           area: dhaka ? values.zone : "",
-          note: values.note.trim() || null,
+          address_line: values.address.trim(),
+          ...(values.note.trim() ? { note: values.note.trim() } : {}),
           // Only a guest chooses this; a logged-in customer is identified by their session, not by anything sent here.
           ...(loggedIn ? {} : { save_details: values.saveDetails }),
         }),
@@ -163,7 +165,8 @@ function CheckoutForm({ account }) {
       notify.success("Order placed successfully!");
       if (loggedIn) await rememberCheckoutAddress(values, account.addresses);
       await refreshCart();
-      router.push(`/order-confirmation${data?.order_number ? `?number=${encodeURIComponent(data.order_number)}` : ""}`);
+      const orderNumber = data?.order?.number;
+      router.push(`/order-confirmation${orderNumber ? `?number=${encodeURIComponent(orderNumber)}` : ""}`);
     } catch {
       notify.error(PLACE_ORDER_ERROR);
     } finally {
@@ -247,22 +250,37 @@ function CheckoutForm({ account }) {
         <h2 className="custom-font text-xl">Order Summary</h2>
 
         <ul className="checkout-lines mt-4 flex flex-col">
-          {items.map((item) => (
-            <li key={item.id} className="flex items-start gap-3 py-3">
-              <div className="cart-thumb relative h-16 w-16 shrink-0 overflow-hidden">
-                <ProductImage src={item.product.feature_image} alt="" tight />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="line-clamp-2 text-sm font-medium leading-snug">{item.product.name}</p>
-                {item.variant && <p className="showcase-muted mt-0.5 text-xs">{variantLabel(item.variant)}</p>}
-                <p className="showcase-muted mt-0.5 text-xs">
-                  {item.quantity} × {formatPrice(item.unit_price, currencySymbol)}
-                </p>
-              </div>
-              <p className="shrink-0 text-sm font-medium">{formatPrice(item.line_total, currencySymbol)}</p>
-            </li>
-          ))}
+          {items.map((item) => {
+            const unavailable = item.is_available === false;
+            return (
+              <li key={item.id} className={`flex items-start gap-3 py-3 ${unavailable ? "opacity-60" : ""}`}>
+                <div className="cart-thumb relative h-16 w-16 shrink-0 overflow-hidden">
+                  <ProductImage src={item.product.feature_image} alt="" tight />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="line-clamp-2 text-sm font-medium leading-snug">{item.product.name}</p>
+                  {item.variant && <p className="showcase-muted mt-0.5 text-xs">{variantLabel(item.variant)}</p>}
+                  {unavailable ? (
+                    <p className="auth-error mt-0.5 text-xs font-medium">
+                      {item.available_quantity === 0 ? "Out of Stock" : `Only ${item.available_quantity} available`} — not included in this order
+                    </p>
+                  ) : (
+                    <p className="showcase-muted mt-0.5 text-xs">
+                      {item.quantity} × {formatPrice(item.unit_price, currencySymbol)}
+                    </p>
+                  )}
+                </div>
+                <p className="shrink-0 text-sm font-medium">{unavailable ? "—" : formatPrice(item.line_total, currencySymbol)}</p>
+              </li>
+            );
+          })}
         </ul>
+
+        {hasUnavailable && (
+          <p className="auth-error mt-2 text-xs">
+            Some items in your cart are out of stock and won&apos;t be included in this order. They&apos;ll stay in your cart.
+          </p>
+        )}
 
         <dl className="mt-3 flex flex-col gap-2 border-t pt-4 text-sm">
           <div className="flex items-center justify-between">
@@ -290,10 +308,12 @@ function CheckoutForm({ account }) {
           </span>
         </div>
 
+        {availableCount === 0 && <p className="auth-error mt-4 text-sm">All items in your cart are currently out of stock.</p>}
+
         <button
           type="submit"
           form="checkout-form"
-          disabled={submitting}
+          disabled={submitting || availableCount === 0}
           className="auth-btn auth-btn--primary mt-5 block w-full rounded-full py-3 text-center text-sm font-medium"
         >
           {submitting ? "Placing Order..." : "Place Order"}

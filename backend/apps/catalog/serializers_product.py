@@ -100,7 +100,7 @@ class PublicProductListSerializer(_ComputedProductFields, serializers.ModelSeria
         fields = [
             "id", "name", "slug", "feature_image", "brand", "primary_category",
             "regular_price", "discount_price", "effective_price", "discount_percentage", "on_sale",
-            "sku", "in_stock", "has_variants", "is_featured", "is_new_arrival", "is_bestseller",
+            "sku", "in_stock", "has_variants", "stock_quantity", "manage_stock", "is_featured", "is_new_arrival", "is_bestseller",
             "gender", "skin_type", "average_rating", "review_count",
         ]
         read_only_fields = fields
