@@ -28,6 +28,7 @@ urlpatterns = [
     path("api/v1/admin/", include("apps.coupons.urls_admin")),
     path("api/v1/admin/", include("apps.shipping.urls_admin")),
     path("api/v1/admin/", include("apps.orders.urls_admin")),
+    path("api/v1/admin/", include("apps.payments.urls_admin")),
     path("api/v1/", include("apps.accounts.urls")),
     path("api/v1/", include("apps.site_settings.urls")),
     path("api/v1/", include("apps.catalog.urls")),
@@ -37,6 +38,7 @@ urlpatterns = [
     path("api/v1/", include("apps.coupons.urls")),
     path("api/v1/", include("apps.shipping.urls")),
     path("api/v1/", include("apps.orders.urls")),
+    path("api/v1/", include("apps.payments.urls")),
 ]
 
 if settings.DEBUG:

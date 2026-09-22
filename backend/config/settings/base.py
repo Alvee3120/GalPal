@@ -58,6 +58,7 @@ INSTALLED_APPS = [
     "apps.coupons",
     "apps.shipping",
     "apps.orders",
+    "apps.payments",
 ]
 
 MIDDLEWARE = [
@@ -161,6 +162,14 @@ else:
 # is a sanity check on an Admin-typed charge (a stray extra zero should be an error, not an order).
 SHIPPING_CACHE_TTL = env.int("SHIPPING_CACHE_TTL", default=3600 if REDIS_URL else 30)
 SHIPPING_MAX_CHARGE = env("SHIPPING_MAX_CHARGE", default="5000.00")
+
+# Payments (Module 11): the gateway registry (slug -> dotted class path) so a real gateway is a
+# one-line addition; the stub gateway needs a shared secret to sign/verify its callback (a real
+# gateway would use its own signing scheme instead).
+PAYMENT_GATEWAYS = {"stub": "apps.payments.gateways.StubGateway"}
+DEFAULT_PAYMENT_GATEWAY = env("DEFAULT_PAYMENT_GATEWAY", default="stub")
+PAYMENT_STUB_GATEWAY_SECRET = env("PAYMENT_STUB_GATEWAY_SECRET", default="dev-stub-secret-change-me")
+PAYMENT_STUB_GATEWAY_BASE_URL = env("PAYMENT_STUB_GATEWAY_BASE_URL", default="https://stub-gateway.test/pay")
 
 # Orders (Module 10). Guards on *storefront* checkout only; staff-entered orders get a warning instead.
 ORDER_DUPLICATE_WINDOW_SECONDS = env.int("ORDER_DUPLICATE_WINDOW_SECONDS", default=300)  # same phone + same items
@@ -305,6 +314,7 @@ SPECTACULAR_SETTINGS = {
         "OrderSourceEnum": "apps.orders.models.OrderSource",
         "PaymentMethodEnum": "apps.orders.models.PaymentMethod",
         "PaymentStatusEnum": "apps.orders.models.PaymentStatus",
+        "RefundStatusEnum": "apps.payments.models.RefundStatus",
     },
     "TAGS": [
         {"name": "System", "description": "Health and operational endpoints."},
@@ -329,6 +339,8 @@ SPECTACULAR_SETTINGS = {
         {"name": "Shipping", "description": "Delivery zones, methods, districts and the delivery-charge calculator."},
         {"name": "Checkout & Orders", "description": "Checkout, the customer's own orders, and guest order tracking."},
         {"name": "Admin – Orders", "description": "Admin and CCE: the order module (manual orders, status, notes, edits, invoice, helpers). The only admin area CCE can reach."},
+        {"name": "Payments", "description": "The payment gateway's callback (IPN/webhook)."},
+        {"name": "Admin – Payments", "description": "Admin only: payment records, marking money received, gateway initiate/verify, and refunds."},
         {"name": "Admin – Shipping", "description": "Admin only: delivery zones (charges, coverage, thresholds), charge history and delivery methods."},
     ],
 }
