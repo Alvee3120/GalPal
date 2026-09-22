@@ -2,14 +2,27 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { FiLogOut } from "react-icons/fi";
+import { FiGrid, FiLogOut, FiUser } from "react-icons/fi";
+import { useCurrentUser } from "@/lib/useCurrentUser";
 
-// Account icon. Logged out: a plain link to the login page. Logged in: a dropdown with My Account / Logout.
+// Role -> the dropdown's one navigation item (everyone logged in also gets Logout). "cce" and "admin" share the
+// same Dashboard entry/route; there is no combined "see both" case — a customer never gets Dashboard, staff never
+// get Account. `null` while the role hasn't loaded yet, so nothing incorrect flashes before it has.
+function primaryItemFor(role) {
+  if (role === "customer") return { href: "/dashboard/customer/account", label: "Account", icon: FiUser };
+  if (role === "admin" || role === "cce") return { href: "/dashboard", label: "Dashboard", icon: FiGrid };
+  return null;
+}
+
+// Account icon. Logged out: a plain link to the login page. Logged in: a dropdown with one role-appropriate
+// navigation item (Account for a customer, Dashboard for admin/CCE — see primaryItemFor) plus Logout.
 export default function AccountMenu({ authed, icon, onLogout, className }) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef(null);
   const buttonRef = useRef(null);
   const menuRef = useRef(null);
+  const user = useCurrentUser();
+  const primaryItem = primaryItemFor(user?.role);
 
   // Close on outside click and on Escape (returning focus to the icon).
   useEffect(() => {
@@ -107,9 +120,18 @@ export default function AccountMenu({ authed, icon, onLogout, className }) {
           open ? "visible translate-y-0 scale-100 opacity-100" : "invisible -translate-y-1 scale-95 opacity-0"
         }`}
       >
-        <Link href="/account" role="menuitem" tabIndex={open ? 0 : -1} onClick={() => setOpen(false)} className={itemClass}>
-          My Account
-        </Link>
+        {primaryItem && (
+          <Link
+            href={primaryItem.href}
+            role="menuitem"
+            tabIndex={open ? 0 : -1}
+            onClick={() => setOpen(false)}
+            className={`${itemClass} flex items-center gap-2`}
+          >
+            <primaryItem.icon className="h-4 w-4 shrink-0" aria-hidden="true" />
+            {primaryItem.label}
+          </Link>
+        )}
         <button
           type="button"
           role="menuitem"

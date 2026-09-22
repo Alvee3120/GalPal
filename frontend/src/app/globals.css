@@ -820,6 +820,171 @@ footer.cart-divider {
 }
 
 /* ================================
+   Dashboard shell (colors only; layout lives in the components)
+   Same slide-in mechanic as .cart-drawer/.shop-drawer, but sliding in from the LEFT (the dashboard sidebar's
+   side), so it needs its own transform direction rather than joining that shared selector group.
+   ================================ */
+.dashboard-drawer {
+  visibility: hidden;
+  transition: visibility 0s linear 0.35s;
+}
+
+.dashboard-drawer[data-open="true"] {
+  visibility: visible;
+  transition-delay: 0s;
+}
+
+.dashboard-drawer__backdrop {
+  background-color: var(--color-cart-backdrop);
+  opacity: 0;
+  transition: opacity 0.35s ease;
+}
+
+.dashboard-drawer[data-open="true"] .dashboard-drawer__backdrop {
+  opacity: 1;
+}
+
+.dashboard-drawer__panel {
+  background-color: var(--color-cart-bg);
+  color: var(--color-foreground);
+  box-shadow: 12px 0 32px -12px var(--color-shadow-soft);
+  transform: translateX(-100%);
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.dashboard-drawer[data-open="true"] .dashboard-drawer__panel {
+  transform: translateX(0);
+}
+
+.dashboard-drawer a:focus-visible,
+.dashboard-drawer button:focus-visible,
+.dashboard-drawer input:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dashboard-drawer,
+  .dashboard-drawer__backdrop,
+  .dashboard-drawer__panel {
+    transition: none;
+  }
+}
+
+.dashboard-sidebar {
+  background-color: var(--color-cart-bg);
+  border-right: 1px solid var(--color-cart-line);
+}
+
+.dashboard-topbar {
+  background-color: var(--color-background);
+  border-bottom: 1px solid var(--color-cart-line);
+}
+
+.dashboard-topbar button:hover {
+  background-color: var(--color-hover);
+}
+
+.dashboard-profile {
+  background-color: var(--color-product-tile);
+}
+
+.dashboard-profile__avatar {
+  background-color: color-mix(in srgb, var(--color-brand) 14%, var(--color-background));
+  color: var(--color-brand);
+}
+
+.dashboard-profile__role {
+  color: var(--color-brand);
+}
+
+.dashboard-nav-link {
+  color: var(--color-foreground);
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.dashboard-nav-link:hover {
+  background-color: var(--color-hover);
+}
+
+.dashboard-nav-link[aria-current="page"] {
+  background-color: var(--color-auth-button);
+  color: var(--color-auth-button-text);
+}
+
+.dashboard-nav-link--danger {
+  color: var(--color-danger);
+}
+
+.dashboard-nav-link--danger:hover:not(:disabled) {
+  background-color: color-mix(in srgb, var(--color-danger) 10%, transparent);
+}
+
+.dashboard-nav-link:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.dashboard-card {
+  background-color: var(--color-background);
+  border: 1px solid var(--color-cart-line);
+  transition: border-color 0.2s ease;
+}
+
+a.dashboard-card:hover {
+  border-color: var(--color-brand);
+}
+
+.dashboard-card__icon {
+  background-color: color-mix(in srgb, var(--color-brand) 12%, var(--color-background));
+  color: var(--color-brand);
+}
+
+.order-timeline__dot {
+  background-color: var(--color-product-tile);
+  color: transparent;
+  border: 1px solid var(--color-cart-line);
+}
+
+.order-timeline__dot--done {
+  background-color: var(--color-brand);
+  color: var(--color-white);
+  border-color: var(--color-brand);
+}
+
+.order-timeline__line {
+  background-color: var(--color-cart-line);
+  min-height: 1.5rem;
+}
+
+.order-timeline__line--done {
+  background-color: var(--color-brand);
+}
+
+/* Horizontal variant for the compact stepper on each order card in the list (My Orders); kept separate from
+   .order-timeline__line above since that one relies on a min-height for its vertical layout on the order detail
+   page, which would force unwanted height onto a horizontal line here. */
+.order-card-step__dot {
+  background-color: var(--color-product-tile);
+  color: transparent;
+  border: 1px solid var(--color-cart-line);
+}
+
+.order-card-step__dot--done {
+  background-color: var(--color-brand);
+  color: var(--color-white);
+  border-color: var(--color-brand);
+}
+
+.order-card-step__line {
+  background-color: var(--color-cart-line);
+}
+
+.order-card-step__line--done {
+  background-color: var(--color-brand);
+}
+
+/* ================================
    Notify Me modal (colors only; layout lives in the component)
    Centered dialog sharing the drawer's visibility/backdrop mechanic, scaling in instead of sliding.
    ================================ */
@@ -931,11 +1096,6 @@ footer.cart-divider {
   box-shadow: 0 6px 20px -8px var(--color-shadow-soft);
 }
 
-.review-avatar {
-  background-color: color-mix(in srgb, var(--color-brand) 12%, var(--color-background));
-  color: var(--color-brand);
-}
-
 .review-bar {
   background-color: var(--color-product-tile);
 }
@@ -945,27 +1105,44 @@ footer.cart-divider {
   transition: width 0.4s ease;
 }
 
-.review-nav {
-  background-color: var(--color-background);
-  color: var(--color-foreground);
-  border: 1px solid var(--color-cart-line);
-  box-shadow: 0 4px 12px -4px var(--color-shadow-soft);
-  transition: background-color 0.2s ease;
-}
-
-.review-nav:hover:not(:disabled) {
-  background-color: var(--color-hover);
-}
-
-.review-nav:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-.review-nav:focus-visible,
 .review-star-btn:focus-visible {
   outline: 2px solid var(--color-focus);
   outline-offset: 2px;
+}
+
+.review-verified {
+  background-color: color-mix(in srgb, var(--color-success) 12%, transparent);
+  color: var(--color-success);
+}
+
+.review-reply {
+  background-color: var(--color-product-tile);
+}
+
+.review-thumb,
+.review-thumb-add {
+  background-color: var(--color-product-tile);
+  border: 1px solid var(--color-cart-line);
+}
+
+.review-thumb-add {
+  color: var(--color-muted);
+  transition: border-color 0.2s ease, color 0.2s ease;
+}
+
+.review-thumb-add:hover {
+  border-color: var(--color-brand);
+  color: var(--color-brand);
+}
+
+.review-thumb-add:focus-within {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.review-thumb__remove {
+  background-color: var(--color-danger);
+  color: var(--color-white);
 }
 
 .sale-countdown__heading {
@@ -993,6 +1170,16 @@ footer.cart-divider {
 
 .product-card__action--notify:hover:not(:disabled) {
   background-color: color-mix(in srgb, var(--color-brand) 8%, transparent);
+}
+
+.confirm-dialog__danger {
+  background-color: var(--color-danger);
+  color: var(--color-white);
+  border-color: var(--color-danger);
+}
+
+.confirm-dialog__danger:hover:not(:disabled) {
+  opacity: 0.9;
 }
 
 /* ================================

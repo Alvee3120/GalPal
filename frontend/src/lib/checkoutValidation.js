@@ -3,10 +3,13 @@ import { isValidBdPhone } from "./phone";
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
-// First problem with the checkout form as a friendly, toast-ready sentence, or null when it is valid.
-export function validateCheckout(values, { itemCount, hasUnavailable }) {
+// First problem with the checkout form as a friendly, toast-ready sentence, or null when it is valid. An
+// out-of-stock item does NOT block checkout by itself — the backend leaves it in the cart and orders only the
+// available ones (see apps.orders.services.checkout) — only a cart with NO available items at all is blocked,
+// matching the backend's own "cart_all_unavailable" error exactly.
+export function validateCheckout(values, { itemCount, availableCount }) {
   if (itemCount === 0) return "Your cart is empty.";
-  if (hasUnavailable) return "Some items in your cart are unavailable. Please review your cart.";
+  if (availableCount === 0) return "All items in your cart are currently out of stock.";
   if (!values.fullName.trim()) return "Please enter your full name.";
   if (!isValidBdPhone(values.phone)) return "Please enter a valid phone number.";
   const email = values.email.trim();

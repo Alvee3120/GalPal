@@ -28,12 +28,20 @@ function renewOnce(refresh, renew) {
 // Nothing is sent as a guest if there is no session at all.
 export async function backendFetch(path, { method = "GET", body, headers = {} } = {}) {
   const store = await cookies();
+  // A FormData body (e.g. a review's optional images) must NOT get a JSON content-type: fetch sets its own
+  // multipart boundary from the FormData object, which a hardcoded "application/json" would stomp.
+  const isForm = typeof FormData !== "undefined" && body instanceof FormData;
   const call = (access) =>
     fetch(`${API_BASE_URL}${path}`, {
       method,
       body,
       cache: "no-store",
-      headers: { Accept: "application/json", "Content-Type": "application/json", ...headers, ...(access ? { Authorization: `Bearer ${access}` } : {}) },
+      headers: {
+        Accept: "application/json",
+        ...(isForm ? {} : { "Content-Type": "application/json" }),
+        ...headers,
+        ...(access ? { Authorization: `Bearer ${access}` } : {}),
+      },
     });
 
   async function refreshAccess() {

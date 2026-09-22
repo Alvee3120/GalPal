@@ -1,13 +1,18 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { FaStar } from "react-icons/fa";
-import { FiChevronLeft, FiChevronRight } from "react-icons/fi";
+import { FiUpload, FiX } from "react-icons/fi";
 import { notify } from "@/lib/notify";
+import { messageFor } from "@/lib/apiError";
+import { useAuthed } from "@/lib/useAuthed";
+import { REVIEWS_PAGE_SIZE } from "@/lib/reviewsData";
 
 const STAR_LEVELS = [5, 4, 3, 2, 1];
-const NAME_MAX = 60;
-const COMMENT_MAX = 500;
+const TEXT_MAX = 3000;
+const MAX_IMAGES = 5; // matches the backend's CreateReviewSerializer limit
 
 function Stars({ value, className = "h-4 w-4" }) {
   return (
@@ -19,22 +24,42 @@ function Stars({ value, className = "h-4 w-4" }) {
   );
 }
 
+function formatDate(iso) {
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? "" : d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+}
+
 function ReviewCard({ review }) {
   return (
-    <article className="review-card flex h-full w-full shrink-0 snap-center flex-col gap-3 rounded-2xl p-5 sm:p-6">
-      <div className="flex items-start justify-between gap-3">
+    <article className="review-card flex flex-col gap-3 rounded-2xl p-5 sm:p-6">
+      <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-1">
         <div className="min-w-0">
-          <h3 className="truncate text-base font-semibold">{review.name}</h3>
-          <div className="mt-2">
+          <h3 className="truncate text-base font-semibold">{review.reviewer_name}</h3>
+          <div className="mt-2 flex items-center gap-2">
             <Stars value={review.rating} />
+            {review.is_verified_purchase && <span className="review-verified rounded-full px-2 py-0.5 text-[0.6875rem] font-medium">Verified Purchase</span>}
           </div>
         </div>
-        <time className="showcase-muted shrink-0 text-xs">{review.date}</time>
+        <time className="showcase-muted shrink-0 text-xs" dateTime={review.created_at}>
+          {formatDate(review.created_at)}
+        </time>
       </div>
-      <p className="text-sm leading-relaxed">&ldquo;{review.comment}&rdquo;</p>
-      <span className="review-avatar mt-auto flex h-12 w-12 items-center justify-center rounded-full text-lg font-semibold" aria-hidden="true">
-        {review.name.trim().charAt(0).toUpperCase()}
-      </span>
+      {review.title && <p className="text-sm font-medium">{review.title}</p>}
+      <p className="text-sm leading-relaxed">{review.text}</p>
+      {review.images?.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {review.images.map((img) => (
+            /* eslint-disable-next-line @next/next/no-img-element -- a handful of small review photos; not worth Image's overhead here */
+            <img key={img.id} src={img.image} alt="" className="review-thumb h-16 w-16 rounded-lg object-cover" />
+          ))}
+        </div>
+      )}
+      {review.admin_reply && (
+        <div className="review-reply rounded-xl px-4 py-3 text-sm">
+          <p className="text-xs font-semibold uppercase tracking-wide">Reply from GalPal</p>
+          <p className="mt-1 leading-relaxed">{review.admin_reply}</p>
+        </div>
+      )}
     </article>
   );
 }
@@ -62,60 +87,99 @@ function StarPicker({ value, onChange }) {
   );
 }
 
-// "Rating & Reviews": average + star breakdown on the left, a sliding review carousel on the right, and a Write a Review
-// form. The backend has no reviews API yet (it only stores the average_rating / review_count numbers), so reviews added
-// here live in this component's state: they update the list, the average and the counter immediately, but are not saved
-// and are gone on refresh. The product's existing average/count (0 on every current product) is folded into the totals.
-export default function ProductReviews({ product }) {
-  const [reviews, setReviews] = useState([]);
+// "Rating & Reviews", wired to the EXISTING reviews API: `product.slug` (GET /reviews/?product=, paginated —
+// server-rendered first page in `initialReviews`, "Load more" fetches the rest) for the list, `breakdown` (GET
+// /reviews/breakdown/) for the average/count/star bars, and POST /reviews/ (via /api/reviews) for a logged-in
+// customer's own submission. The backend, not this component, decides which reviews are public: only APPROVED
+// ones are ever returned, so a submitted review may not appear immediately — the success toast says so.
+export default function ProductReviews({ product, initialReviews, breakdown }) {
+  const router = useRouter();
+  const authed = useAuthed();
+  const [reviews, setReviews] = useState(initialReviews.results);
+  const [hasMore, setHasMore] = useState(initialReviews.hasMore);
+  const [page, setPage] = useState(1);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [formOpen, setFormOpen] = useState(false);
-  const [form, setForm] = useState({ rating: 0, name: "", comment: "" });
-  const [slide, setSlide] = useState(0);
-  const scrollerRef = useRef(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [form, setForm] = useState({ rating: 0, text: "", images: [] });
 
-  // A new review is added in FRONT; browsers keep snap-scrolled content in view when that happens, which would land on
-  // the older review. Jump back to the newest one once the list has re-rendered.
-  useEffect(() => {
-    scrollerRef.current?.scrollTo({ left: 0, behavior: "instant" });
-  }, [reviews.length]);
+  const average = Number(breakdown.average_rating) || 0;
+  const total = breakdown.review_count ?? 0;
+  const counts = breakdown.breakdown ?? {};
 
-  const baseCount = Number(product.review_count) || 0;
-  const baseAverage = Number(product.average_rating) || 0;
-  const total = baseCount + reviews.length;
-  const average = total ? (baseAverage * baseCount + reviews.reduce((sum, r) => sum + r.rating, 0)) / total : 0;
-  const perLevel = (level) => reviews.filter((r) => r.rating === level).length;
-
-  function submit(e) {
-    e.preventDefault();
-    if (!form.rating) return notify.error("Please select a star rating.");
-    if (!form.name.trim()) return notify.error("Please enter your name.");
-    if (!form.comment.trim()) return notify.error("Please write your review.");
-    setReviews((list) => [
-      {
-        id: Date.now(),
-        name: form.name.trim(),
-        rating: form.rating,
-        comment: form.comment.trim(),
-        date: new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }),
-      },
-      ...list,
-    ]);
-    setForm({ rating: 0, name: "", comment: "" });
-    setFormOpen(false);
-    setSlide(0);
-    notify.success("Thanks for your review!");
+  async function loadMore() {
+    setLoadingMore(true);
+    try {
+      const nextPage = page + 1;
+      const res = await fetch(`/api/reviews?product=${encodeURIComponent(product.slug)}&page=${nextPage}&page_size=${REVIEWS_PAGE_SIZE}`, {
+        cache: "no-store",
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        notify.error(messageFor({ status: res.status, details: data?.error?.details }, "Unable to load more reviews. Please try again."));
+        return;
+      }
+      setReviews((list) => [...list, ...(data.results ?? [])]);
+      setHasMore(Boolean(data.next));
+      setPage(nextPage);
+    } catch {
+      notify.error("Unable to load more reviews. Please try again.");
+    } finally {
+      setLoadingMore(false);
+    }
   }
 
-  const scrollBy = (direction) => {
-    const el = scrollerRef.current;
-    if (el) el.scrollBy({ left: direction * el.clientWidth, behavior: "smooth" });
-  };
-  const onScroll = (e) => {
-    const el = e.currentTarget;
-    setSlide(Math.round(el.scrollLeft / Math.max(1, el.clientWidth)));
-  };
+  function addImages(fileList) {
+    const files = [...fileList].slice(0, MAX_IMAGES - form.images.length);
+    if (files.length === 0) return;
+    setForm((f) => ({ ...f, images: [...f.images, ...files].slice(0, MAX_IMAGES) }));
+  }
+  function removeImage(index) {
+    setForm((f) => ({ ...f, images: f.images.filter((_, i) => i !== index) }));
+  }
 
-  const set = (name) => (e) => setForm((f) => ({ ...f, [name]: e.target.value }));
+  async function submit(e) {
+    e.preventDefault();
+    if (submitting) return;
+    if (!form.rating) return notify.error("Please select a star rating.");
+    if (!form.text.trim()) return notify.error("Please write your review.");
+
+    setSubmitting(true);
+    try {
+      const body = new FormData();
+      body.set("product_id", String(product.id));
+      body.set("rating", String(form.rating));
+      body.set("text", form.text.trim());
+      for (const file of form.images) body.append("images", file);
+
+      const res = await fetch("/api/reviews", { method: "POST", body, cache: "no-store" });
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok) {
+        if (res.status === 401) {
+          notify.error("Please login to submit a review.");
+        } else if (res.status === 409) {
+          notify.error(data?.error?.message || "You have already reviewed this product.");
+        } else if (res.status === 403) {
+          // e.g. "Only a customer account can write a review." (an admin/staff session) — the backend's own
+          // eligibility rule, surfaced as-is rather than a generic failure message.
+          notify.error(data?.error?.message || "You're not eligible to review this product.");
+        } else {
+          notify.error(messageFor({ status: res.status, details: data?.error?.details }, "Failed to submit review."));
+        }
+        return;
+      }
+
+      notify.success("Review submitted successfully! It will appear once approved.");
+      setForm({ rating: 0, text: "", images: [] });
+      setFormOpen(false);
+      router.refresh(); // picks up a pre-approved review (e.g. an already-verified customer) on the next server render
+    } catch {
+      notify.error("Failed to submit review.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
   return (
     <section aria-labelledby="reviews-heading" className="detail-section mt-16 border-t pt-10">
@@ -123,18 +187,24 @@ export default function ProductReviews({ product }) {
         <h2 id="reviews-heading" className="custom-font text-2xl sm:text-3xl">
           Rating &amp; Reviews
         </h2>
-        <button
-          type="button"
-          onClick={() => setFormOpen((open) => !open)}
-          aria-expanded={formOpen}
-          aria-controls="review-form"
-          className="auth-btn auth-btn--outline rounded-full px-5 py-2 text-sm font-medium"
-        >
-          {formOpen ? "Cancel" : "Write a Review"}
-        </button>
+        {authed ? (
+          <button
+            type="button"
+            onClick={() => setFormOpen((open) => !open)}
+            aria-expanded={formOpen}
+            aria-controls="review-form"
+            className="auth-btn auth-btn--outline rounded-full px-5 py-2 text-sm font-medium"
+          >
+            {formOpen ? "Cancel" : "Write a Review"}
+          </button>
+        ) : (
+          <Link href="/login" className="auth-btn auth-btn--outline rounded-full px-5 py-2 text-sm font-medium">
+            Login to Write a Review
+          </Link>
+        )}
       </div>
 
-      {formOpen && (
+      {formOpen && authed && (
         <form id="review-form" onSubmit={submit} noValidate className="review-card mt-6 flex flex-col gap-4 rounded-2xl p-5 sm:p-6">
           <div className="flex flex-col gap-1.5">
             <span className="text-sm font-medium">
@@ -143,22 +213,55 @@ export default function ProductReviews({ product }) {
             <StarPicker value={form.rating} onChange={(rating) => setForm((f) => ({ ...f, rating }))} />
           </div>
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="review-name" className="text-sm font-medium">
-              Name <span aria-hidden="true">*</span>
-            </label>
-            <input id="review-name" name="name" type="text" autoComplete="name" maxLength={NAME_MAX} placeholder="Enter your name" value={form.name} onChange={set("name")} className="checkout-input rounded-lg px-3 py-2.5 text-sm" />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="review-comment" className="text-sm font-medium">
+            <label htmlFor="review-text" className="text-sm font-medium">
               Your Review <span aria-hidden="true">*</span>
             </label>
-            <textarea id="review-comment" name="comment" rows={4} maxLength={COMMENT_MAX} placeholder="Share your experience with this product" value={form.comment} onChange={set("comment")} className="checkout-input resize-y rounded-lg px-3 py-2.5 text-sm" />
+            <textarea
+              id="review-text"
+              name="text"
+              rows={4}
+              maxLength={TEXT_MAX}
+              placeholder="Share your experience with this product"
+              value={form.text}
+              onChange={(e) => setForm((f) => ({ ...f, text: e.target.value }))}
+              className="checkout-input resize-y rounded-lg px-3 py-2.5 text-sm"
+            />
             <span className="showcase-muted self-end text-xs">
-              {form.comment.length}/{COMMENT_MAX}
+              {form.text.length}/{TEXT_MAX}
             </span>
           </div>
-          <button type="submit" className="auth-btn auth-btn--primary self-start rounded-full px-8 py-2.5 text-sm font-medium">
-            Submit Review
+
+          <div className="flex flex-col gap-1.5">
+            <span className="text-sm font-medium">
+              Photos <span className="showcase-muted font-normal">(Optional, up to {MAX_IMAGES})</span>
+            </span>
+            <div className="flex flex-wrap gap-2">
+              {form.images.map((file, i) => (
+                <span key={`${file.name}-${i}`} className="review-thumb relative h-16 w-16 shrink-0 overflow-hidden rounded-lg">
+                  {/* eslint-disable-next-line @next/next/no-img-element -- a local File preview, not a served asset */}
+                  <img src={URL.createObjectURL(file)} alt="" className="h-full w-full object-cover" />
+                  <button
+                    type="button"
+                    onClick={() => removeImage(i)}
+                    aria-label="Remove photo"
+                    className="review-thumb__remove absolute right-0.5 top-0.5 flex h-5 w-5 items-center justify-center rounded-full"
+                  >
+                    <FiX className="h-3 w-3" aria-hidden="true" />
+                  </button>
+                </span>
+              ))}
+              {form.images.length < MAX_IMAGES && (
+                <label className="review-thumb-add flex h-16 w-16 shrink-0 cursor-pointer flex-col items-center justify-center gap-1 rounded-lg text-xs">
+                  <FiUpload className="h-4 w-4" aria-hidden="true" />
+                  Add
+                  <input type="file" accept="image/*" multiple className="sr-only" onChange={(e) => addImages(e.target.files)} />
+                </label>
+              )}
+            </div>
+          </div>
+
+          <button type="submit" disabled={submitting} className="auth-btn auth-btn--primary self-start rounded-full px-8 py-2.5 text-sm font-medium">
+            {submitting ? "Submitting..." : "Submit Review"}
           </button>
         </form>
       )}
@@ -167,29 +270,30 @@ export default function ProductReviews({ product }) {
         <div className="flex flex-col gap-6 sm:flex-row sm:items-center lg:flex-col lg:items-stretch xl:flex-row xl:items-center">
           <div className="shrink-0">
             <p className="flex items-baseline gap-1.5">
-              <span className="custom-font text-6xl leading-none sm:text-7xl" data-testid="review-average">
-                {average.toFixed(1)}
-              </span>
+              <span className="custom-font text-6xl leading-none sm:text-7xl">{average.toFixed(1)}</span>
               <span className="showcase-muted text-lg">/ 5</span>
             </p>
-            <p className="showcase-muted mt-2 text-sm" data-testid="review-count">
+            <p className="showcase-muted mt-2 text-sm">
               ({total} {total === 1 ? "Review" : "Reviews"})
             </p>
           </div>
 
           <ul className="flex min-w-0 flex-1 flex-col gap-2.5" aria-label="Rating breakdown">
-            {STAR_LEVELS.map((level) => (
-              <li key={level} className="flex items-center gap-3 text-sm">
-                <span className="flex w-9 shrink-0 items-center gap-1">
-                  <FaStar className="detail-star--on h-3.5 w-3.5" aria-hidden="true" />
-                  {level}
-                </span>
-                <span className="review-bar h-2 flex-1 overflow-hidden rounded-full" role="presentation">
-                  <span className="review-bar__fill block h-full rounded-full" style={{ width: `${reviews.length ? (perLevel(level) / reviews.length) * 100 : 0}%` }} />
-                </span>
-                <span className="showcase-muted w-6 shrink-0 text-right text-xs">{perLevel(level)}</span>
-              </li>
-            ))}
+            {STAR_LEVELS.map((level) => {
+              const n = counts[level] ?? counts[String(level)] ?? 0;
+              return (
+                <li key={level} className="flex items-center gap-3 text-sm">
+                  <span className="flex w-9 shrink-0 items-center gap-1">
+                    <FaStar className="detail-star--on h-3.5 w-3.5" aria-hidden="true" />
+                    {level}
+                  </span>
+                  <span className="review-bar h-2 flex-1 overflow-hidden rounded-full" role="presentation">
+                    <span className="review-bar__fill block h-full rounded-full" style={{ width: `${total ? (n / total) * 100 : 0}%` }} />
+                  </span>
+                  <span className="showcase-muted w-6 shrink-0 text-right text-xs">{n}</span>
+                </li>
+              );
+            })}
           </ul>
         </div>
 
@@ -200,37 +304,21 @@ export default function ProductReviews({ product }) {
               <p className="showcase-muted text-sm">Be the first to share your thoughts on this product.</p>
             </div>
           ) : (
-            <>
-              <div className="relative">
-                <div
-                  ref={scrollerRef}
-                  onScroll={onScroll}
-                  className="flex snap-x snap-mandatory overflow-x-auto scroll-smooth [overflow-anchor:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-                  aria-live="polite"
+            <div className="flex flex-col gap-4">
+              {reviews.map((review) => (
+                <ReviewCard key={review.id} review={review} />
+              ))}
+              {hasMore && (
+                <button
+                  type="button"
+                  onClick={loadMore}
+                  disabled={loadingMore}
+                  className="auth-btn auth-btn--outline self-center rounded-full px-6 py-2 text-sm font-medium"
                 >
-                  {reviews.map((review) => (
-                    <div key={review.id} className="w-full shrink-0 snap-center px-0.5 py-1">
-                      <ReviewCard review={review} />
-                    </div>
-                  ))}
-                </div>
-                {reviews.length > 1 && (
-                  <>
-                    <button type="button" onClick={() => scrollBy(-1)} disabled={slide === 0} aria-label="Previous review" className="review-nav absolute left-1 top-1/2 sm:-left-3 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full">
-                      <FiChevronLeft className="h-5 w-5" aria-hidden="true" />
-                    </button>
-                    <button type="button" onClick={() => scrollBy(1)} disabled={slide >= reviews.length - 1} aria-label="Next review" className="review-nav absolute right-1 top-1/2 sm:-right-3 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full">
-                      <FiChevronRight className="h-5 w-5" aria-hidden="true" />
-                    </button>
-                  </>
-                )}
-              </div>
-              {reviews.length > 1 && (
-                <div className="review-bar mx-auto mt-4 h-1 w-40 overflow-hidden rounded-full" role="presentation">
-                  <span className="review-bar__fill block h-full rounded-full transition-[margin,width] duration-300" style={{ width: `${100 / reviews.length}%`, marginLeft: `${(slide * 100) / reviews.length}%` }} />
-                </div>
+                  {loadingMore ? "Loading..." : "Load More Reviews"}
+                </button>
               )}
-            </>
+            </div>
           )}
         </div>
       </div>

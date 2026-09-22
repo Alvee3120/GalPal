@@ -10,7 +10,8 @@ const CHECKOUT_ROUTE = "/checkout";
 
 // Order Summary card: voucher code, the Sub Total/Total breakdown, a shipping note (the backend's own cart
 // response explicitly defers shipping/tax to checkout — same copy the cart drawer already uses) and Checkout.
-export default function OrderSummary({ subtotal, discount, coupon, couponBusy, currencySymbol, onApplyCoupon, onRemoveCoupon, itemCount }) {
+export default function OrderSummary({ subtotal, discount, coupon, couponBusy, currencySymbol, onApplyCoupon, onRemoveCoupon, itemCount, hasAvailableItems = true }) {
+  const checkoutDisabled = itemCount === 0 || !hasAvailableItems;
   const [code, setCode] = useState("");
   const grandTotal = Number(subtotal) - Number(discount);
   const hasDiscount = Number(discount) > 0;
@@ -90,10 +91,14 @@ export default function OrderSummary({ subtotal, discount, coupon, couponBusy, c
 
       <p className="showcase-muted mt-3 text-xs">Shipping and taxes are calculated at checkout.</p>
 
+      {itemCount > 0 && !hasAvailableItems && (
+        <p className="auth-error mt-3 text-xs font-medium">All items in your cart are currently out of stock.</p>
+      )}
+
       <Link
         href={CHECKOUT_ROUTE}
-        aria-disabled={itemCount === 0}
-        className={`auth-btn auth-btn--primary mt-5 block w-full rounded-full py-3 text-center text-sm font-medium ${itemCount === 0 ? "pointer-events-none opacity-50" : ""}`}
+        aria-disabled={checkoutDisabled}
+        className={`auth-btn auth-btn--primary mt-5 block w-full rounded-full py-3 text-center text-sm font-medium ${checkoutDisabled ? "pointer-events-none opacity-50" : ""}`}
       >
         Checkout Now
       </Link>

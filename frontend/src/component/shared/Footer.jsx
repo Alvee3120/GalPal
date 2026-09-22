@@ -150,8 +150,8 @@ export default function Footer() {
       <FooterWordmark />
 
       <div className="footer-bottom mx-auto flex w-full max-w-7xl flex-col items-center justify-between gap-2 px-4 py-6 text-sm sm:flex-row sm:px-6 lg:px-8">
-        <p>Skincare made with care</p>
-        <p>© {new Date().getFullYear()} Galpal. All rights reserved.</p>
+        <p className="text-gray-400">Developed by Shordindu Development Team</p>
+        <p className="text-gray-400">© {new Date().getFullYear()} Galpal. All rights reserved.</p>
       </div>
     </footer>
   );

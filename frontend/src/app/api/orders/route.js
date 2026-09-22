@@ -1,14 +1,30 @@
 import { cookies } from "next/headers";
 import { backendFetch } from "@/lib/backendAuth";
 
-// Thin proxy for placing an order (POST /orders/checkout/), same shape as the /api/cart proxy: the backend URL stays
-// server-side, the guest cart token cookie identifies the cart being ordered, and a logged-in customer is identified by
-// their session token (renewed from the refresh token when the short-lived access token has lapsed — see backendAuth).
-// The browser never sends a delivery charge, a total, or who the customer is — only the address (city + zone) and contact
-// details for THIS order; the server must price the order and identify the customer itself.
-//
-// NOTE: the backend has no orders endpoint yet (orders are a later backend module). Until one exists this call
-// gets a 404 and the customer sees a real, non-faked error toast; nothing here pretends an order was saved.
+// Thin proxy to the EXISTING orders API — the backend URL stays server-side, and a session (if any) always comes
+// from the token, never from anything the browser claims. Two real backend endpoints live under this one path:
+//   POST /api/v1/checkout/   place an order from the cart (guest cart token, or the logged-in customer)
+//   GET  /api/v1/orders/     the logged-in customer's own orders (MyOrderViewSet; 401 for a guest — real backend rule)
+// The browser never sends a delivery charge, a total, or who's ordering — only the address for THIS order; the
+// server prices it and identifies the customer itself.
+const ALLOWED_LIST_PARAMS = ["page", "page_size", "status", "ordering"];
+
+export async function GET(request) {
+  const incoming = new URL(request.url).searchParams;
+  const params = new URLSearchParams();
+  for (const key of ALLOWED_LIST_PARAMS) {
+    if (incoming.has(key)) params.set(key, incoming.get(key));
+  }
+  let res;
+  try {
+    res = await backendFetch(`/orders/?${params}`);
+  } catch {
+    return Response.json({ error: { message: "We couldn't reach the server." } }, { status: 502 });
+  }
+  const data = await res.json().catch(() => null);
+  return Response.json(data, { status: res.status, headers: { "Cache-Control": "no-store" } });
+}
+
 export async function POST(request) {
   const body = await request.text();
   const store = await cookies();
@@ -16,7 +32,7 @@ export async function POST(request) {
 
   let res;
   try {
-    res = await backendFetch("/orders/checkout/", { method: "POST", body, headers: cartToken ? { "X-Cart-Token": cartToken } : {} });
+    res = await backendFetch("/checkout/", { method: "POST", body, headers: cartToken ? { "X-Cart-Token": cartToken } : {} });
   } catch {
     return Response.json({ error: { message: "We couldn't reach the server." } }, { status: 502 });
   }

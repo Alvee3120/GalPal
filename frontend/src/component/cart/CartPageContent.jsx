@@ -101,6 +101,7 @@ export default function CartPageContent() {
         couponBusy={couponBusy}
         currencySymbol={currencySymbol}
         itemCount={itemCount}
+        hasAvailableItems={items.some((item) => item.is_available !== false)}
         onApplyCoupon={applyCoupon}
         onRemoveCoupon={removeCoupon}
       />
