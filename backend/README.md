@@ -392,6 +392,38 @@ endpoint must declare `permission_classes = [AllowAny]` explicitly.
   review (a name and text, no customer account) — defaults to approved, since an Admin importing
   testimonials usually wants them live immediately; pass `status` to override.
 
+## Marketing & tracking (Module 13)
+
+- **Celery is now in the project** (the first module that needs async retries): `config/celery.py`,
+  broker/result backend = `REDIS_URL` (same Redis the cache uses). Without `REDIS_URL` set, tasks
+  run synchronously in-process (`.delay()` still works, it just blocks the caller) rather than
+  queuing to a worker that doesn't exist. Run a worker in dev/prod with:
+  `celery -A config worker -l info` (needs Redis running).
+- **Meta Conversions API**: `apps/marketing/services.py` sends `PageView`/`ViewContent`/
+  `AddToCart`/`InitiateCheckout`/`Purchase` events using the pixel id and access token from Site
+  Settings. Email/phone/name are SHA-256 hashed (lower-cased, trimmed; the phone gets Bangladesh's
+  `88` country code first) before they're ever sent or logged — `fbp`/`fbc`/client IP/user agent
+  travel unhashed, as Meta expects. The access token is a query parameter, never in the logged body.
+- **GA4 Measurement Protocol**: same idea, for `Purchase` only (per spec), via `send_ga4_event`.
+- **Dedup**: pass `event_id` (the same one the frontend's browser Pixel call uses) and a repeat for
+  the same `event_id` + event + destination is skipped, not resent — this is what stops Purchase
+  firing twice if a task retries or a signal somehow re-triggers. **The Purchase event_id is always
+  `order-<order number>`** — fire the browser Pixel's own Purchase event with that same id on your
+  order-confirmation page so Meta merges (dedupes) the two.
+- **`POST /tracking/events/`** (public, AllowAny): the frontend posts `PageView`/`ViewContent`/
+  `AddToCart`/`InitiateCheckout` here (never `Purchase` — 400 if you try). Sent to Meta only (GA4 is
+  Purchase-only); returns `202` immediately, without waiting on Meta.
+- **Purchase fires automatically** the instant an order is placed (a signal on `Order`; Module 10's
+  code was never touched) — always for `source="website"`; for a manual/staff order
+  (`is_manual=true`) only if Site Settings' "Send manual orders to CAPI" is on. Sent to both Meta and
+  GA4, built from the order's own totals and items, after the placing transaction commits.
+- **`TrackingEventLog`**: one row per attempt (so a failed attempt and its successful retry are both
+  kept), with the exact payload sent and the response. `GET /admin/tracking-events/` (Admin only,
+  read-only) is the debugging view; filters: `event_name`, `destination`, `success`,
+  `is_manual_order`, `order`.
+- A transient network failure re-raises (so Celery retries, backoff + jitter, up to 3 times); a
+  rejection from Meta/GA4 itself (bad token, bad payload) is logged as failed but never retried.
+
 ## Shared cloud setup (team development)
 
 So everyone works against the same data and images instead of re-seeding locally. **Cloudflare has

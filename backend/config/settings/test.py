@@ -40,3 +40,8 @@ CACHES = {"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"
 # Capture SMS in memory (`apps.core.messaging.LocMemSMSBackend.outbox`); pytest-django
 # already swaps Django's email backend for the in-memory one.
 SMS_BACKEND = "apps.core.messaging.LocMemSMSBackend"
+
+# Tasks run synchronously, in-process, whatever .env's REDIS_URL says: tests must never depend on a
+# running worker or a real broker, and must see a task's own exceptions immediately.
+CELERY_TASK_ALWAYS_EAGER = True
+CELERY_TASK_EAGER_PROPAGATES = True

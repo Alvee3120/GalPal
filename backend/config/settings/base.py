@@ -60,6 +60,7 @@ INSTALLED_APPS = [
     "apps.orders",
     "apps.payments",
     "apps.reviews",
+    "apps.marketing",
 ]
 
 MIDDLEWARE = [
@@ -181,6 +182,20 @@ ORDER_TRACK_THROTTLE_RATE = env("ORDER_TRACK_THROTTLE_RATE", default="30/hour") 
 ENABLED_PAYMENT_METHODS = ("cod",)
 
 SITE_SETTINGS_CACHE_TTL = env.int("SITE_SETTINGS_CACHE_TTL", default=3600 if REDIS_URL else 30)
+
+# --- Celery (Module 13: async CAPI/GA4 calls; Module 16 will add email/SMS tasks here too) ------
+# Same Redis as the cache, as both broker and result backend. Without REDIS_URL (a bare dev box with
+# no Redis running) tasks run synchronously in-process instead of queuing to a worker that doesn't
+# exist — `.delay()` still works, it just blocks the caller, exactly like the earlier Modules'
+# fire-and-forget code did before Celery existed. A real deployment always sets REDIS_URL.
+CELERY_BROKER_URL = REDIS_URL or "memory://"
+CELERY_RESULT_BACKEND = REDIS_URL or "cache+memory://"
+CELERY_TASK_ALWAYS_EAGER = not REDIS_URL
+CELERY_TASK_EAGER_PROPAGATES = True  # so a broker-less dev run still surfaces a task's own errors
+CELERY_TASK_SERIALIZER = "json"
+CELERY_RESULT_SERIALIZER = "json"
+CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_TIMEZONE = "Asia/Dhaka"  # keep in sync with TIME_ZONE below
 
 # --- Email / SMS ------------------------------------------------------------
 # Email uses Django's pluggable EMAIL_BACKEND. SMS uses our own pluggable backend
@@ -317,6 +332,8 @@ SPECTACULAR_SETTINGS = {
         "PaymentStatusEnum": "apps.orders.models.PaymentStatus",
         "RefundStatusEnum": "apps.payments.models.RefundStatus",
         "ReviewStatusEnum": "apps.reviews.models.ReviewStatus",
+        "TrackingEventNameEnum": "apps.marketing.models.TrackingEventName",
+        "TrackingDestinationEnum": "apps.marketing.models.TrackingDestination",
     },
     "TAGS": [
         {"name": "System", "description": "Health and operational endpoints."},
@@ -345,6 +362,8 @@ SPECTACULAR_SETTINGS = {
         {"name": "Admin – Payments", "description": "Admin only: payment records, marking money received, gateway initiate/verify, and refunds."},
         {"name": "Reviews", "description": "Public: approved reviews and a product's rating breakdown; a customer's own POST to write one."},
         {"name": "Admin – Reviews", "description": "Admin only: full review CRUD, moderation (approve/reject/reply), and manual/testimonial reviews."},
+        {"name": "Tracking", "description": "Public: report a browser event for server-side delivery to Meta."},
+        {"name": "Admin – Marketing", "description": "Admin only: read-only visibility into every Meta CAPI / GA4 send, for debugging."},
         {"name": "Admin – Shipping", "description": "Admin only: delivery zones (charges, coverage, thresholds), charge history and delivery methods."},
     ],
 }
