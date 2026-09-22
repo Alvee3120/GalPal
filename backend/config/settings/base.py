@@ -59,6 +59,7 @@ INSTALLED_APPS = [
     "apps.shipping",
     "apps.orders",
     "apps.payments",
+    "apps.reviews",
 ]
 
 MIDDLEWARE = [
@@ -315,6 +316,7 @@ SPECTACULAR_SETTINGS = {
         "PaymentMethodEnum": "apps.orders.models.PaymentMethod",
         "PaymentStatusEnum": "apps.orders.models.PaymentStatus",
         "RefundStatusEnum": "apps.payments.models.RefundStatus",
+        "ReviewStatusEnum": "apps.reviews.models.ReviewStatus",
     },
     "TAGS": [
         {"name": "System", "description": "Health and operational endpoints."},
@@ -341,6 +343,8 @@ SPECTACULAR_SETTINGS = {
         {"name": "Admin – Orders", "description": "Admin and CCE: the order module (manual orders, status, notes, edits, invoice, helpers). The only admin area CCE can reach."},
         {"name": "Payments", "description": "The payment gateway's callback (IPN/webhook)."},
         {"name": "Admin – Payments", "description": "Admin only: payment records, marking money received, gateway initiate/verify, and refunds."},
+        {"name": "Reviews", "description": "Public: approved reviews and a product's rating breakdown; a customer's own POST to write one."},
+        {"name": "Admin – Reviews", "description": "Admin only: full review CRUD, moderation (approve/reject/reply), and manual/testimonial reviews."},
         {"name": "Admin – Shipping", "description": "Admin only: delivery zones (charges, coverage, thresholds), charge history and delivery methods."},
     ],
 }

@@ -375,6 +375,23 @@ endpoint must declare `permission_classes = [AllowAny]` explicitly.
 - Settings: `PAYMENT_GATEWAYS`, `DEFAULT_PAYMENT_GATEWAY`, `PAYMENT_STUB_GATEWAY_SECRET`,
   `PAYMENT_STUB_GATEWAY_BASE_URL`.
 
+## Reviews & ratings (Module 12 — Admin only)
+
+- **Anyone can write a review while logged in as a customer**: `POST /reviews/` (product, star rating
+  1–5, optional title, text, up to 5 images). One review per customer per product (409
+  `already_reviewed` on a repeat, checked at the service layer and backed by a database constraint).
+  `is_verified_purchase` is computed once, automatically, from the customer's own order history (any
+  order that wasn't cancelled/failed) — it's only ever a badge, never a requirement to review.
+- **Only approved reviews are public**: `GET /reviews/?product=<slug>` (paginated) and
+  `GET /reviews/breakdown/?product=<slug>` (`average_rating`, `review_count`, and a 5★–1★ count).
+  Both read `Product.average_rating`/`review_count` (declared in Module 4, unused until now) —
+  recomputed automatically on every save or delete of a review, including from the Django admin.
+- **Admin only** (CCE has no access at all — reviews isn't part of the CCE-scoped order module):
+  `/admin/reviews/` full CRUD (every status, editable content), `.../approve/`, `.../reject/`,
+  `.../status/` (any value), `.../reply/`. `POST /admin/reviews/` creates a **manual/testimonial**
+  review (a name and text, no customer account) — defaults to approved, since an Admin importing
+  testimonials usually wants them live immediately; pass `status` to override.
+
 ## Shared cloud setup (team development)
 
 So everyone works against the same data and images instead of re-seeding locally. **Cloudflare has
