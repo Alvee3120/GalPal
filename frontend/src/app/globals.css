@@ -940,6 +940,12 @@ a.dashboard-card:hover {
   color: var(--color-brand);
 }
 
+/* The selected row in ProductSearchPicker (CCE order management's "Add Product" / "Add Order" product list). */
+.product-picker-row--selected {
+  border-color: var(--color-brand);
+  background-color: color-mix(in srgb, var(--color-brand) 6%, var(--color-background));
+}
+
 .order-timeline__dot {
   background-color: var(--color-product-tile);
   color: transparent;

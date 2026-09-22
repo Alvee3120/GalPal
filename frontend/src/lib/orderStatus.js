@@ -30,6 +30,18 @@ export const PAYMENT_METHOD_LABEL = {
   online: "Online Payment",
 };
 
+// apps.orders.models.OrderSource — storefront checkout is always "website"; staff pick the rest on a manual order.
+export const ORDER_SOURCE_LABEL = {
+  website: "Website",
+  facebook: "Facebook",
+  instagram: "Instagram",
+  tiktok: "TikTok",
+  whatsapp: "WhatsApp",
+  messenger: "Messenger",
+  call: "Phone call",
+  other: "Other",
+};
+
 export function formatOrderDate(iso) {
   const d = new Date(iso);
   return Number.isNaN(d.getTime()) ? "" : d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });

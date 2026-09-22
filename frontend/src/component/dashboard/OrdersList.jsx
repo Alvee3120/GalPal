@@ -40,7 +40,7 @@ function OrderCardSteps({ status }) {
 // "My Orders": the customer's own orders from the EXISTING MyOrderViewSet (GET /orders/, via the /api/orders
 // proxy), with a real Cancel action (POST /orders/<number>/cancel/) shown only when the backend's own
 // `can_cancel` flag on that order says so — never inferred client-side from the status alone.
-export default function OrdersList({ initialOrders, currencySymbol }) {
+export default function OrdersList({ initialOrders, currencySymbol, basePath = "/dashboard/customer/orders" }) {
   const router = useRouter();
   const [orders, setOrders] = useState(initialOrders);
   const [cancellingNumber, setCancellingNumber] = useState(null);
@@ -89,7 +89,7 @@ export default function OrdersList({ initialOrders, currencySymbol }) {
               </div>
             </div>
             <div className="flex items-center gap-4">
-              <Link href={`/dashboard/customer/orders/${order.number}`} className="auth-btn auth-btn--primary rounded-full px-5 py-2 text-xs font-medium">
+              <Link href={`${basePath}/${order.number}`} className="auth-btn auth-btn--primary rounded-full px-5 py-2 text-xs font-medium">
                 Order Details
               </Link>
               {order.can_cancel && (
