@@ -351,6 +351,30 @@ endpoint must declare `permission_classes = [AllowAny]` explicitly.
 - Settings: `ORDER_DUPLICATE_WINDOW_SECONDS`, `ORDER_MAX_PER_PHONE_PER_HOUR`, `CHECKOUT_THROTTLE_RATE`,
   `ORDER_TRACK_THROTTLE_RATE`, `ENABLED_PAYMENT_METHODS`.
 
+## Payments (Module 11 — Admin only)
+
+- **One `Payment` per order**, auto-created the instant an order is placed (a signal on `Order`;
+  Module 10's checkout and manual-order code was never touched). `amount` is what's owed — synced to
+  the order's `grand_total` while a pending order is edited and nothing has been collected yet, then
+  frozen the moment any money moves. `status` (`unpaid`/`paid`/`partially_paid`/`refunded`/`failed`)
+  mirrors `Order.payment_status`, the field Module 10 declared but left this app to maintain.
+- **Cash on Delivery**: `POST /admin/payments/{id}/mark-received/` records money actually collected.
+  `amount` defaults to the balance owed; call it more than once for instalments — it always adds.
+- **A pluggable gateway interface** (`initiate` / `parse_callback` (IPN) / `verify`) so a real
+  provider (bKash, SSLCommerz, ...) is a class implementing those three methods plus an entry in
+  `settings.PAYMENT_GATEWAYS`. `StubGateway` is the one included: `POST .../initiate/` returns a fake
+  redirect URL; `POST /payments/callback/<gateway>/` is the public webhook (no JWT — the gateway
+  proves itself with an HMAC signature, `PAYMENT_STUB_GATEWAY_SECRET`); `POST .../verify/` asks the
+  gateway to reconcile a payment (for a missed webhook). A gateway success *sets* `amount_received`
+  (idempotent under webhook retries); a stray "failed" can never erase an earlier success.
+- **Refunds**: `POST /admin/payments/{id}/refund/` (amount + a required reason); a full refund marks
+  the payment (and the order) `refunded`, a partial one is tracked (`refunded_amount`,
+  `net_received`) without changing the status.
+- **CCE has no access here at all** — unlike the order module, payments isn't in CCE's scope; every
+  route is Admin-only and the project-wide route sweep confirms it.
+- Settings: `PAYMENT_GATEWAYS`, `DEFAULT_PAYMENT_GATEWAY`, `PAYMENT_STUB_GATEWAY_SECRET`,
+  `PAYMENT_STUB_GATEWAY_BASE_URL`.
+
 ## Shared cloud setup (team development)
 
 So everyone works against the same data and images instead of re-seeding locally. **Cloudflare has
