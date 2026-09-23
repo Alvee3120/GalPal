@@ -40,7 +40,7 @@ export default function AddOrderForm({ currencySymbol }) {
   const [addressLine, setAddressLine] = useState("");
   const [postalCode, setPostalCode] = useState("");
   const [note, setNote] = useState("");
-  const [source, setSource] = useState("call");
+  const [source, setSource] = useState("facebook");
   const [paymentMethod, setPaymentMethod] = useState("cod");
   const [couponCode, setCouponCode] = useState("");
   const [customerId, setCustomerId] = useState(null);
@@ -372,13 +372,16 @@ export default function AddOrderForm({ currencySymbol }) {
           </section>
 
           <section className="dashboard-card rounded-2xl p-5 sm:p-6">
-            <h2 className="custom-font text-lg">Products</h2>
+            <h2 className="custom-font text-lg">Add Product</h2>
             <div className="mt-4">
               <ProductSearchPicker currencySymbol={currencySymbol} onAdd={handleAddProduct} />
             </div>
+          </section>
 
-            {products.length > 0 && (
-              <ul className="checkout-lines mt-5 flex flex-col">
+          {products.length > 0 && (
+            <section className="dashboard-card rounded-2xl p-5 sm:p-6">
+              <h2 className="custom-font text-lg">Order Products</h2>
+              <ul className="checkout-lines mt-4 flex flex-col">
                 {products.map((p) => (
                   <li key={p.key} className="flex items-start gap-3 py-3 first:pt-0">
                     <div className="cart-thumb relative h-14 w-14 shrink-0 overflow-hidden">
@@ -419,8 +422,8 @@ export default function AddOrderForm({ currencySymbol }) {
                   </li>
                 ))}
               </ul>
-            )}
-          </section>
+            </section>
+          )}
         </div>
 
         <aside className="order-summary flex flex-col gap-4 rounded-2xl p-5 sm:p-6 lg:sticky lg:top-24">

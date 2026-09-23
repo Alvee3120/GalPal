@@ -261,16 +261,22 @@ class OrderNoteSerializer(serializers.ModelSerializer):
 class StaffOrderListSerializer(serializers.ModelSerializer):
     item_count = serializers.SerializerMethodField()
     created_by = _PersonSerializer(read_only=True, allow_null=True)
+    # So the Order Management list can offer a status dropdown per row without a second request per order —
+    # the same services.allowed_transitions() the detail view (StaffOrderSerializer) already exposes.
+    allowed_transitions = serializers.SerializerMethodField()
 
     class Meta:
         model = Order
         fields = [
-            "id", "number", "status", "source", "is_manual", "customer_name", "phone", "district", "payment_method",
-            "payment_status", "item_count", "grand_total", "shipping_charge", "created_by", "created_at",
+            "id", "number", "status", "allowed_transitions", "source", "is_manual", "customer_name", "phone", "district",
+            "payment_method", "payment_status", "item_count", "grand_total", "shipping_charge", "created_by", "created_at",
         ]
 
     def get_item_count(self, obj) -> int:
         return obj.item_count
+
+    def get_allowed_transitions(self, obj) -> list[str]:
+        return services.allowed_transitions(obj.status)
 
 
 class StaffOrderSerializer(serializers.ModelSerializer):
@@ -351,6 +357,8 @@ class InvoiceSerializer(serializers.Serializer):
 class PickerRowSerializer(serializers.Serializer):
     product_id = serializers.IntegerField()
     variant_id = serializers.IntegerField(allow_null=True)
+    slug = serializers.CharField(help_text="The parent product's slug — fetch GET /products/<slug>/ for the full variant/attribute list when has_variants is true.")
+    has_variants = serializers.BooleanField()
     name = serializers.CharField()
     sku = serializers.CharField()
     variant_label = serializers.CharField(allow_blank=True)

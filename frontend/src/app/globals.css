@@ -2,6 +2,24 @@
 @import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap');
 
 @import "tailwindcss";
+@import "@heroui/styles";
+
+/* Re-point HeroUI's own theme variables (see node_modules/@heroui/styles/dist/themes/default/variables.css) at
+   this project's existing tokens below, instead of using its defaults — this is an unlayered rule, so it wins
+   over HeroUI's own `@layer base` declarations regardless of where it sits in the file. Only the OrderDateRangePicker
+   uses HeroUI so far; these are the variables its components (Button/Popover/RangeCalendar) actually read. */
+:root {
+  --accent: var(--color-brand);
+  --accent-foreground: var(--color-white);
+  --surface: var(--color-background);
+  --surface-foreground: var(--color-foreground);
+  --overlay: var(--color-background);
+  --overlay-foreground: var(--color-foreground);
+  --border: var(--color-cart-line);
+  --focus: var(--color-focus);
+  --background: var(--color-background);
+  --foreground: var(--color-foreground);
+}
 
 @font-face {
   font-family: "Honacu";
@@ -944,6 +962,42 @@ a.dashboard-card:hover {
 .product-picker-row--selected {
   border-color: var(--color-brand);
   background-color: color-mix(in srgb, var(--color-brand) 6%, var(--color-background));
+}
+
+/* OrderDateRangePicker's calendar popover (Order Management's "Order Date" filter) — HeroUI handles the
+   selected/range-highlight colors itself via the --accent/--surface overrides above; this is just the popover
+   card's own chrome, matched to the same card look used everywhere else in the dashboard. */
+.order-date-picker__popover {
+  background-color: var(--color-background);
+  border: 1px solid var(--color-cart-line);
+  border-radius: var(--radius-card);
+  box-shadow: 0 12px 32px -12px var(--color-shadow-soft);
+  padding: 1rem;
+}
+
+.order-date-picker__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+
+.order-date-picker__heading {
+  font-weight: 600;
+}
+
+.order-date-picker__nav {
+  display: flex;
+  height: 2rem;
+  width: 2rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  transition: background-color 0.2s ease;
+}
+
+.order-date-picker__nav:hover {
+  background-color: var(--color-hover);
 }
 
 .order-timeline__dot {

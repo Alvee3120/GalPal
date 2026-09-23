@@ -1,80 +1,37 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
+import { FiArrowLeft, FiMinus, FiPlus, FiTrash2 } from "react-icons/fi";
 import { notify } from "@/lib/notify";
 import { messageFor } from "@/lib/apiError";
 import formatPrice from "@/lib/formatPrice";
 import ProductImage from "@/component/shared/ProductImage";
-import ConfirmDialog from "@/component/shared/ConfirmDialog";
 import Modal from "@/component/shared/Modal";
 import ProductSearchPicker from "./ProductSearchPicker";
+import OrderStatusDropdown from "./OrderStatusDropdown";
 import { ORDER_SOURCE_LABEL, PAYMENT_METHOD_LABEL, PAYMENT_STATUS_LABEL, STATUS_LABEL, formatOrderDateTime } from "@/lib/orderStatus";
 
-// Transitions that release stock/coupon (apps.orders.services.STOCK_RELEASING) get a confirmation prompt first —
-// everything else (confirm, processing, shipped, delivered) is a plain click.
-const CONFIRM_FIRST = new Set(["cancelled", "failed", "returned"]);
+const toLine = (item) => ({ product_id: item.product_id, variant_id: item.variant_id, quantity: item.quantity });
 
-const STATUS_TOAST = {
-  confirmed: "Order confirmed successfully.",
-  cancelled: "Order cancelled successfully.",
-  processing: "Order marked as processing.",
-  shipped: "Order marked as shipped.",
-  delivered: "Order marked as delivered.",
-  returned: "Order marked as returned.",
-  failed: "Order marked as failed.",
-};
-
-// Order Management detail: everything the backend's own StaffOrderSerializer carries, plus the two actions this
-// spec asks for — change status (via the EXISTING POST /admin/orders/<id>/status/, apps.orders.services.change_status)
-// and add a product to a still-pending order (via the EXISTING PATCH /admin/orders/<id>/, which replaces the whole
-// item list — apps.orders.services.update_order; it restores the old lines' stock and deducts the new lines' stock
-// atomically, so there's no window where stock could be double-deducted or double-restored). Both stay entirely
-// backend-authoritative: this component only ever renders whatever the backend's response says the order now is.
+// Order Management detail: everything the backend's own StaffOrderSerializer carries, plus the actions this spec
+// asks for — change status (via OrderStatusDropdown, the SAME reusable control the Order Management list uses —
+// POST /admin/orders/<id>/status/, apps.orders.services.change_status), and add/adjust/remove items on a still-
+// pending order. All three item actions (add, change quantity, remove) go through the ONE EXISTING PATCH
+// /admin/orders/<id>/ (apps.orders.services.update_order, which replaces the whole item list — it restores the
+// old lines' stock and deducts the new lines' stock atomically, so there's no window where stock could be
+// double-deducted or double-restored), just with a differently-built `items` array — no separate add/remove/
+// quantity endpoints invented. Everything stays backend-authoritative: this component only ever renders whatever
+// the backend's response says the order now is.
 export default function CceOrderDetail({ initialOrder, currencySymbol }) {
   const [order, setOrder] = useState(initialOrder);
-  const [pendingStatus, setPendingStatus] = useState(null); // status awaiting confirmation, or null
-  const [changingStatus, setChangingStatus] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
-  const [addingProduct, setAddingProduct] = useState(false);
+  const [mutatingItems, setMutatingItems] = useState(false);
 
-  async function applyStatus(status) {
-    if (changingStatus) return;
-    setChangingStatus(true);
+  async function patchItems(items, successMessage) {
+    if (mutatingItems) return false;
+    setMutatingItems(true);
     try {
-      const res = await fetch(`/api/admin/orders/${order.id}/status`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status }),
-        cache: "no-store",
-      });
-      const data = await res.json().catch(() => null);
-      if (!res.ok) {
-        notify.error(messageFor({ status: res.status, details: data?.error?.details }, "Unable to update order status."));
-        return;
-      }
-      setOrder(data);
-      setPendingStatus(null);
-      notify.success(STATUS_TOAST[status] ?? `Order status updated to ${STATUS_LABEL[status] ?? status}.`);
-    } catch {
-      notify.error("Unable to update order status.");
-    } finally {
-      setChangingStatus(false);
-    }
-  }
-
-  function handleStatusClick(status) {
-    if (CONFIRM_FIRST.has(status)) setPendingStatus(status);
-    else applyStatus(status);
-  }
-
-  async function handleAddProduct(row, quantity) {
-    setAddingProduct(true);
-    try {
-      const items = order.items.map((item) => ({ product_id: item.product_id, variant_id: item.variant_id, quantity: item.quantity }));
-      const existing = items.find((i) => i.product_id === row.product_id && i.variant_id === row.variant_id);
-      if (existing) existing.quantity += quantity;
-      else items.push({ product_id: row.product_id, variant_id: row.variant_id, quantity });
-
       const res = await fetch(`/api/admin/orders/${order.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -83,17 +40,38 @@ export default function CceOrderDetail({ initialOrder, currencySymbol }) {
       });
       const data = await res.json().catch(() => null);
       if (!res.ok) {
-        notify.error(messageFor({ status: res.status, details: data?.error?.details }, "Unable to add this product to the order."));
-        return;
+        notify.error(messageFor({ status: res.status, details: data?.error?.details }, "Unable to update order items."));
+        return false;
       }
       setOrder(data);
-      setPickerOpen(false);
-      notify.success("Product added to order.");
+      notify.success(successMessage);
+      return true;
     } catch {
-      notify.error("Unable to add this product to the order.");
+      notify.error("Unable to update order items.");
+      return false;
     } finally {
-      setAddingProduct(false);
+      setMutatingItems(false);
     }
+  }
+
+  async function handleAddProduct(row, quantity) {
+    const items = order.items.map(toLine);
+    const existing = items.find((i) => i.product_id === row.product_id && i.variant_id === row.variant_id);
+    if (existing) existing.quantity += quantity;
+    else items.push({ product_id: row.product_id, variant_id: row.variant_id, quantity });
+    if (await patchItems(items, "Product added to order.")) setPickerOpen(false);
+  }
+
+  function handleQuantityChange(itemId, delta) {
+    const target = order.items.find((i) => i.id === itemId);
+    if (!target || target.quantity + delta < 1) return;
+    const items = order.items.map((item) => (item.id === itemId ? { ...toLine(item), quantity: item.quantity + delta } : toLine(item)));
+    patchItems(items, "Order updated.");
+  }
+
+  function handleRemoveItem(itemId) {
+    const items = order.items.filter((item) => item.id !== itemId).map(toLine);
+    patchItems(items, "Product removed from order.");
   }
 
   const hasDiscount = Number(order.discount_amount) > 0;
@@ -101,12 +79,19 @@ export default function CceOrderDetail({ initialOrder, currencySymbol }) {
 
   return (
     <div className="flex flex-col gap-6">
+      <Link href="/dashboard" className="showcase-muted inline-flex w-fit items-center gap-1.5 text-sm hover:text-current">
+        <FiArrowLeft className="h-4 w-4" aria-hidden="true" />
+        Back to Order Management
+      </Link>
+
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="custom-font text-2xl sm:text-3xl">Order #{order.number}</h1>
           <p className="showcase-muted text-sm">{formatOrderDateTime(order.created_at)}</p>
         </div>
-        <span className="product-card__chip rounded-full px-3 py-1 text-xs font-medium">{STATUS_LABEL[order.status] ?? order.status}</span>
+        <div className="w-44">
+          <OrderStatusDropdown orderId={order.id} status={order.status} onChanged={setOrder} />
+        </div>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
@@ -147,7 +132,7 @@ export default function CceOrderDetail({ initialOrder, currencySymbol }) {
 
           <section className="dashboard-card rounded-2xl p-5 sm:p-6">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <h2 className="custom-font text-lg">Items</h2>
+              <h2 className="custom-font text-lg">Order Products</h2>
               {order.editable && (
                 <button type="button" onClick={() => setPickerOpen(true)} className="auth-btn auth-btn--outline rounded-full px-4 py-1.5 text-xs font-medium">
                   + Add Product
@@ -163,14 +148,53 @@ export default function CceOrderDetail({ initialOrder, currencySymbol }) {
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium leading-snug">{item.product_name}</p>
                     {item.variant_label && <p className="showcase-muted mt-0.5 text-xs">{item.variant_label}</p>}
-                    <p className="showcase-muted mt-0.5 text-xs">
-                      {item.quantity} &times; {formatPrice(item.unit_price, currencySymbol)}
-                      {Number(item.regular_price) > Number(item.unit_price) && (
-                        <span className="ml-1.5 line-through">{formatPrice(item.regular_price, currencySymbol)}</span>
-                      )}
-                    </p>
+                    {order.editable ? (
+                      <div className="mt-2 flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => handleQuantityChange(item.id, -1)}
+                          disabled={mutatingItems || item.quantity <= 1}
+                          aria-label={`Decrease quantity of ${item.product_name}`}
+                          className="cart-qty__btn flex h-7 w-7 items-center justify-center rounded-full"
+                        >
+                          <FiMinus className="h-3 w-3" aria-hidden="true" />
+                        </button>
+                        <span className="w-7 text-center text-sm tabular-nums">{item.quantity}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleQuantityChange(item.id, 1)}
+                          disabled={mutatingItems}
+                          aria-label={`Increase quantity of ${item.product_name}`}
+                          className="cart-qty__btn flex h-7 w-7 items-center justify-center rounded-full"
+                        >
+                          <FiPlus className="h-3 w-3" aria-hidden="true" />
+                        </button>
+                        <span className="showcase-muted ml-1 text-xs">&times; {formatPrice(item.unit_price, currencySymbol)}</span>
+                      </div>
+                    ) : (
+                      <p className="showcase-muted mt-0.5 text-xs">
+                        {item.quantity} &times; {formatPrice(item.unit_price, currencySymbol)}
+                        {Number(item.regular_price) > Number(item.unit_price) && (
+                          <span className="ml-1.5 line-through">{formatPrice(item.regular_price, currencySymbol)}</span>
+                        )}
+                      </p>
+                    )}
                   </div>
-                  <p className="shrink-0 text-sm font-medium">{formatPrice(item.line_total, currencySymbol)}</p>
+                  <div className="flex shrink-0 flex-col items-end gap-2">
+                    <p className="text-sm font-medium">{formatPrice(item.line_total, currencySymbol)}</p>
+                    {order.editable && (
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveItem(item.id)}
+                        disabled={mutatingItems || order.items.length <= 1}
+                        aria-label={`Remove ${item.product_name}`}
+                        title={order.items.length <= 1 ? "An order needs at least one item" : "Remove"}
+                        className="auth-error disabled:opacity-40"
+                      >
+                        <FiTrash2 className="h-4 w-4" aria-hidden="true" />
+                      </button>
+                    )}
+                  </div>
                 </li>
               ))}
             </ul>
@@ -239,43 +263,10 @@ export default function CceOrderDetail({ initialOrder, currencySymbol }) {
             <span className="text-base font-semibold">Total</span>
             <span className="text-xl font-semibold">{formatPrice(order.grand_total, currencySymbol)}</span>
           </div>
-
-          {order.allowed_transitions.length > 0 && (
-            <div className="flex flex-col gap-2 border-t pt-4">
-              <p className="text-sm font-medium">Change Status</p>
-              <div className="flex flex-wrap gap-2">
-                {order.allowed_transitions.map((status) => (
-                  <button
-                    key={status}
-                    type="button"
-                    onClick={() => handleStatusClick(status)}
-                    disabled={changingStatus}
-                    className={`rounded-full px-4 py-1.5 text-xs font-medium ${
-                      CONFIRM_FIRST.has(status) ? "auth-error border border-current" : "auth-btn auth-btn--outline"
-                    }`}
-                  >
-                    {STATUS_LABEL[status] ?? status}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
         </aside>
       </div>
 
-      <ConfirmDialog
-        open={pendingStatus !== null}
-        title={`${STATUS_LABEL[pendingStatus] ?? pendingStatus} this order?`}
-        description={`Are you sure you want to mark this order as ${STATUS_LABEL[pendingStatus] ?? pendingStatus}? This cannot be undone.`}
-        confirmLabel={STATUS_LABEL[pendingStatus] ?? "Confirm"}
-        cancelLabel="Keep Order"
-        busyLabel="Updating..."
-        busy={changingStatus}
-        onConfirm={() => applyStatus(pendingStatus)}
-        onCancel={() => !changingStatus && setPendingStatus(null)}
-      />
-
-      <Modal open={pickerOpen} title="Add Product" onClose={() => !addingProduct && setPickerOpen(false)} wide>
+      <Modal open={pickerOpen} title="Add Product" onClose={() => !mutatingItems && setPickerOpen(false)} wide>
         <ProductSearchPicker currencySymbol={currencySymbol} onAdd={handleAddProduct} />
       </Modal>
     </div>

@@ -476,6 +476,30 @@ def create_manual_order(*, staff, data):
 # --- editing a pending order -------------------------------------------------------------------------------------
 
 
+def _describe_item_changes(old_items, new_lines):
+    """A short, human-readable diff between an order's old items and its newly-resolved lines, for the
+    "Order edited: items (...)" history note (see update_order) — so the timeline says what actually changed,
+    not just that "items" changed."""
+    def label(name, variant_label):
+        return f"{name} ({variant_label})" if variant_label else name
+
+    old_by_key = {(i.product_id, i.variant_id): i for i in old_items}
+    new_by_key = {(l.product.id, l.variant.id if l.variant else None): l for l in new_lines}
+
+    parts = []
+    for key, line in new_by_key.items():
+        old = old_by_key.get(key)
+        name = label(line.product_name, line.variant_label)
+        if old is None:
+            parts.append(f"added {name} x{line.quantity}")
+        elif old.quantity != line.quantity:
+            parts.append(f"{name} x{old.quantity} -> x{line.quantity}")
+    for key, item in old_by_key.items():
+        if key not in new_by_key:
+            parts.append(f"removed {label(item.product_name, item.variant_label)} x{item.quantity}")
+    return ", ".join(parts)
+
+
 @transaction.atomic
 def update_order(order, *, user, data):
     """
@@ -498,6 +522,7 @@ def update_order(order, *, user, data):
 
     items_changed = "items" in data
     if items_changed:
+        old_items = list(order.items.all())
         _restore_stock(order, f"Order {order.number} edited", user)
         order.stock_released_at = None  # the order is live again with its new lines
         order.items.all().delete()
@@ -506,7 +531,8 @@ def update_order(order, *, user, data):
         _persist_items(order, lines)
         _deduct_stock(order, lines, user)
         order.fingerprint = _fingerprint(order.phone, entries)
-        changes.append("items")
+        item_summary = _describe_item_changes(old_items, lines)
+        changes.append(f"items ({item_summary})" if item_summary else "items")
     elif "phone" in changes:
         entries = [((i.product_id, i.variant_id), i.quantity) for i in order.items.all() if i.product_id]
         order.fingerprint = _fingerprint(order.phone, sorted(entries, key=lambda p: (p[0][0], p[0][1] or 0)))
@@ -665,7 +691,8 @@ def pickable_lines(search="", limit=20):
             rows.append((product, None))
     return [
         {
-            "product_id": p.id, "variant_id": v.id if v else None, "name": p.name, "sku": v.sku if v else p.sku,
+            "product_id": p.id, "variant_id": v.id if v else None, "slug": p.slug, "has_variants": p.has_variants,
+            "name": p.name, "sku": v.sku if v else p.sku,
             "variant_label": _variant_label(v), "price": (v or p).effective_price,
             "stock": (v or p).stock_quantity if (v or p).manage_stock else None,
             "image": (v.image if v and v.image else p.feature_image),
