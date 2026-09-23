@@ -5,6 +5,10 @@ import { buildShopHref, flattenCategories, parseCategories, PROMOTIONS, toggleCa
 export default function ActiveFilters({ searchParams, categories, priceBounds, currencySymbol }) {
   const tags = [];
 
+  if (searchParams.search) {
+    tags.push({ key: "search", label: `Search: ${searchParams.search}`, href: buildShopHref(searchParams, { search: null }) });
+  }
+
   // One tag per selected category; each removes only its own slug.
   const known = flattenCategories(categories);
   for (const slug of parseCategories(searchParams.category)) {
