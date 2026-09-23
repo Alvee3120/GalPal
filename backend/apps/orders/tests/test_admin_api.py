@@ -239,8 +239,9 @@ def numbers(response):
 def test_list_shape_and_default_ordering(admin_client, mixed):
     body = admin_client.get(ORDERS).json()
     assert body["count"] == 3 and [o["number"] for o in body["results"]] == [mixed[2].number, mixed[1].number, mixed[0].number]
-    assert set(body["results"][0]) == {"id", "number", "status", "source", "is_manual", "customer_name", "phone", "district",
-                                        "payment_method", "payment_status", "item_count", "grand_total", "shipping_charge", "created_by", "created_at"}
+    assert set(body["results"][0]) == {"id", "number", "status", "allowed_transitions", "source", "is_manual", "customer_name", "phone",
+                                        "district", "payment_method", "payment_status", "item_count", "grand_total", "shipping_charge",
+                                        "created_by", "created_at"}
 
 
 def test_filter_by_source(cce_client, mixed):
@@ -559,7 +560,7 @@ def test_the_product_picker_returns_only_what_a_cce_needs(cce_client):
     ProductFactory(name="Face Wash", stock_quantity=3)
     ProductFactory(name="Draft Thing", status="draft")
     rows = cce_client.get(f"{ORDERS}helpers/products/?search=serum").json()
-    assert len(rows) == 1 and set(rows[0]) == {"product_id", "variant_id", "name", "sku", "variant_label", "price", "stock", "image"}
+    assert len(rows) == 1 and set(rows[0]) == {"product_id", "variant_id", "slug", "has_variants", "name", "sku", "variant_label", "price", "stock", "image"}
     assert (rows[0]["name"], rows[0]["sku"], rows[0]["price"], rows[0]["stock"], rows[0]["variant_id"]) == ("Vitamin C Serum", "SER-1", "450.00", 7, None)
     assert rows[0]["image"].startswith("http://testserver/media/")
     names = {r["name"] for r in cce_client.get(f"{ORDERS}helpers/products/").json()}

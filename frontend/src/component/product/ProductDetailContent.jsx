@@ -11,18 +11,7 @@ import SaleCountdown from "./SaleCountdown";
 import formatPrice from "@/lib/formatPrice";
 import { notify } from "@/lib/notify";
 import { getStockCap, quantityInCart, remainingToAdd } from "@/lib/stockLimit";
-
-// Groups every variant's attribute_values by attribute, e.g. { id, name: "Shade", values: [{id, value}, ...] }.
-function buildAttributeGroups(variants) {
-  const groups = new Map();
-  for (const variant of variants) {
-    for (const av of variant.attribute_values) {
-      if (!groups.has(av.attribute_id)) groups.set(av.attribute_id, { id: av.attribute_id, name: av.attribute, values: new Map() });
-      groups.get(av.attribute_id).values.set(av.id, av.value);
-    }
-  }
-  return [...groups.values()].map((g) => ({ ...g, values: [...g.values.entries()].map(([id, value]) => ({ id, value })) }));
-}
+import { buildAttributeGroups } from "@/lib/productVariants";
 
 // Product detail page: gallery, price, (if any) a variant picker, and a stock-aware action area
 // using the SAME three-case rule as the product card (Add to Cart / choose a variant / Notify Me),
