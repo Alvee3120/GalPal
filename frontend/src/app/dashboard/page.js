@@ -21,7 +21,7 @@ async function getOrderCount() {
 
 async function getManagedOrders() {
   try {
-    const res = await backendFetch("/admin/orders/?page_size=30");
+    const res = await backendFetch("/admin/orders/?page_size=10");
     if (!res.ok) return { results: [], count: 0 };
     const data = await res.json();
     return { results: data.results ?? [], count: data.count ?? 0 };

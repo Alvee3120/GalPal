@@ -6,21 +6,21 @@ export const metadata = { title: "My Orders | GalPal" };
 
 async function getMyOrders() {
   try {
-    const res = await backendFetch("/orders/?page_size=50");
-    if (!res.ok) return [];
+    const res = await backendFetch("/orders/?page_size=10");
+    if (!res.ok) return { results: [], count: 0 };
     const data = await res.json();
-    return data.results ?? [];
+    return { results: data.results ?? [], count: data.count ?? 0 };
   } catch {
-    return [];
+    return { results: [], count: 0 };
   }
 }
 
 export default async function CustomerOrdersPage() {
-  const [orders, currencySymbol] = await Promise.all([getMyOrders(), getCurrencySymbol()]);
+  const [{ results, count }, currencySymbol] = await Promise.all([getMyOrders(), getCurrencySymbol()]);
   return (
     <div className="flex flex-col gap-6">
       <h1 className="custom-font text-2xl sm:text-3xl">My Orders</h1>
-      <OrdersList initialOrders={orders} currencySymbol={currencySymbol} />
+      <OrdersList initialOrders={results} initialCount={count} currencySymbol={currencySymbol} />
     </div>
   );
 }

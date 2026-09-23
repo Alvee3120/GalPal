@@ -8,9 +8,11 @@ import formatPrice from "@/lib/formatPrice";
 import { ORDER_SOURCE_LABEL, PAYMENT_METHOD_LABEL, STATUS_LABEL, formatOrderDate } from "@/lib/orderStatus";
 import OrderStatusDropdown from "./OrderStatusDropdown";
 import OrderDateRangePicker, { formatCalendarDate } from "./OrderDateRangePicker";
+import DashboardPagination from "./DashboardPagination";
 
 // Matches OrderStatusDropdown's VISIBLE_STATUSES exactly — the same status vocabulary everywhere in this UI.
 const STATUS_OPTIONS = ["", "confirmed", "processing", "shipped", "delivered", "cancelled", "returned"];
+const PAGE_SIZE = 10;
 
 // Order Management: the customer orders a CCE/Admin is authorized to work, via the EXISTING /admin/orders/ API
 // (apps.orders.views_admin.AdminOrderViewSet, permission IsAdminOrCCE — enforced backend-side; this page only
@@ -27,12 +29,15 @@ export default function CceOrderManagement({ initialOrders, initialCount, curren
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
   const [dateRange, setDateRange] = useState(null); // { start: "YYYY-MM-DD", end: "YYYY-MM-DD" } | null
+  const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
 
-  async function runSearch(nextSearch, nextStatus, nextDateRange) {
+  const totalPages = Math.max(1, Math.ceil(count / PAGE_SIZE));
+
+  async function runSearch(nextSearch, nextStatus, nextDateRange, nextPage) {
     setLoading(true);
     try {
-      const params = new URLSearchParams({ page_size: "30" });
+      const params = new URLSearchParams({ page_size: String(PAGE_SIZE), page: String(nextPage) });
       if (nextSearch) params.set("search", nextSearch);
       if (nextStatus) params.set("status", nextStatus);
       if (nextDateRange) {
@@ -47,6 +52,7 @@ export default function CceOrderManagement({ initialOrders, initialCount, curren
       }
       setOrders(data.results ?? []);
       setCount(data.count ?? 0);
+      setPage(nextPage);
     } catch {
       notify.error("Unable to load orders. Please try again.");
     } finally {
@@ -56,18 +62,23 @@ export default function CceOrderManagement({ initialOrders, initialCount, curren
 
   function handleSubmit(e) {
     e.preventDefault();
-    runSearch(search, status, dateRange);
+    runSearch(search, status, dateRange, 1);
   }
 
   function handleStatusChange(e) {
     const next = e.target.value;
     setStatus(next);
-    runSearch(search, next, dateRange);
+    runSearch(search, next, dateRange, 1);
   }
 
   function handleDateChange(next) {
     setDateRange(next);
-    runSearch(search, status, next);
+    runSearch(search, status, next, 1);
+  }
+
+  function handlePageChange(nextPage) {
+    if (nextPage === page) return;
+    runSearch(search, status, dateRange, nextPage);
   }
 
   function handleOrderChanged(updated) {
@@ -168,6 +179,8 @@ export default function CceOrderManagement({ initialOrders, initialCount, curren
           ))}
         </ul>
       )}
+
+      <DashboardPagination page={page} totalPages={totalPages} onPageChange={handlePageChange} disabled={loading} />
     </div>
   );
 }
