@@ -39,6 +39,7 @@ function buildProductsUrl(searchParams) {
   const params = new URLSearchParams({ page_size: String(SHOP_PAGE_SIZE) });
   const page = Math.max(1, Number(searchParams.page) || 1);
   if (page > 1) params.set("page", String(page));
+  if (searchParams.search) params.set("search", searchParams.search);
   if (searchParams.category) params.set("category", searchParams.category);
   if (searchParams.price_min) params.set("price_min", searchParams.price_min);
   if (searchParams.price_max) params.set("price_max", searchParams.price_max);
