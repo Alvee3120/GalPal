@@ -79,7 +79,7 @@ export default function CceOrderDetail({ initialOrder, currencySymbol }) {
 
   return (
     <div className="flex flex-col gap-6">
-      <Link href="/dashboard" className="showcase-muted inline-flex w-fit items-center gap-1.5 text-sm hover:text-current">
+      <Link href="/dashboard/CCE/orders" className="showcase-muted inline-flex w-fit items-center gap-1.5 text-sm hover:text-current">
         <FiArrowLeft className="h-4 w-4" aria-hidden="true" />
         Back to Order Management
       </Link>

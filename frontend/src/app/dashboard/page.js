@@ -4,7 +4,7 @@ import { backendFetch } from "@/lib/backendAuth";
 import { getCurrencySymbol } from "@/lib/siteSettings";
 import CustomerDashboardHome from "@/component/dashboard/CustomerDashboardHome";
 import StaffDashboardHome from "@/component/dashboard/StaffDashboardHome";
-import CceOrderManagement from "@/component/dashboard/CceOrderManagement";
+import CceDashboardOverview from "@/component/dashboard/overview/CceDashboardOverview";
 
 export const metadata = { title: "Dashboard | GalPal" };
 
@@ -19,20 +19,18 @@ async function getOrderCount() {
   }
 }
 
-async function getManagedOrders() {
+async function getOverview() {
   try {
-    const res = await backendFetch("/admin/orders/?page_size=10");
-    if (!res.ok) return { results: [], count: 0 };
-    const data = await res.json();
-    return { results: data.results ?? [], count: data.count ?? 0 };
+    const res = await backendFetch("/admin/orders/dashboard/");
+    return res.ok ? await res.json() : null;
   } catch {
-    return { results: [], count: 0 };
+    return null;
   }
 }
 
-// The role-aware /dashboard home (the layout above already guarantees a real, authenticated user). For CCE,
-// "Dashboard" IS the order-management view — the customer orders a CCE is authorized to work
-// (apps.orders.views_admin.AdminOrderViewSet, IsAdminOrCCE) — since the nav has no separate entry for it.
+// The role-aware /dashboard home (the layout above already guarantees a real, authenticated user). For CCE it's the
+// analytics overview (GET /admin/orders/dashboard/, apps.orders.analytics); Order Management is its own page,
+// /dashboard/CCE/orders.
 export default async function DashboardHomePage() {
   const user = await getCurrentUser();
   // The layout above already requires a session for every real request; this guards the same case Next.js's
@@ -43,8 +41,8 @@ export default async function DashboardHomePage() {
     return <CustomerDashboardHome user={user} orderCount={orderCount} />;
   }
   if (user.role === "cce") {
-    const [{ results, count }, currencySymbol] = await Promise.all([getManagedOrders(), getCurrencySymbol()]);
-    return <CceOrderManagement initialOrders={results} initialCount={count} currencySymbol={currencySymbol} />;
+    const [overview, currencySymbol] = await Promise.all([getOverview(), getCurrencySymbol()]);
+    return <CceDashboardOverview initialData={overview} currencySymbol={currencySymbol} />;
   }
   return <StaffDashboardHome user={user} />;
 }

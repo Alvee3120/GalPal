@@ -3,8 +3,9 @@ Admin/CCE order endpoints: the ONLY admin area a CCE can reach. Everything is Ad
 two actions that stay Admin-only: deleting an order and overriding its shipping charge.
 """
 from django.db.models import Q
+from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, extend_schema, extend_schema_view
-from rest_framework import mixins, status, viewsets
+from rest_framework import mixins, serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import NotFound, ValidationError
 from rest_framework.response import Response
@@ -17,7 +18,7 @@ from apps.shipping import services as shipping_services
 from apps.shipping.serializers import ShippingQuoteSerializer
 from apps.site_settings.services import get_site_settings
 
-from . import services
+from . import analytics, services
 from .filters import OrderFilter
 from .models import Order
 from .serializers import (
@@ -233,3 +234,43 @@ class HelperCustomerLookupView(_HelperView):
         if customer is None:
             raise NotFound("No customer with this phone number.")
         return Response(CustomerLookupSerializer(customer).data)
+
+
+# --- dashboard overview --------------------------------------------------------------------------------------------
+
+
+class DashboardQuerySerializer(serializers.Serializer):
+    date_from = serializers.DateField(required=False)
+    date_to = serializers.DateField(required=False)
+
+    def validate(self, attrs):
+        start, end = attrs.get("date_from"), attrs.get("date_to")
+        if bool(start) != bool(end):
+            raise serializers.ValidationError({"date_to": ["Send both date_from and date_to, or neither."]})
+        if start and end:
+            if start > end:
+                raise serializers.ValidationError({"date_to": ["The end date can't be before the start date."]})
+            if (end - start).days > 366 * 3:
+                raise serializers.ValidationError({"date_from": ["Choose a range of at most three years."]})
+        return attrs
+
+
+class DashboardView(APIView):
+    permission_classes = [IsAdminOrCCE]
+
+    @extend_schema(
+        tags=TAG, summary="Dashboard overview",
+        description=(
+            "Current inventory (published products: total, in stock, out of stock, value at today's price) plus sales and "
+            "orders for `date_from`..`date_to` (inclusive, site time zone; default the last 30 days): totals, per-status "
+            "counts and a daily series (monthly beyond 92 days). Sales = confirmed/processing/shipped/delivered orders' "
+            "grand total. See apps.orders.analytics."
+        ),
+        parameters=[OpenApiParameter("date_from", OpenApiTypes.DATE), OpenApiParameter("date_to", OpenApiTypes.DATE)],
+        responses={200: OpenApiResponse(description="Dashboard numbers"), 400: ERR},
+    )
+    def get(self, request):
+        query = DashboardQuerySerializer(data=request.query_params)
+        query.is_valid(raise_exception=True)
+        data = analytics.dashboard(query.validated_data.get("date_from"), query.validated_data.get("date_to"))
+        return Response(data)
