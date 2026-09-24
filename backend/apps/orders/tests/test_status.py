@@ -16,14 +16,7 @@ from .helpers import new_order
 pytestmark = pytest.mark.django_db
 
 ALL = [s.value for s in OrderStatus]
-FLOW = {
-    "pending": {"confirmed", "cancelled", "failed"},
-    "confirmed": {"processing", "cancelled", "failed"},
-    "processing": {"shipped", "cancelled", "failed"},
-    "shipped": {"delivered", "returned", "failed"},
-    "delivered": {"returned"},
-    "cancelled": set(), "returned": set(), "failed": set(),
-}
+FLOW = {old: {new for new in ALL if new != old} for old in ALL}  # staff may move any status to any other
 
 
 def in_status(order, status):
@@ -63,26 +56,10 @@ def test_the_happy_path_end_to_end_with_history(admin_user, cce_user):
     assert rows[1].changed_by == cce_user and rows[1].note == "to confirmed" and rows[3].changed_by == admin_user
 
 
-def test_the_error_names_the_allowed_next_statuses(admin_user):
-    order = new_order(admin_user)
-    with pytest.raises(ValidationError) as exc:
-        services.change_status(order, "delivered", user=admin_user)
-    error = exc.value.error_dict["status"][0]
-    assert error.code == "invalid_transition" and "confirmed" in error.message and "cancelled" in error.message
-
-
 def test_changing_to_the_same_status_is_refused(admin_user):
     with pytest.raises(ValidationError) as exc:
         services.change_status(new_order(admin_user), "pending", user=admin_user)
     assert exc.value.error_dict["status"][0].code == "same_status"
-
-
-def test_final_statuses_cannot_be_left(admin_user):
-    for final in ("cancelled", "returned", "failed"):
-        order = in_status(new_order(admin_user), final)
-        with pytest.raises(ValidationError) as exc:
-            services.change_status(order, "pending", user=admin_user)
-        assert "final" in exc.value.error_dict["status"][0].message
 
 
 def test_courier_details_are_saved_with_the_status_change(admin_user):
@@ -161,6 +138,39 @@ def test_stock_that_stopped_being_managed_does_not_break_cancelling(admin_user):
     assert services.change_status(order, "cancelled", user=admin_user).status == "cancelled"
 
 
+@pytest.mark.parametrize("ending", ["cancelled", "failed", "returned"])
+def test_reopening_an_ended_order_takes_the_stock_again(admin_user, ending):
+    product = ProductFactory(stock_quantity=10, manage_stock=True)
+    order = new_order(admin_user, product=product, quantity=4)
+    services.change_status(order, ending, user=admin_user)
+    services.change_status(order, "processing", user=admin_user)
+    product.refresh_from_db()
+    assert product.stock_quantity == 6 and Order.objects.get(pk=order.pk).stock_released_at is None
+    services.change_status(order, "cancelled", user=admin_user)  # and it can be released again
+    product.refresh_from_db()
+    assert product.stock_quantity == 10
+
+
+def test_moving_between_ended_statuses_releases_stock_only_once(admin_user):
+    product = ProductFactory(stock_quantity=10, manage_stock=True)
+    order = new_order(admin_user, product=product, quantity=4)
+    services.change_status(order, "cancelled", user=admin_user)
+    services.change_status(order, "returned", user=admin_user)
+    product.refresh_from_db()
+    assert product.stock_quantity == 10
+
+
+def test_reopening_is_refused_when_the_stock_is_gone(admin_user):
+    product = ProductFactory(stock_quantity=4, manage_stock=True)
+    order = new_order(admin_user, product=product, quantity=4)
+    services.change_status(order, "cancelled", user=admin_user)
+    new_order(admin_user, product=product, quantity=4, phone="01787654321")
+    with pytest.raises(ValidationError) as exc:
+        services.change_status(order, "confirmed", user=admin_user)
+    assert exc.value.error_dict["status"][0].code == "insufficient_stock"
+    assert Order.objects.get(pk=order.pk).status == "cancelled"
+
+
 # --- coupons ----------------------------------------------------------------------------------------------------------------------------------
 
 
@@ -185,6 +195,12 @@ def test_a_returned_order_keeps_its_coupon_use(admin_user, coupon_order):
     in_status(coupon_order, "delivered")
     services.change_status(coupon_order, "returned", user=admin_user)
     assert CouponUsage.objects.count() == 1  # the discount was really given
+
+
+def test_reopening_a_cancelled_order_takes_its_coupon_use_again(admin_user, coupon_order):
+    services.change_status(coupon_order, "cancelled", user=admin_user)
+    services.change_status(coupon_order, "confirmed", user=admin_user)
+    assert CouponUsage.objects.filter(order_reference=coupon_order.number).count() == 1
 
 
 def test_a_released_coupon_can_be_used_again(admin_user):

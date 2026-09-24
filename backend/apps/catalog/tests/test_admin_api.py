@@ -35,21 +35,53 @@ def details(response):
 
 
 @pytest.mark.parametrize("url", [CATEGORIES, BRANDS, TAGS, f"{CATEGORIES}tree/"])
-def test_anonymous_customer_and_cce_are_locked_out(api_client, auth_client, customer, cce_user, url):
+def test_anonymous_and_customer_are_locked_out(api_client, auth_client, customer, url):
     assert api_client.get(url).status_code == 401
-    for user in (customer, cce_user):
-        client = auth_client(user)
-        assert client.get(url).status_code == 403
-        assert client.post(url, {"name": "X"}, format="json").status_code == 403
+    client = auth_client(customer)
+    assert client.get(url).status_code == 403
+    assert client.post(url, {"name": "X"}, format="json").status_code == 403
 
 
-def test_cce_cannot_modify_or_delete_anything(auth_client, cce_user):
-    category, brand, tag = CategoryFactory(), BrandFactory(), TagFactory()
+@pytest.mark.parametrize("url", [CATEGORIES, BRANDS, TAGS, f"{CATEGORIES}tree/"])
+def test_cce_can_read_the_product_form_lookups(auth_client, cce_user, url):
+    assert auth_client(cce_user).get(url).status_code == 200
+
+
+def test_cce_manages_brands_under_the_same_rules_as_admin(auth_client, cce_user):
     client = auth_client(cce_user)
-    for base, obj in [(CATEGORIES, category), (BRANDS, brand), (TAGS, tag)]:
-        assert client.patch(f"{base}{obj.pk}/", {"name": "Hacked"}, format="json").status_code == 403
-        assert client.delete(f"{base}{obj.pk}/").status_code == 403
-    assert Category.objects.get().name == category.name and Brand.objects.count() == 1 and Tag.objects.count() == 1
+    r = client.post(BRANDS, {"name": "Glow Co"}, format="json")
+    assert r.status_code == 201 and r.json()["is_active"] is True and r.json()["slug"] == "glow-co"
+    assert client.post(BRANDS, {"name": "glow co"}, format="json").status_code == 400  # names are unique
+    url = f"{BRANDS}{r.json()['id']}/"
+    assert client.patch(url, {"is_active": False, "description": "Korean skincare"}, format="json").json()["is_active"] is False
+    assert client.delete(url).status_code == 204 and not Brand.objects.exists()
+
+
+def test_cce_manages_categories_under_the_same_rules_as_admin(auth_client, cce_user):
+    client = auth_client(cce_user)
+    root = client.post(CATEGORIES, {"name": "Skincare"}, format="json")
+    assert root.status_code == 201 and root.json()["is_active"] is True  # the model's default
+    child = client.post(CATEGORIES, {"name": "Serums", "parent": root.json()["id"]}, format="json")
+    assert child.status_code == 201 and child.json()["parent"] == root.json()["id"]
+    root_url, child_url = f"{CATEGORIES}{root.json()['id']}/", f"{CATEGORIES}{child.json()['id']}/"
+    assert client.patch(root_url, {"parent": child.json()["id"]}, format="json").status_code == 400  # no loops
+    assert client.delete(root_url).status_code == 409  # still has a child
+    assert client.patch(child_url, {"is_active": False}, format="json").json()["is_active"] is False
+    assert client.delete(child_url).status_code == 204 and client.delete(root_url).status_code == 204
+
+
+def test_cce_can_add_a_tag_but_not_a_duplicate(auth_client, cce_user):
+    client = auth_client(cce_user)
+    assert client.post(TAGS, {"name": "Vegan"}, format="json").status_code == 201
+    assert client.post(TAGS, {"name": "vegan"}, format="json").status_code == 400
+
+
+def test_cce_cannot_modify_or_delete_tags(auth_client, cce_user):
+    tag = TagFactory()
+    client = auth_client(cce_user)
+    assert client.patch(f"{TAGS}{tag.pk}/", {"name": "Hacked"}, format="json").status_code == 403
+    assert client.delete(f"{TAGS}{tag.pk}/").status_code == 403
+    assert Tag.objects.get().name == tag.name
 
 
 @pytest.mark.parametrize("url", [CATEGORIES, BRANDS, TAGS])

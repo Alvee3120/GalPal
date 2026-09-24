@@ -214,3 +214,14 @@ def test_deleting_a_zone_keeps_its_history_with_the_name():
 ])
 def test_estimated_days_text(low, high, label, text):
     assert format_estimated_days(low, high, label) == text
+
+
+def test_the_dhaka_outer_zone_splits_dhaka_at_100():
+    from apps.shipping.services import calculate_shipping, invalidate_cache
+
+    seed.seed_all(District, DeliveryZone, ZoneDistrict, DeliveryMethod, ShippingChargeHistory)
+    assert seed.seed_dhaka_outer_zone(DeliveryZone, ZoneDistrict, District, ShippingChargeHistory) == ["Dhaka Outer Zones"]
+    assert seed.seed_dhaka_outer_zone(DeliveryZone, ZoneDistrict, District, ShippingChargeHistory) == []  # once only
+    invalidate_cache()
+    charge = lambda area: calculate_shipping({"district": "Dhaka", "area": area}, 0)["charge"]  # noqa: E731
+    assert [charge(a) for a in ("Dohar", "savar", "Dhaka Sadar", "")] == [Decimal("100.00"), Decimal("100.00"), Decimal("70.00"), Decimal("70.00")]

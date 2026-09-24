@@ -57,7 +57,9 @@ export default function AddOrderForm({ currencySymbol }) {
   const total = subtotal + Number(shipping?.charge ?? 0);
 
   async function refreshShipping(nextCity, nextZone, nextSubtotal) {
-    if (!nextCity || nextSubtotal <= 0) {
+    // Quote as soon as a city is picked, even before any product is added (subtotal 0), so the CCE can tell
+    // the customer the delivery charge up front; adding products re-quotes for free-shipping thresholds.
+    if (!nextCity) {
       setShipping(null);
       return;
     }

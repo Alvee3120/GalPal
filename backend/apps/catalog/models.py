@@ -10,7 +10,7 @@ from django.utils import timezone
 
 from apps.core.models import SlugModel, SoftDeleteModel, TimeStampedModel
 from apps.core.utils import UploadPath
-from apps.core.validators import validate_image_file
+from apps.core.validators import validate_bd_phone, validate_image_file
 
 _min_zero = MinValueValidator(0)
 _positive = MinValueValidator(Decimal("0.01"))
@@ -407,3 +407,27 @@ class StockMovement(TimeStampedModel):
 
     def __str__(self):
         return f"{self.product_id}: {self.quantity_change:+d}"
+
+
+class StockNotification(TimeStampedModel):
+    """
+    A "Notify Me" request: text `phone` when `product` (or one `variant` of it) is back in stock.
+
+    `variant` null means "the product": for a product with variants, any of its variants coming back.
+    `notified_at` is set once the alert has been sent; a sent request is kept as history, and the same
+    phone can then subscribe again. `services.subscribe_to_restock` allows one pending request per
+    product/variant/phone (checked under a lock on the product row).
+    """
+
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="stock_notifications")
+    variant = models.ForeignKey(ProductVariant, null=True, blank=True, on_delete=models.CASCADE, related_name="stock_notifications")
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    phone = models.CharField(max_length=11, validators=[validate_bd_phone])
+    notified_at = models.DateTimeField(null=True, blank=True, db_index=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [models.Index(fields=["product", "notified_at"])]
+
+    def __str__(self):
+        return f"{self.phone} -> {self.variant or self.product}"

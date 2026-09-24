@@ -126,6 +126,22 @@
   --color-shop-range-track: var(--color-border);
   --color-shop-range-fill: var(--color-brand);
 
+  /* Order statuses (OrderStatusDropdown): text / background per status */
+  --color-status-pending-text: #92400e;
+  --color-status-pending-bg: #fef3c7;
+  --color-status-processing-text: #1e40af;
+  --color-status-processing-bg: #dbeafe;
+  --color-status-confirmed-text: #155e75;
+  --color-status-confirmed-bg: #cffafe;
+  --color-status-shipped-text: #3730a3;
+  --color-status-shipped-bg: #e0e7ff;
+  --color-status-delivered-text: #065f46;
+  --color-status-delivered-bg: #d1fae5;
+  --color-status-cancelled-text: #334155;
+  --color-status-cancelled-bg: #f1f5f9;
+  --color-status-returned-text: #991b1b;
+  --color-status-returned-bg: #fee2e2;
+
   /* Kept for existing usages */
   --background: var(--color-background);
   --foreground: var(--color-foreground);
@@ -1030,6 +1046,171 @@ a.dashboard-card:hover {
 .product-picker-row--selected {
   border-color: var(--color-brand);
   background-color: color-mix(in srgb, var(--color-brand) 6%, var(--color-background));
+}
+
+/* Order status control: tinted by status (tokens above). A status without its own colors (e.g. failed) keeps the
+   plain input look. The border takes the text color, softened, so the pill reads as one shape. */
+.order-status[data-status] {
+  --status-text: currentColor;
+  --status-bg: var(--color-background);
+}
+.order-status[data-status="pending"] { --status-text: var(--color-status-pending-text); --status-bg: var(--color-status-pending-bg); }
+.order-status[data-status="processing"] { --status-text: var(--color-status-processing-text); --status-bg: var(--color-status-processing-bg); }
+.order-status[data-status="confirmed"] { --status-text: var(--color-status-confirmed-text); --status-bg: var(--color-status-confirmed-bg); }
+.order-status[data-status="shipped"] { --status-text: var(--color-status-shipped-text); --status-bg: var(--color-status-shipped-bg); }
+.order-status[data-status="delivered"] { --status-text: var(--color-status-delivered-text); --status-bg: var(--color-status-delivered-bg); }
+.order-status[data-status="cancelled"] { --status-text: var(--color-status-cancelled-text); --status-bg: var(--color-status-cancelled-bg); }
+.order-status[data-status="returned"] { --status-text: var(--color-status-returned-text); --status-bg: var(--color-status-returned-bg); }
+
+.order-status--button[data-status] {
+  color: var(--status-text);
+  background-color: var(--status-bg);
+  border-color: color-mix(in srgb, var(--status-text) 25%, transparent);
+  font-weight: 500;
+}
+
+.order-status--button[data-status]:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--status-text) 45%, transparent);
+}
+
+.order-status--dot[data-status] {
+  background-color: var(--status-text);
+}
+
+/* ================================
+   CCE Product Management (component/dashboard/products/*): table, status badges, icon actions, form pieces
+   ================================ */
+.product-table thead tr {
+  background-color: var(--color-shop-sidebar-bg);
+}
+
+.product-table tbody tr + tr,
+.product-table thead tr {
+  border-bottom: 1px solid var(--color-cart-line);
+}
+
+.product-table tbody tr:hover {
+  background-color: color-mix(in srgb, var(--color-brand) 3%, var(--color-background));
+}
+
+.product-status-badge {
+  display: inline-block;
+  white-space: nowrap;
+  background-color: var(--color-showcase-empty);
+  color: var(--color-brand);
+}
+
+.product-status-badge[data-status="published"],
+.product-status-badge[data-status="active"] {
+  background-color: color-mix(in srgb, var(--color-success) 12%, var(--color-background));
+  color: var(--color-success);
+}
+
+.product-status-badge[data-status="draft"],
+.product-status-badge[data-status="inactive"] {
+  background-color: color-mix(in srgb, var(--color-foreground) 7%, var(--color-background));
+  color: var(--color-foreground);
+}
+
+.product-status-badge[data-status="archived"] {
+  background-color: color-mix(in srgb, var(--color-danger) 10%, var(--color-background));
+  color: var(--color-danger);
+}
+
+/* A status badge that is also a <select> (Notify Me requests): no box of its own, just the badge colors. */
+.status-select {
+  border: 1px solid color-mix(in srgb, currentColor 20%, transparent);
+}
+
+.status-select:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+/* Icon-only row actions (Edit / Delete): the label lives in aria-label + title. */
+.icon-action {
+  color: var(--color-foreground);
+  border: 1px solid var(--color-cart-line);
+  background-color: var(--color-background);
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+.icon-action:hover:not(:disabled) {
+  border-color: var(--color-brand);
+  color: var(--color-brand);
+}
+
+.icon-action--danger:hover:not(:disabled) {
+  border-color: var(--color-danger);
+  color: var(--color-danger);
+  background-color: color-mix(in srgb, var(--color-danger) 8%, var(--color-background));
+}
+
+.icon-action:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.icon-action--overlay {
+  background-color: var(--color-video-control-bg);
+}
+
+.form-check {
+  accent-color: var(--color-brand);
+}
+
+.form-check:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.image-drop {
+  background-color: var(--color-product-tile);
+  border: 1px dashed var(--color-cart-line);
+}
+
+.variant-card {
+  border: 1px solid var(--color-cart-line);
+  background-color: var(--color-shop-sidebar-bg);
+}
+
+.category-tree__branch {
+  border-color: var(--color-cart-line);
+}
+
+/* Tags dual list (TagSelector) */
+.tag-pane {
+  border: 1px solid var(--color-cart-line);
+  background-color: var(--color-background);
+}
+
+.tag-pane__head {
+  background-color: var(--color-shop-sidebar-bg);
+  border-bottom: 1px solid var(--color-cart-line);
+  margin-bottom: 0.5rem;
+}
+
+.tag-pane__list {
+  border-top: 1px solid var(--color-cart-line);
+}
+
+.tag-pane__item {
+  transition: background-color 0.15s ease;
+}
+
+.tag-pane__item:hover {
+  background-color: var(--color-hover);
+}
+
+.tag-pane__item[aria-selected="true"] {
+  background-color: color-mix(in srgb, var(--color-brand) 12%, var(--color-background));
+  color: var(--color-brand);
+  font-weight: 500;
+}
+
+.tag-pane__item:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: -2px;
 }
 
 /* OrderDateRangePicker's calendar popover (Order Management's "Order Date" filter) — HeroUI handles the

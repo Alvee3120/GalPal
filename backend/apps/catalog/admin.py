@@ -12,6 +12,7 @@ from .models import (
     ProductImage,
     ProductVariant,
     StockMovement,
+    StockNotification,
     Tag,
 )
 
@@ -124,4 +125,12 @@ class AttributeValueAdmin(admin.ModelAdmin):
 class StockMovementAdmin(admin.ModelAdmin):
     list_display = ["product", "variant", "quantity_change", "balance_after", "reason", "created_at"]
     list_filter = ["reason"]
+    raw_id_fields = ["product", "variant", "user"]
+
+
+@admin.register(StockNotification)
+class StockNotificationAdmin(admin.ModelAdmin):
+    list_display = ["product", "variant", "phone", "created_at", "notified_at"]
+    list_filter = [("notified_at", admin.EmptyFieldListFilter)]
+    search_fields = ["phone", "product__name", "product__sku"]
     raw_id_fields = ["product", "variant", "user"]

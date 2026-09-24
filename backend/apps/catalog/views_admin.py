@@ -1,4 +1,4 @@
-"""Admin endpoints (Admin only; CCE gets 403)."""
+"""Admin endpoints (Admin only; CCE gets 403 except the actions each viewset lists in `cce_actions`)."""
 
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db.models import Count
@@ -8,7 +8,7 @@ from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 
-from apps.accounts.permissions import IsAdmin
+from apps.accounts.permissions import CatalogStaffActionsMixin, IsAdmin
 from apps.core.serializers import ErrorResponseSerializer
 from apps.core.utils import discard_file
 
@@ -25,7 +25,7 @@ from .serializers import (
 ERR = OpenApiResponse(ErrorResponseSerializer)
 
 
-class _AdminModelViewSet(viewsets.ModelViewSet):
+class _AdminModelViewSet(CatalogStaffActionsMixin, viewsets.ModelViewSet):
     permission_classes = [IsAdmin]
     http_method_names = ["get", "post", "patch", "delete", "head", "options"]
 
@@ -52,6 +52,9 @@ class _AdminModelViewSet(viewsets.ModelViewSet):
     ),
 )
 class AdminCategoryViewSet(_AdminModelViewSet):
+    # Category Management in the CCE dashboard, plus the product form's category picker. Same serializer and
+    # services as Admin, so the same rules hold (no loops, and deleting is refused while products/children depend on it).
+    cce_actions = frozenset({"list", "retrieve", "tree", "create", "partial_update", "destroy"})
     serializer_class = AdminCategorySerializer
     filterset_class = AdminCategoryFilter
     search_fields = ["name", "slug"]
@@ -96,6 +99,9 @@ class AdminCategoryViewSet(_AdminModelViewSet):
     destroy=extend_schema(tags=["Admin – Brands"], summary="Delete a brand"),
 )
 class AdminBrandViewSet(_AdminModelViewSet):
+    # Brand Management in the CCE dashboard, plus the product form's brand picker. Same serializer as Admin;
+    # deleting a brand leaves its products brandless (Product.brand is SET_NULL), exactly as for Admin.
+    cce_actions = frozenset({"list", "retrieve", "create", "partial_update", "destroy"})
     serializer_class = AdminBrandSerializer
     queryset = Brand.objects.all()
     filterset_class = AdminBrandFilter
@@ -117,6 +123,7 @@ class AdminBrandViewSet(_AdminModelViewSet):
     destroy=extend_schema(tags=["Admin – Tags"], summary="Delete a tag"),
 )
 class AdminTagViewSet(_AdminModelViewSet):
+    cce_actions = frozenset({"list", "retrieve", "create"})  # the product form's tag picker, incl. "+ Add Tag"
     serializer_class = AdminTagSerializer
     queryset = Tag.objects.all()
     filterset_class = AdminTagFilter

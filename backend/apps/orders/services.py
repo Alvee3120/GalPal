@@ -54,16 +54,9 @@ S = OrderStatus
 
 # --- the status machine ---------------------------------------------------------------------------------
 
-TRANSITIONS = {
-    S.PENDING: {S.CONFIRMED, S.CANCELLED, S.FAILED},
-    S.CONFIRMED: {S.PROCESSING, S.CANCELLED, S.FAILED},
-    S.PROCESSING: {S.SHIPPED, S.CANCELLED, S.FAILED},
-    S.SHIPPED: {S.DELIVERED, S.RETURNED, S.FAILED},
-    S.DELIVERED: {S.RETURNED},
-    S.CANCELLED: set(),
-    S.RETURNED: set(),
-    S.FAILED: set(),
-}
+# Staff may move an order from any status to any other (e.g. to correct a mistake or reopen a cancelled
+# order); change_status keeps stock and coupon usage in step with whichever way the order moves.
+TRANSITIONS = {old: {new for new in S if new != old} for old in S}
 STOCK_RELEASING = {S.CANCELLED, S.FAILED, S.RETURNED}  # the goods never left, or came back
 COUPON_RELEASING = {S.CANCELLED, S.FAILED}  # a coupon isn't "used" by an order that never happened
 CUSTOMER_CANCELLABLE = {S.PENDING}  # once staff confirms an order, the customer can no longer cancel it themselves
@@ -256,6 +249,28 @@ def _restore_stock(order, note, user):
         except ValidationError:  # stock stopped being managed since; nothing to restore into
             logger.warning("Could not restore stock for order %s item %s", order.number, item.pk)
     order.stock_released_at = timezone.now()
+    order.save(update_fields=["stock_released_at", "updated_at"])
+
+
+def _retake_stock(order, note, user):
+    """Undo `_restore_stock` for an order that is live again: take each line's stock_deducted back off the shelf."""
+    if order.stock_released_at is None:
+        return
+    for item in order.items.select_related("product", "variant"):
+        if not item.stock_deducted or item.product is None:
+            continue
+        target = item.variant or item.product
+        if not target.manage_stock:
+            continue
+        try:
+            catalog_services.adjust_stock(
+                product=item.product, variant=item.variant, quantity_change=-item.stock_deducted,
+                reason=StockMovement.Reason.SALE, reference=order.number, note=note, user=user,
+            )
+        except ValidationError:
+            name = f"{item.product_name} ({item.variant_label})" if item.variant_label else item.product_name
+            raise field_error("status", f"Not enough stock to reopen this order: {name} needs {item.stock_deducted}.", "insufficient_stock")
+    order.stock_released_at = None
     order.save(update_fields=["stock_released_at", "updated_at"])
 
 
@@ -590,7 +605,10 @@ def allowed_transitions(status):
 
 @transaction.atomic
 def change_status(order, new_status, *, user, note="", courier=None):
-    """Move an order along the status machine, releasing stock/coupon for cancel/fail/return, and log it."""
+    """
+    Move an order to another status and log it. Cancel/fail/return put the stock back (and cancel/fail free the
+    coupon use); moving such an order back to a live status takes the stock and the coupon use again.
+    """
     order = Order.objects.select_for_update().get(pk=order.pk)
     old = order.status
     if new_status == old:
@@ -606,8 +624,15 @@ def change_status(order, new_status, *, user, note="", courier=None):
     order.save()
     if new_status in STOCK_RELEASING:
         _restore_stock(order, f"Order {new_status}", user)
+    else:
+        _retake_stock(order, f"Order reopened as {new_status}", user)
     if new_status in COUPON_RELEASING:
         CouponUsage.objects.filter(order_reference=order.number).delete()
+    elif old in COUPON_RELEASING and order.coupon_id and order.discount_amount:
+        CouponUsage.objects.get_or_create(
+            order_reference=order.number,
+            defaults={"coupon_id": order.coupon_id, "user": order.customer, "phone": order.phone, "discount_amount": order.discount_amount},
+        )
     OrderStatusHistory.objects.create(order=order, from_status=old, to_status=new_status, changed_by=user, note=note)
     return order
 

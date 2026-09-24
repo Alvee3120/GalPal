@@ -1,7 +1,8 @@
 """Admin endpoints for products, variants, gallery images, attributes and inventory.
 
-Admin only (CCE gets 403), except the lightweight product picker which Module 10 will also
-grant to CCE for building manual orders.
+Admin only (CCE gets 403), except product management: CCE may list, view, create, edit and delete
+products, manage their gallery and variants, add attribute values, and set stock (IsCatalogStaff, per `cce_actions`).
+Bulk actions, duplication, the inventory log and attribute editing stay Admin only.
 """
 
 from django.core.exceptions import ValidationError as DjangoValidationError
@@ -15,7 +16,7 @@ from rest_framework.generics import ListAPIView
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.accounts.permissions import IsAdmin
+from apps.accounts.permissions import CatalogStaffActionsMixin, IsAdmin, IsCatalogStaff
 from apps.core.serializers import ErrorResponseSerializer
 from apps.core.utils import discard_file
 
@@ -53,8 +54,9 @@ def _raise(exc):
     partial_update=extend_schema(tags=["Admin – Products"], summary="Update a product", responses={200: AdminProductSerializer, 400: ERR}),
     destroy=extend_schema(tags=["Admin – Products"], summary="Delete a product (soft delete)"),
 )
-class AdminProductViewSet(viewsets.ModelViewSet):
+class AdminProductViewSet(CatalogStaffActionsMixin, viewsets.ModelViewSet):
     permission_classes = [IsAdmin]
+    cce_actions = frozenset({"list", "retrieve", "create", "partial_update", "destroy"})
     http_method_names = ["get", "post", "patch", "delete", "head", "options"]
     filterset_class = AdminProductFilter
     search_fields = ["name", "sku", "barcode", "brand__name"]
@@ -151,7 +153,7 @@ def _apply_stock_adjustment(item, user):
     request=StockAdjustmentSerializer, responses={200: StockMovementSerializer, 400: ERR},
 )
 class StockAdjustmentView(APIView):
-    permission_classes = [IsAdmin]
+    permission_classes = [IsCatalogStaff]  # the product form sets stock through here, so it's logged like any adjustment
 
     def post(self, request):
         serializer = StockAdjustmentSerializer(data=request.data)
@@ -182,7 +184,7 @@ class AdminStockMovementViewSet(viewsets.ReadOnlyModelViewSet):
     destroy=extend_schema(tags=["Admin – Products"], summary="Remove a gallery image"),
 )
 class AdminProductImageViewSet(viewsets.ModelViewSet):
-    permission_classes = [IsAdmin]
+    permission_classes = [IsCatalogStaff]
     serializer_class = AdminProductImageSerializer
     http_method_names = ["get", "post", "patch", "delete", "head", "options"]
 
@@ -229,7 +231,7 @@ class AdminProductImageViewSet(viewsets.ModelViewSet):
     destroy=extend_schema(tags=["Admin – Products"], summary="Remove a variant"),
 )
 class AdminVariantViewSet(viewsets.ModelViewSet):
-    permission_classes = [IsAdmin]
+    permission_classes = [IsCatalogStaff]
     serializer_class = AdminVariantSerializer
     http_method_names = ["get", "post", "patch", "delete", "head", "options"]
 
@@ -260,8 +262,9 @@ class AdminVariantViewSet(viewsets.ModelViewSet):
     partial_update=extend_schema(tags=["Admin – Products"], summary="Rename an attribute"),
     destroy=extend_schema(tags=["Admin – Products"], summary="Delete an attribute (and its values)"),
 )
-class AdminProductAttributeViewSet(viewsets.ModelViewSet):
+class AdminProductAttributeViewSet(CatalogStaffActionsMixin, viewsets.ModelViewSet):
     permission_classes = [IsAdmin]
+    cce_actions = frozenset({"list", "retrieve"})  # variant option pickers
     serializer_class = AdminProductAttributeSerializer
     queryset = ProductAttribute.objects.prefetch_related("values")
     http_method_names = ["get", "post", "patch", "delete", "head", "options"]
@@ -275,8 +278,11 @@ class AdminProductAttributeViewSet(viewsets.ModelViewSet):
     partial_update=extend_schema(tags=["Admin – Products"], summary="Update a value"),
     destroy=extend_schema(tags=["Admin – Products"], summary="Delete a value"),
 )
-class AdminAttributeValueViewSet(viewsets.ModelViewSet):
+class AdminAttributeValueViewSet(CatalogStaffActionsMixin, viewsets.ModelViewSet):
     permission_classes = [IsAdmin]
+    # The product form's variants take typed values (e.g. "75ml"); a new one is created here. Renaming/deleting
+    # values, and creating attributes themselves, stay Admin only.
+    cce_actions = frozenset({"list", "retrieve", "create"})
     serializer_class = AdminAttributeValueSerializer
     queryset = AttributeValue.objects.select_related("attribute")
     http_method_names = ["get", "post", "patch", "delete", "head", "options"]

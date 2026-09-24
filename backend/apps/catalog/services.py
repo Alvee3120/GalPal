@@ -1,9 +1,12 @@
 """Catalog business logic: category tree integrity, visibility, safe deletion, and products
 (pricing/stock rules, variant option uniqueness, duplication)."""
 
+import logging
+
 from django.core.exceptions import ValidationError
 from django.core.files.base import ContentFile
 from django.db import transaction
+from django.db.models import Q
 from django.utils import timezone
 
 from apps.core.utils import discard_file, unique_slugify
@@ -22,6 +25,8 @@ from .models import (
 )
 
 ROOT = "root"  # `move_children_to=root` re-parents children to the top level
+
+logger = logging.getLogger(__name__)
 
 
 def field_error(field, message, code):
@@ -305,7 +310,8 @@ def adjust_stock(*, product, variant=None, quantity_change, reason, reference=""
     if not locked.manage_stock:
         raise field_error("quantity_change", "Stock is not managed for this item.", "stock_not_managed")
 
-    new_balance = locked.stock_quantity + quantity_change
+    old_balance = locked.stock_quantity
+    new_balance = old_balance + quantity_change
     if new_balance < 0:
         raise field_error(
             "quantity_change", f"Not enough stock: only {locked.stock_quantity} on hand.", "insufficient_stock"
@@ -328,6 +334,9 @@ def adjust_stock(*, product, variant=None, quantity_change, reason, reference=""
         note=note,
         user=user,
     )
+    if old_balance <= 0 < new_balance:  # back in stock: text whoever asked, once the stock change has committed
+        product_id = variant.product_id if variant else product.pk
+        transaction.on_commit(lambda: _queue_restock_alerts(product_id, variant.pk if variant else None))
     return locked, movement
 
 
@@ -414,3 +423,101 @@ def duplicate_product(product):
         new_variant.attribute_values.set(variant.attribute_values.all())
 
     return copy
+
+
+# --- "Notify Me" (back-in-stock alerts) -------------------------------------------------------------------------------
+
+
+def _is_available(product, variant):
+    if variant is not None:
+        return variant.is_active and variant.in_stock
+    if product.has_variants:
+        return any(v.is_active and v.in_stock for v in product.variants.all())
+    return product.in_stock
+
+
+@transaction.atomic
+def subscribe_to_restock(*, product_id, variant_id=None, phone=None, user=None):
+    """
+    Record a "Notify Me" request for a published, currently unavailable product (or one of its variants).
+    A logged-in customer is texted on their account's phone; a guest must give one. 409 if the same phone
+    is already waiting for the same item.
+    """
+    from .models import StockNotification
+
+    product = Product.objects.select_for_update().filter(pk=product_id, status="published").first()
+    if product is None:
+        raise field_error("product_id", "This product is not available.", "not_found")
+    variant = None
+    if variant_id is not None:
+        variant = ProductVariant.objects.filter(pk=variant_id, product=product, is_active=True).first()
+        if variant is None:
+            raise field_error("variant_id", "This option is not available.", "not_found")
+    if _is_available(product, variant):
+        raise field_error("product_id", "This item is in stock, so you can order it now.", "in_stock")
+
+    if user is not None and user.is_authenticated and user.phone:
+        phone = user.phone
+    elif phone:
+        from apps.core.validators import normalize_bd_phone
+
+        try:
+            phone = normalize_bd_phone(phone)
+        except ValidationError:
+            raise field_error("phone", "Enter a valid Bangladesh mobile number, e.g. 01712345678.", "invalid_phone") from None
+    else:
+        raise field_error("phone", "A phone number is required.", "required")
+
+    pending = StockNotification.objects.filter(product=product, variant=variant, phone=phone, notified_at__isnull=True)
+    if pending.exists():
+        raise Conflict("You're already on the notification list for this product.", code="already_subscribed")
+    return StockNotification.objects.create(
+        product=product, variant=variant, phone=phone, user=user if user is not None and user.is_authenticated else None
+    )
+
+
+def _queue_restock_alerts(product_id, variant_id):
+    try:
+        from .tasks import send_restock_alerts_task
+
+        send_restock_alerts_task.delay(product_id, variant_id)
+    except Exception:  # noqa: BLE001 - an alert problem must never undo or fail the stock change itself
+        logger.exception("Could not queue back-in-stock alerts for product %s", product_id)
+
+
+def send_restock_alerts(product_id, variant_id=None):
+    """
+    Text everyone waiting for this product/variant, if it really is buyable right now, and mark them notified.
+    A variant coming back also answers requests made for the product as a whole. Returns how many were sent.
+    """
+    from apps.core.messaging import send_sms
+    from apps.site_settings.services import get_site_settings
+
+    from .models import StockNotification
+
+    product = Product.objects.filter(pk=product_id, status="published").first()
+    if product is None:
+        return 0
+    variant = ProductVariant.objects.filter(pk=variant_id, product=product).first() if variant_id else None
+    if (variant_id and variant is None) or not _is_available(product, variant):
+        return 0
+
+    waiting = StockNotification.objects.filter(product=product, notified_at__isnull=True)
+    waiting = waiting.filter(Q(variant=variant) | Q(variant__isnull=True)) if variant else waiting.filter(variant__isnull=True)
+    if not waiting.exists():
+        return 0
+
+    options = ", ".join(v.value for v in variant.attribute_values.all()) if variant else ""
+    name = f"{product.name} ({options})" if options else product.name
+    message = f"Good news! {name} is back in stock at {get_site_settings().site_name}. Order soon, stock is limited."
+    sent = 0
+    for request in waiting:
+        try:
+            send_sms(request.phone, message)
+        except Exception:  # noqa: BLE001 - one failed number mustn't stop the rest; it stays pending for next time
+            logger.exception("Back-in-stock SMS failed for notification %s", request.pk)
+            continue
+        request.notified_at = timezone.now()
+        request.save(update_fields=["notified_at", "updated_at"])
+        sent += 1
+    return sent
