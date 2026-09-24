@@ -12,6 +12,7 @@ import TrendingProducts from "@/component/homepage/TrendingProducts";
 import ShoppableVideoCarousel, {
   VideoCarouselSkeleton,
 } from "@/component/homepage/ShoppableVideoCarousel";
+import CustomerReviews, { CustomerReviewsSkeleton } from "@/component/homepage/CustomerReviews";
 
 export default function Home() {
   return (
@@ -57,6 +58,10 @@ export default function Home() {
 
       <Suspense fallback={<VideoCarouselSkeleton />}>
         <ShoppableVideoCarousel />
+      </Suspense>
+
+      <Suspense fallback={<CustomerReviewsSkeleton />}>
+        <CustomerReviews />
       </Suspense>
     </main>
   );

@@ -1,11 +1,12 @@
 """Admin endpoints: full review CRUD, moderation (approve/reject), replies, and manual/testimonial
-reviews. Admin only — CCE has no access here."""
+reviews. Admin only, except moderation: CCE may list, view, approve, reject and delete reviews
+(IsCatalogStaff via `cce_actions`); editing, replying and manual reviews stay Admin only."""
 from drf_spectacular.utils import OpenApiResponse, extend_schema, extend_schema_view
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
-from apps.accounts.permissions import IsAdmin
+from apps.accounts.permissions import CatalogStaffActionsMixin, IsAdmin
 from apps.core.serializers import ErrorResponseSerializer
 
 from . import services
@@ -23,13 +24,14 @@ TAG = ["Admin – Reviews"]
     partial_update=extend_schema(tags=TAG, summary="Edit a review", responses={200: AdminReviewSerializer, 400: ERR}),
     destroy=extend_schema(tags=TAG, summary="Delete a review", description="Removes it and its images, and the product's rating is recomputed.", responses={204: None}),
 )
-class AdminReviewViewSet(viewsets.ModelViewSet):
+class AdminReviewViewSet(CatalogStaffActionsMixin, viewsets.ModelViewSet):
     permission_classes = [IsAdmin]
+    cce_actions = frozenset({"list", "retrieve", "approve", "reject", "destroy"})  # CCE Review Management
     queryset = Review.objects.select_related("product", "user", "replied_by", "created_by").prefetch_related("images")
     serializer_class = AdminReviewSerializer
     http_method_names = ["get", "post", "patch", "delete", "head", "options"]
     filterset_class = AdminReviewFilter
-    search_fields = ["reviewer_name", "text", "product__name"]
+    search_fields = ["reviewer_name", "text", "product__name", "product__sku", "user__phone"]
     ordering_fields = ["created_at", "rating"]
     ordering = ["-created_at"]
 

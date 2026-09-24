@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FaStar } from "react-icons/fa";
@@ -45,7 +45,7 @@ function ReviewCard({ review }) {
         </time>
       </div>
       {review.title && <p className="text-sm font-medium">{review.title}</p>}
-      <p className="text-sm leading-relaxed">{review.text}</p>
+      <p className="text-sm leading-relaxed [overflow-wrap:anywhere]">{review.text}</p>
       {review.images?.length > 0 && (
         <div className="flex flex-wrap gap-2">
           {review.images.map((img) => (
@@ -57,11 +57,31 @@ function ReviewCard({ review }) {
       {review.admin_reply && (
         <div className="review-reply rounded-xl px-4 py-3 text-sm">
           <p className="text-xs font-semibold uppercase tracking-wide">Reply from GalPal</p>
-          <p className="mt-1 leading-relaxed">{review.admin_reply}</p>
+          <p className="mt-1 leading-relaxed [overflow-wrap:anywhere]">{review.admin_reply}</p>
         </div>
       )}
     </article>
   );
+}
+
+// Local previews for picked photos: one object URL per file, released when the selection changes or the form resets.
+function PhotoPreviews({ files, onRemove }) {
+  const urls = useMemo(() => files.map((file) => URL.createObjectURL(file)), [files]);
+  useEffect(() => () => urls.forEach((url) => URL.revokeObjectURL(url)), [urls]);
+  return files.map((file, i) => (
+    <span key={`${file.name}-${i}`} className="review-thumb relative h-16 w-16 shrink-0 overflow-hidden rounded-lg">
+      {/* eslint-disable-next-line @next/next/no-img-element -- a local File preview, not a served asset */}
+      <img src={urls[i]} alt="" className="h-full w-full object-cover" />
+      <button
+        type="button"
+        onClick={() => onRemove(i)}
+        aria-label="Remove photo"
+        className="review-thumb__remove absolute right-0.5 top-0.5 flex h-5 w-5 items-center justify-center rounded-full"
+      >
+        <FiX className="h-3 w-3" aria-hidden="true" />
+      </button>
+    </span>
+  ));
 }
 
 function StarPicker({ value, onChange }) {
@@ -91,7 +111,8 @@ function StarPicker({ value, onChange }) {
 // server-rendered first page in `initialReviews`, "Load more" fetches the rest) for the list, `breakdown` (GET
 // /reviews/breakdown/) for the average/count/star bars, and POST /reviews/ (via /api/reviews) for a logged-in
 // customer's own submission. The backend, not this component, decides which reviews are public: only APPROVED
-// ones are ever returned, so a submitted review may not appear immediately — the success toast says so.
+// ones are ever returned (and counted in the rating), so a submitted review stays hidden until staff approve it.
+// The page keys this component on the backend's count/average, so a refresh with new public data re-seeds it.
 export default function ProductReviews({ product, initialReviews, breakdown }) {
   const router = useRouter();
   const authed = useAuthed();
@@ -102,6 +123,7 @@ export default function ProductReviews({ product, initialReviews, breakdown }) {
   const [formOpen, setFormOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({ rating: 0, text: "", images: [] });
+  const [awaitingApproval, setAwaitingApproval] = useState(false);
 
   const average = Number(breakdown.average_rating) || 0;
   const total = breakdown.review_count ?? 0;
@@ -170,10 +192,13 @@ export default function ProductReviews({ product, initialReviews, breakdown }) {
         return;
       }
 
-      notify.success("Review submitted successfully! It will appear once approved.");
+      // New customer reviews start as "pending" (apps.reviews.models.Review.status): they only become public — and
+      // only count toward the rating — once staff approve them, so nothing public changes yet.
+      notify.success("Review submitted successfully and is awaiting approval.");
       setForm({ rating: 0, text: "", images: [] });
       setFormOpen(false);
-      router.refresh(); // picks up a pre-approved review (e.g. an already-verified customer) on the next server render
+      setAwaitingApproval(true);
+      router.refresh(); // re-read the backend's current public reviews/rating (the POST route revalidated them)
     } catch {
       notify.error("Failed to submit review.");
     } finally {
@@ -187,7 +212,9 @@ export default function ProductReviews({ product, initialReviews, breakdown }) {
         <h2 id="reviews-heading" className="custom-font text-2xl sm:text-3xl">
           Rating &amp; Reviews
         </h2>
-        {authed ? (
+        {awaitingApproval ? (
+          <p className="review-verified rounded-full px-4 py-2 text-xs font-medium">Thanks! Your review is awaiting approval.</p>
+        ) : authed ? (
           <button
             type="button"
             onClick={() => setFormOpen((open) => !open)}
@@ -204,7 +231,7 @@ export default function ProductReviews({ product, initialReviews, breakdown }) {
         )}
       </div>
 
-      {formOpen && authed && (
+      {formOpen && authed && !awaitingApproval && (
         <form id="review-form" onSubmit={submit} noValidate className="review-card mt-6 flex flex-col gap-4 rounded-2xl p-5 sm:p-6">
           <div className="flex flex-col gap-1.5">
             <span className="text-sm font-medium">
@@ -236,25 +263,21 @@ export default function ProductReviews({ product, initialReviews, breakdown }) {
               Photos <span className="showcase-muted font-normal">(Optional, up to {MAX_IMAGES})</span>
             </span>
             <div className="flex flex-wrap gap-2">
-              {form.images.map((file, i) => (
-                <span key={`${file.name}-${i}`} className="review-thumb relative h-16 w-16 shrink-0 overflow-hidden rounded-lg">
-                  {/* eslint-disable-next-line @next/next/no-img-element -- a local File preview, not a served asset */}
-                  <img src={URL.createObjectURL(file)} alt="" className="h-full w-full object-cover" />
-                  <button
-                    type="button"
-                    onClick={() => removeImage(i)}
-                    aria-label="Remove photo"
-                    className="review-thumb__remove absolute right-0.5 top-0.5 flex h-5 w-5 items-center justify-center rounded-full"
-                  >
-                    <FiX className="h-3 w-3" aria-hidden="true" />
-                  </button>
-                </span>
-              ))}
+              <PhotoPreviews files={form.images} onRemove={removeImage} />
               {form.images.length < MAX_IMAGES && (
                 <label className="review-thumb-add flex h-16 w-16 shrink-0 cursor-pointer flex-col items-center justify-center gap-1 rounded-lg text-xs">
                   <FiUpload className="h-4 w-4" aria-hidden="true" />
                   Add
-                  <input type="file" accept="image/*" multiple className="sr-only" onChange={(e) => addImages(e.target.files)} />
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    multiple
+                    className="sr-only"
+                    onChange={(e) => {
+                      addImages(e.target.files);
+                      e.target.value = ""; // so picking the same file again after removing it still registers
+                    }}
+                  />
                 </label>
               )}
             </div>
