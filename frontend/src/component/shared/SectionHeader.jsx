@@ -1,10 +1,11 @@
 // Editorial homepage section header: title | description | actions (arrows) in one row on desktop;
 // on small screens the title and actions share a row with the description underneath.
 // Shared by the product carousels and the shoppable video carousel.
-export default function SectionHeader({ title, description, actions }) {
+// `titleClassName` overrides the title's width cap (a short editorial line by default).
+export default function SectionHeader({ title, description, actions, titleClassName = "max-w-[12em]" }) {
   return (
     <div className="mb-8 grid grid-cols-[minmax(0,1fr)_auto] items-end gap-x-6 gap-y-3 md:mb-10 lg:flex lg:justify-between lg:gap-x-12">
-      <h2 className="custom-font max-w-[12em] text-3xl leading-[1.1] sm:text-4xl">{title}</h2>
+      <h2 className={`custom-font ${titleClassName} text-3xl leading-[1.1] sm:text-4xl`}>{title}</h2>
 
       {/* Mobile: these two are placed straight into the grid (display: contents). Desktop: one right-hand group. */}
       <div className="contents lg:flex lg:min-w-0 lg:items-end lg:gap-10">

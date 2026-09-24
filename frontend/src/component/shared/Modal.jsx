@@ -62,7 +62,7 @@ export default function Modal({ open, title, onClose, children, wide = false }) 
               <FiX className="h-5 w-5" aria-hidden="true" />
             </button>
           </div>
-          <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
+          <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden">{children}</div>
         </div>
       </div>
     </div>

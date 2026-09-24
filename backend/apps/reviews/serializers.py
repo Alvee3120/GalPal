@@ -18,12 +18,15 @@ class PublicReviewSerializer(serializers.ModelSerializer):
     """An approved review, as shown on the storefront. No user id, status, or manual/staff bookkeeping."""
 
     images = ReviewImageSerializer(many=True, read_only=True)
+    # Which product it's about, for review lists that span products (the homepage testimonials).
+    product_name = serializers.CharField(source="product.name", read_only=True)
+    product_slug = serializers.CharField(source="product.slug", read_only=True)
 
     class Meta:
         model = Review
         fields = [
             "id", "reviewer_name", "rating", "title", "text", "images", "is_verified_purchase",
-            "admin_reply", "admin_reply_at", "created_at",
+            "admin_reply", "admin_reply_at", "created_at", "product_name", "product_slug",
         ]
 
 
@@ -53,8 +56,17 @@ class _PersonSerializer(serializers.Serializer):
     full_name = serializers.CharField()
 
 
+class _ReviewProductSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    name = serializers.CharField()
+    slug = serializers.CharField()
+    sku = serializers.CharField()
+    feature_image = serializers.ImageField()
+
+
 class AdminReviewSerializer(serializers.ModelSerializer):
     images = ReviewImageSerializer(many=True, read_only=True)
+    product_detail = _ReviewProductSerializer(source="product", read_only=True)
     user = serializers.SerializerMethodField()
     replied_by = serializers.SerializerMethodField()
     created_by = serializers.SerializerMethodField()
@@ -62,11 +74,11 @@ class AdminReviewSerializer(serializers.ModelSerializer):
     class Meta:
         model = Review
         fields = [
-            "id", "product", "user", "reviewer_name", "rating", "title", "text", "images", "status",
+            "id", "product", "product_detail", "user", "reviewer_name", "rating", "title", "text", "images", "status",
             "is_verified_purchase", "admin_reply", "admin_reply_at", "replied_by", "is_manual", "created_by",
             "created_at", "updated_at",
         ]
-        read_only_fields = ["id", "user", "is_verified_purchase", "admin_reply", "admin_reply_at", "replied_by", "is_manual", "created_by", "created_at", "updated_at"]
+        read_only_fields = ["id", "product_detail", "user", "is_verified_purchase", "admin_reply", "admin_reply_at", "replied_by", "is_manual", "created_by", "created_at", "updated_at"]
 
     def get_user(self, obj) -> dict | None:
         return None if obj.user_id is None else {"id": obj.user_id, "full_name": obj.user.full_name}

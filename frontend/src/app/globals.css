@@ -1146,6 +1146,21 @@ a.dashboard-card:hover {
   background-color: color-mix(in srgb, var(--color-danger) 8%, var(--color-background));
 }
 
+.icon-action--success:hover:not(:disabled) {
+  border-color: var(--color-success);
+  color: var(--color-success);
+  background-color: color-mix(in srgb, var(--color-success) 8%, var(--color-background));
+}
+
+/* Review moderation status (apps.reviews ReviewStatus): reuses the order-status palette tokens */
+.review-status {
+  display: inline-block;
+  white-space: nowrap;
+}
+.review-status[data-status="pending"] { color: var(--color-status-pending-text); background-color: var(--color-status-pending-bg); }
+.review-status[data-status="approved"] { color: var(--color-status-delivered-text); background-color: var(--color-status-delivered-bg); }
+.review-status[data-status="rejected"] { color: var(--color-status-returned-text); background-color: var(--color-status-returned-bg); }
+
 .icon-action:focus-visible {
   outline: 2px solid var(--color-focus);
   outline-offset: 2px;
@@ -1403,6 +1418,21 @@ a.dashboard-card:hover {
   background-color: var(--color-background);
   border: 1px solid var(--color-cart-line);
   box-shadow: 0 6px 20px -8px var(--color-shadow-soft);
+}
+
+/* Homepage testimonial cards (CustomerReviews / ReviewMarquee) */
+.testimonial-card {
+  background-color: var(--color-background);
+  border: 1px solid var(--color-cart-line);
+  box-shadow: 0 6px 20px -8px var(--color-shadow-soft);
+}
+
+.testimonial-card__text {
+  color: var(--color-editorial-text);
+}
+
+.testimonial-card__footer {
+  border-color: var(--color-cart-line);
 }
 
 .review-bar {

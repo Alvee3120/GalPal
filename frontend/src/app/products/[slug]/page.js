@@ -4,13 +4,13 @@ import ProductDetailContent from "@/component/product/ProductDetailContent";
 import ProductReviews from "@/component/product/ProductReviews";
 import RecommendedProducts from "@/component/product/RecommendedProducts";
 import { getCurrencySymbol } from "@/lib/siteSettings";
-import { getProductReviews, getRatingBreakdown } from "@/lib/reviewsData";
+import { REVIEWS_TAG, getProductReviews, getRatingBreakdown } from "@/lib/reviewsData";
 
 const API_BASE_URL = process.env.API_BASE_URL ?? "http://192.168.68.129:8000/api/v1";
 
 async function getProduct(slug) {
   try {
-    const res = await fetch(`${API_BASE_URL}/products/${slug}/`, { next: { revalidate: 60 } });
+    const res = await fetch(`${API_BASE_URL}/products/${slug}/`, { next: { revalidate: 60, tags: [REVIEWS_TAG] } }); // average_rating/review_count change with reviews
     if (res.status === 404) return null;
     if (!res.ok) throw new Error(`Product API responded ${res.status}`);
     return await res.json();
@@ -38,7 +38,13 @@ export default async function ProductDetailPage({ params }) {
       {/* <PageHero title={product.name} /> */}
       <div className="mx-auto w-full max-w-6xl px-4 pb-16 sm:px-6 lg:px-8">
         <ProductDetailContent product={product} currencySymbol={currencySymbol} />
-        <ProductReviews product={product} initialReviews={initialReviews} breakdown={breakdown} />
+        {/* keyed by what the backend reports, so a refresh after a review is approved/submitted re-seeds its state */}
+        <ProductReviews
+          key={`${breakdown.review_count}-${breakdown.average_rating}-${initialReviews.results[0]?.id ?? 0}`}
+          product={product}
+          initialReviews={initialReviews}
+          breakdown={breakdown}
+        />
         <RecommendedProducts products={product.related_products} currencySymbol={currencySymbol} />
       </div>
     </main>

@@ -50,10 +50,22 @@ def test_customers_get_403_everywhere(auth_client, customer, review):
         assert getattr(client, verb)(path, {}, format="json").status_code == 403, (verb, path)
 
 
-def test_cce_gets_403_everywhere(auth_client, cce_user, review):
+def test_cce_moderates_but_cannot_edit_reply_or_write_reviews(auth_client, cce_user, review):
     client = auth_client(cce_user)
-    for verb, path in every_route(review):
+    for verb, path in [("post", REVIEWS), ("patch", url(review)), ("post", url(review, "status/")), ("post", url(review, "reply/"))]:
         assert getattr(client, verb)(path, {}, format="json").status_code == 403, (verb, path)
+    assert client.get(REVIEWS).json()["count"] == 1
+    assert client.get(url(review)).json()["product_detail"]["id"] == review.product_id
+    assert client.post(url(review, "approve/")).json()["status"] == "approved"
+    assert client.post(url(review, "reject/")).json()["status"] == "rejected"
+    assert client.delete(url(review)).status_code == 204 and not Review.objects.exists()
+
+
+def test_approving_makes_it_public_and_counts_it(auth_client, cce_user, api_client, review):
+    auth_client(cce_user).post(url(review, "approve/"))
+    assert api_client.get("/api/v1/reviews/").json()["count"] == 1
+    review.product.refresh_from_db()
+    assert review.product.review_count == 1
 
 
 def test_the_route_sweep_covers_reviews_too():
@@ -76,7 +88,7 @@ def test_detail_shape(admin_client, customer, product):
     review = make(product, user=customer, status=ReviewStatus.APPROVED, is_verified_purchase=True)
     body = admin_client.get(url(review)).json()
     assert set(body) == {
-        "id", "product", "user", "reviewer_name", "rating", "title", "text", "images", "status", "is_verified_purchase",
+        "id", "product", "product_detail", "user", "reviewer_name", "rating", "title", "text", "images", "status", "is_verified_purchase",
         "admin_reply", "admin_reply_at", "replied_by", "is_manual", "created_by", "created_at", "updated_at",
     }
     assert body["user"] == {"id": customer.id, "full_name": customer.full_name} and body["status"] == "approved"

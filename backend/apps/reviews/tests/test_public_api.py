@@ -36,7 +36,11 @@ def test_only_approved_reviews_are_public(api_client, product):
 def test_the_public_shape_has_no_internal_fields(api_client, product):
     Review.objects.create(product=product, reviewer_name="A", rating=4, title="Nice", text="Good stuff", status=ReviewStatus.APPROVED, is_verified_purchase=True)
     row = api_client.get(REVIEWS).json()["results"][0]
-    assert set(row) == {"id", "reviewer_name", "rating", "title", "text", "images", "is_verified_purchase", "admin_reply", "admin_reply_at", "created_at"}
+    assert set(row) == {
+        "id", "reviewer_name", "rating", "title", "text", "images", "is_verified_purchase", "admin_reply", "admin_reply_at",
+        "created_at", "product_name", "product_slug",
+    }
+    assert row["product_name"] == product.name and row["product_slug"] == product.slug
     for hidden in ("status", "user", "is_manual", "created_by", "product"):
         assert hidden not in row
     assert row["is_verified_purchase"] is True
