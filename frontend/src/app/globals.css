@@ -1117,6 +1117,16 @@ a.dashboard-card:hover {
   color: var(--color-danger);
 }
 
+/* A status badge that is also a <select> (Notify Me requests): no box of its own, just the badge colors. */
+.status-select {
+  border: 1px solid color-mix(in srgb, currentColor 20%, transparent);
+}
+
+.status-select:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
 /* Icon-only row actions (Edit / Delete): the label lives in aria-label + title. */
 .icon-action {
   color: var(--color-foreground);

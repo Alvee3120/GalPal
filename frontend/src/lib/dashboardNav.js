@@ -1,6 +1,6 @@
 import { BiHome } from "react-icons/bi";
 import { FaMapLocationDot } from "react-icons/fa6";
-import { FiAward, FiGrid, FiLayers, FiPackage, FiPlusCircle, FiShoppingBag, FiUser } from "react-icons/fi";
+import { FiAward, FiBell, FiGrid, FiLayers, FiPackage, FiPlusCircle, FiShoppingBag, FiUser } from "react-icons/fi";
 
 // Role -> sidebar links, from the authenticated user's real `role` (apps.accounts.models.User.Role: "customer",
 // "admin", "cce" — see lib/currentUser.js). ONLY routes that actually exist are listed here: admin has no
@@ -24,6 +24,7 @@ export const DASHBOARD_NAV = {
     { label: "Products", href: "/dashboard/CCE/products", icon: FiPackage },
     { label: "Categories", href: "/dashboard/CCE/categories", icon: FiLayers },
     { label: "Brands", href: "/dashboard/CCE/brands", icon: FiAward },
+    { label: "Notify Me", href: "/dashboard/CCE/stock-notifications", icon: FiBell },
     { label: "My Orders", href: "/dashboard/CCE/orders/mine", icon: FiShoppingBag },
     { label: "My Account", href: "/dashboard/CCE/account", icon: FiUser },
   ],

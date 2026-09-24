@@ -178,6 +178,7 @@ ORDER_DUPLICATE_WINDOW_SECONDS = env.int("ORDER_DUPLICATE_WINDOW_SECONDS", defau
 ORDER_MAX_PER_PHONE_PER_HOUR = env.int("ORDER_MAX_PER_PHONE_PER_HOUR", default=5)
 CHECKOUT_THROTTLE_RATE = env("CHECKOUT_THROTTLE_RATE", default="30/hour")  # per client IP
 ORDER_TRACK_THROTTLE_RATE = env("ORDER_TRACK_THROTTLE_RATE", default="30/hour")  # per client IP
+STOCK_NOTIFICATION_THROTTLE_RATE = env("STOCK_NOTIFICATION_THROTTLE_RATE", default="30/hour")  # per client IP
 # Payment methods a customer may choose today; Module 11 adds "online" once a gateway exists.
 ENABLED_PAYMENT_METHODS = ("cod",)
 

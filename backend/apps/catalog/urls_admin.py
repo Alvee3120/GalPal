@@ -4,6 +4,7 @@ from rest_framework.routers import SimpleRouter
 
 from . import views_admin
 from . import views_product_admin as pv
+from .views_stock_notification import StaffStockNotificationViewSet
 
 router = SimpleRouter()  # SimpleRouter: no public API-root view listing admin URLs
 router.register("categories", views_admin.AdminCategoryViewSet, basename="admin-category")
@@ -13,6 +14,7 @@ router.register("products", pv.AdminProductViewSet, basename="admin-product")
 router.register("product-attributes", pv.AdminProductAttributeViewSet, basename="admin-product-attribute")
 router.register("attribute-values", pv.AdminAttributeValueViewSet, basename="admin-attribute-value")
 router.register("stock-movements", pv.AdminStockMovementViewSet, basename="admin-stock-movement")
+router.register("stock-notifications", StaffStockNotificationViewSet, basename="admin-stock-notification")
 
 _images = pv.AdminProductImageViewSet
 _variants = pv.AdminVariantViewSet

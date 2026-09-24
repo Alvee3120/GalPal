@@ -18,6 +18,10 @@ const isPath = (p, method) => {
     return false;
   }
   if (resource === "stock") return p.length === 2 && id === "adjust" && method === "POST";
+  if (resource === "stock-notifications") {
+    if (p.length === 1) return method === "GET"; // Notify Me requests
+    return p.length === 2 && ID.test(id) && method === "PATCH"; // mark waiting / notified
+  }
   if (resource === "categories") {
     if (p.length === 1) return method === "GET" || method === "POST"; // list+search / create
     if (p.length === 2 && id === "tree") return method === "GET";
