@@ -147,6 +147,17 @@ def test_cce_gets_403_on_every_admin_route_outside_the_order_module(auth_client,
     assert route_sweep.cce_violations(auth_client(cce_user), routes) == []
 
 
+def test_cce_is_let_into_exactly_the_product_management_endpoints(auth_client, cce_user):
+    routes = route_sweep.admin_routes()
+    assert {r for _, r in route_sweep.CCE_CATALOG_ENDPOINTS} <= set(routes)  # the list names real routes
+    client = auth_client(cce_user)
+    blocked = [
+        (m, r) for m, r in sorted(route_sweep.CCE_CATALOG_ENDPOINTS)
+        if getattr(client, m.lower())(r, {}, format="json").status_code in (401, 403)
+    ]
+    assert blocked == []
+
+
 def test_inactive_cce_token_is_rejected(auth_client):
     inactive = CCEFactory(is_active=False)
     routes = route_sweep.admin_routes()

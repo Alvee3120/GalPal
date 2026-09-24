@@ -57,6 +57,14 @@ OUTSIDE_DHAKA = {
     "estimated_days_min": 3, "estimated_days_max": 5, "is_default": True,
     "description": "Fallback zone: every district no other zone covers.",
 }
+# The Dhaka upazilas outside the city (matches the storefront's zone list). Area-limited coverage of Dhaka, so it
+# wins over Inside Dhaka's whole-district coverage for these areas only.
+DHAKA_OUTER = {
+    "name": "Dhaka Outer Zones", "slug": "dhaka-outer-zones", "charge": Decimal("100.00"), "sort_order": 2,
+    "estimated_days_min": 1, "estimated_days_max": 3,
+    "description": "Dhamrai, Dohar, Keraniganj, Nawabganj and Savar in Dhaka district.",
+}
+DHAKA_OUTER_AREAS = ["Dhamrai", "Dohar", "Keraniganj", "Nawabganj", "Savar"]
 METHODS = [
     {"name": "Standard", "slug": "standard", "extra_charge": Decimal("0.00"), "is_active": True, "sort_order": 1,
      "description": "Regular delivery: the zone charge only."},
@@ -95,6 +103,27 @@ def seed_zones(DeliveryZone, ZoneDistrict, District, ShippingChargeHistory=None)
     if dhaka and inside and not ZoneDistrict.objects.filter(district=dhaka).exists():
         ZoneDistrict.objects.create(zone=inside, district=dhaka, areas=[])
     return created
+
+
+def seed_dhaka_outer_zone(DeliveryZone, ZoneDistrict, District, ShippingChargeHistory=None):
+    """
+    Create the Dhaka Outer Zones zone if it's missing and no other zone already claims those areas.
+    Run by migration 0003 only (not part of seed_all), so existing and fresh databases both get it once.
+    """
+    dhaka = District.objects.filter(name="Dhaka").first()
+    if dhaka is None or DeliveryZone.objects.filter(slug=DHAKA_OUTER["slug"]).exists():
+        return []
+    if DeliveryZone.objects.filter(name__iexact=DHAKA_OUTER["name"]).exists():
+        return []
+    wanted = {a.casefold() for a in DHAKA_OUTER_AREAS}
+    for link in ZoneDistrict.objects.filter(district=dhaka).exclude(areas=[]):
+        if wanted & {a.casefold() for a in link.areas}:
+            return []  # the Admin already split Dhaka their own way; never fight it
+    zone = DeliveryZone.objects.create(**DHAKA_OUTER)
+    ZoneDistrict.objects.create(zone=zone, district=dhaka, areas=DHAKA_OUTER_AREAS)
+    if ShippingChargeHistory is not None:
+        ShippingChargeHistory.objects.create(zone=zone, zone_name=zone.name, old_charge=None, new_charge=zone.charge)
+    return [zone.name]
 
 
 def seed_methods(DeliveryMethod):

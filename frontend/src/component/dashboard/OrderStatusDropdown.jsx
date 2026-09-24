@@ -12,10 +12,9 @@ const CONFIRM_FIRST = new Set(["cancelled", "failed", "returned"]);
 
 // The CCE-facing status vocabulary this dropdown always offers, in order — matches the Order Management status
 // filter's options exactly, so the two never present a different set of names. Every option is always shown
-// (not narrowed to this order's own allowed_transitions): the backend's change_status is still the one place a
-// transition is actually validated, so picking an option the current status can't reach just comes back as a
-// rejection with the backend's own explanation (e.g. "An order that is cancelled can't become shipped.") rather
-// than being hidden pre-emptively — the dropdown attempts, it never silently allows.
+// (not narrowed to this order's own allowed_transitions): staff may move an order to any other status, and the
+// backend's change_status is still the one place that validates it (e.g. refusing to reopen an order whose stock
+// has since sold out) — the dropdown attempts, it never silently allows.
 const ALL_STATUSES = ["confirmed", "processing", "shipped", "delivered", "cancelled", "returned"];
 
 const STATUS_TOAST = {
@@ -98,7 +97,8 @@ export default function OrderStatusDropdown({ orderId, status, onChanged, classN
         disabled={updating}
         aria-haspopup="listbox"
         aria-expanded={open}
-        className="checkout-input flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-left text-sm disabled:opacity-70"
+        data-status={status}
+        className="checkout-input order-status order-status--button flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-left text-sm disabled:opacity-70"
       >
         <span>{updating ? "Updating..." : (STATUS_LABEL[status] ?? status)}</span>
         <FiChevronDown className={`h-4 w-4 shrink-0 transition-transform duration-150 ${open ? "rotate-180" : ""}`} aria-hidden="true" />
@@ -120,7 +120,10 @@ export default function OrderStatusDropdown({ orderId, status, onChanged, classN
               onClick={() => choose(opt)}
               className="shop-sort__item flex w-full items-center justify-between gap-3 rounded-md px-3 py-1.5 text-left text-sm"
             >
-              {STATUS_LABEL[opt] ?? opt}
+              <span className="flex items-center gap-2">
+                <span data-status={opt} className="order-status order-status--dot h-2 w-2 shrink-0 rounded-full" aria-hidden="true" />
+                {STATUS_LABEL[opt] ?? opt}
+              </span>
               {opt === status && <FiCheck className="h-4 w-4 shrink-0" aria-hidden="true" />}
             </button>
           </li>
@@ -130,7 +133,7 @@ export default function OrderStatusDropdown({ orderId, status, onChanged, classN
       <ConfirmDialog
         open={pendingStatus !== null}
         title={`${STATUS_LABEL[pendingStatus] ?? pendingStatus} this order?`}
-        description={`Are you sure you want to mark this order as ${STATUS_LABEL[pendingStatus] ?? pendingStatus}? This cannot be undone.`}
+        description={`Are you sure you want to mark this order as ${STATUS_LABEL[pendingStatus] ?? pendingStatus}? Its stock will be put back.`}
         confirmLabel={STATUS_LABEL[pendingStatus] ?? "Confirm"}
         cancelLabel="Keep Order"
         busyLabel="Updating..."

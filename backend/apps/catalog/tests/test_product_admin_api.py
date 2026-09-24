@@ -5,7 +5,7 @@ from django.core.files.storage import default_storage
 from django.core.files.uploadedfile import SimpleUploadedFile
 from PIL import Image
 
-from apps.catalog.models import Product, ProductAttribute, ProductVariant
+from apps.catalog.models import Product, ProductAttribute, ProductVariant, StockMovement
 
 from .factories import (
     AttributeValueFactory,
@@ -60,15 +60,69 @@ def test_anonymous_and_customer_are_locked_out(api_client, auth_client, customer
     assert auth_client(customer).get(url).status_code in (403, 405)
 
 
-def test_cce_gets_403_on_products(auth_client, cce_user):
+def test_cce_manages_products_but_not_bulk_or_duplicate(auth_client, cce_user):
     product = ProductFactory()
     client = auth_client(cce_user)
-    assert client.get(PRODUCTS).status_code == 403
-    assert client.post(PRODUCTS, minimal_payload(), format="multipart").status_code == 403
-    assert client.patch(f"{PRODUCTS}{product.id}/", {"name": "x"}, format="json").status_code == 403
-    assert client.delete(f"{PRODUCTS}{product.id}/").status_code == 403
+    assert client.get(PRODUCTS).status_code == 200
+    assert client.get(f"{PRODUCTS}{product.id}/").status_code == 200
+    assert client.post(PRODUCTS, minimal_payload(), format="multipart").status_code == 201
+    assert client.patch(f"{PRODUCTS}{product.id}/", {"name": "x"}, format="json").status_code == 200
     assert client.post(f"{PRODUCTS}{product.id}/duplicate/").status_code == 403
     assert client.post(f"{PRODUCTS}bulk/activate/", {"product_ids": [product.id]}, format="json").status_code == 403
+    assert client.post(f"{PRODUCTS}bulk/stock/", {"items": []}, format="json").status_code == 403
+    assert client.get(MOVEMENTS).status_code == 403
+    assert client.post(ATTRIBUTES, {"name": "Colour"}, format="json").status_code == 403
+    assert client.delete(f"{PRODUCTS}{product.id}/").status_code == 204
+
+
+def test_cce_can_add_an_attribute_value_but_not_edit_one(auth_client, cce_user):
+    size = ProductAttributeFactory(name="Size")
+    client = auth_client(cce_user)
+    r = client.post(VALUES, {"attribute": size.id, "value": "75ml"}, format="json")
+    assert r.status_code == 201
+    assert client.post(VALUES, {"attribute": size.id, "value": "75ML"}, format="json").status_code == 400  # no duplicates
+    assert client.patch(f"{VALUES}{r.json()['id']}/", {"value": "80ml"}, format="json").status_code == 403
+    assert client.delete(f"{VALUES}{r.json()['id']}/").status_code == 403
+
+
+def test_cce_stock_adjustments_are_logged_as_them(auth_client, cce_user):
+    product = ProductFactory(stock_quantity=0, manage_stock=True)
+    r = auth_client(cce_user).post(STOCK, {"product_id": product.id, "quantity_change": 7, "reason": "manual"}, format="json")
+    assert r.status_code == 200
+    product.refresh_from_db()
+    assert product.stock_quantity == 7 and StockMovement.objects.get(product=product).user == cce_user
+
+
+def test_stock_status_follows_the_quantity_unless_backorder(admin_client):
+    product = ProductFactory(stock_quantity=0, manage_stock=True, stock_status="out_of_stock")
+    url = f"{PRODUCTS}{product.id}/"
+    assert admin_client.patch(url, {"stock_status": "in_stock"}, format="json").json()["stock_status"] == "out_of_stock"
+    assert admin_client.patch(url, {"stock_status": "backorder"}, format="json").json()["stock_status"] == "backorder"
+
+
+def test_a_sale_cannot_end_before_it_starts(admin_client):
+    product = ProductFactory()
+    r = admin_client.patch(
+        f"{PRODUCTS}{product.id}/", {"sale_start_at": "2026-10-10T10:00", "sale_end_at": "2026-10-09T10:00"}, format="json"
+    )
+    assert r.status_code == 400 and "sale_end_at" in r.json()["error"]["details"]
+
+
+def test_sending_no_categories_clears_them(admin_client):
+    category = CategoryFactory()
+    product = ProductFactory()
+    url = f"{PRODUCTS}{product.id}/"
+    admin_client.patch(url, {"category_ids": [category.id]}, format="json")
+    assert admin_client.patch(url, {"category_ids": [], "primary_category_id": None}, format="json").json()["categories"] == []
+
+
+def test_the_list_summarises_variant_stock(admin_client):
+    product = ProductFactory(has_variants=True, stock_quantity=0)
+    product.variants.create(sku="V-A", stock_quantity=4, option_signature="a")
+    product.variants.create(sku="V-B", stock_quantity=6, option_signature="b")
+    product.variants.create(sku="V-C", stock_quantity=9, is_active=False, option_signature="c")
+    row = admin_client.get(PRODUCTS).json()["results"][0]
+    assert row["variant_stock"] == {"count": 3, "active_count": 2, "stock_quantity": 10, "untracked_count": 0}
 
 
 # --- create ----------------------------------------------------------------------------------------
@@ -166,8 +220,8 @@ def test_list_uses_compact_shape_and_includes_all_statuses(admin_client):
     assert body["count"] == 2
     assert set(body["results"][0]) == {
         "id", "name", "slug", "feature_image", "brand", "sku", "regular_price", "discount_price",
-        "effective_price", "stock_quantity", "stock_status", "in_stock", "is_low_stock", "status",
-        "is_featured", "is_new_arrival", "is_bestseller", "has_variants", "average_rating", "review_count",
+        "effective_price", "stock_quantity", "manage_stock", "stock_status", "in_stock", "is_low_stock", "status",
+        "is_featured", "is_new_arrival", "is_bestseller", "has_variants", "variant_stock", "average_rating", "review_count",
         "created_at", "updated_at",
     }
 

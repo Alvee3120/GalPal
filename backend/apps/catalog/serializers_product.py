@@ -11,6 +11,7 @@ from apps.core.utils import discard_file
 from . import services
 from .models import (
     AttributeValue,
+    StockStatus,
     Brand,
     Category,
     Product,
@@ -296,7 +297,7 @@ class AdminProductSerializer(SlugSerializerMixin, serializers.ModelSerializer):
             "average_rating", "review_count", "created_at", "updated_at",
         ]
         read_only_fields = [
-            "id", "images", "categories", "tags", "stock_quantity", "stock_status", "variants",
+            "id", "images", "categories", "tags", "stock_quantity", "variants",
             "average_rating", "review_count", "created_at", "updated_at",
         ]
         validators = []
@@ -304,6 +305,16 @@ class AdminProductSerializer(SlugSerializerMixin, serializers.ModelSerializer):
     def validate_sku(self, value):
         services.assert_unique_sku(value, exclude_product=self.instance)
         return value
+
+    def validate_stock_status(self, value):
+        # Only "backorder" is a real choice: for managed stock, in/out of stock always follows the quantity (the
+        # same rule `services.adjust_stock` applies), so a stored status can never contradict the stock on hand.
+        # The quantity itself only ever changes through `adjust_stock` (POST /admin/stock/adjust/), which logs it.
+        manage_stock = self.initial_data.get("manage_stock", self.instance.manage_stock if self.instance else True)
+        if value == StockStatus.BACKORDER or str(manage_stock).lower() in ("false", "0", "off", ""):
+            return value
+        quantity = self.instance.stock_quantity if self.instance else 0
+        return StockStatus.IN_STOCK if quantity > 0 else StockStatus.OUT_OF_STOCK
 
     def validate(self, attrs):
         # NB: must chain to SlugSerializerMixin.validate(), which computes attrs["slug"] /
@@ -313,12 +324,19 @@ class AdminProductSerializer(SlugSerializerMixin, serializers.ModelSerializer):
         discount = attrs.get("discount_price", self.instance.discount_price if self.instance else None)
         if discount is not None and regular is not None and discount >= regular:
             raise serializers.ValidationError({"discount_price": ["Must be less than the regular price."]})
+        start = attrs.get("sale_start_at", self.instance.sale_start_at if self.instance else None)
+        end = attrs.get("sale_end_at", self.instance.sale_end_at if self.instance else None)
+        if start is not None and end is not None and end < start:
+            raise serializers.ValidationError({"sale_end_at": ["The sale can't end before it starts."]})
         return attrs
 
     def _save_categories(self, product, validated_data):
         if "categories" not in validated_data and "primary_category_id" not in validated_data:
             return
-        category_ids = [c.pk for c in validated_data.pop("categories", None) or (product.categories.all() if self.instance else [])]
+        categories = validated_data.pop("categories", None)
+        if categories is None:  # only the primary changed: keep the current set (an explicit [] clears it)
+            categories = product.categories.all() if self.instance else []
+        category_ids = [c.pk for c in categories]
         primary_id = validated_data.pop("primary_category_id", None)
         try:
             services.set_categories(product, category_ids, primary_id)
@@ -354,17 +372,40 @@ class AdminProductSerializer(SlugSerializerMixin, serializers.ModelSerializer):
         return instance
 
 
+class VariantStockSummarySerializer(serializers.Serializer):
+    count = serializers.IntegerField()
+    active_count = serializers.IntegerField()
+    stock_quantity = serializers.IntegerField(help_text="Total on hand across active variants that manage stock.")
+    untracked_count = serializers.IntegerField(help_text="Active variants that don't manage stock (always available).")
+
+
 class AdminProductListSerializer(AdminProductSerializer):
     """Lighter shape for the list endpoint (no nested images/variants/category detail)."""
+
+    variant_stock = serializers.SerializerMethodField()
 
     class Meta(AdminProductSerializer.Meta):
         fields = [
             "id", "name", "slug", "feature_image", "brand", "sku", "regular_price", "discount_price",
-            "effective_price", "stock_quantity", "stock_status", "in_stock", "is_low_stock",
-            "status", "is_featured", "is_new_arrival", "is_bestseller", "has_variants",
+            "effective_price", "stock_quantity", "manage_stock", "stock_status", "in_stock", "is_low_stock",
+            "status", "is_featured", "is_new_arrival", "is_bestseller", "has_variants", "variant_stock",
             "average_rating", "review_count", "created_at", "updated_at",
         ]
         read_only_fields = fields
+
+    @extend_schema_field(VariantStockSummarySerializer(allow_null=True))
+    def get_variant_stock(self, obj):
+        """For a variant product, stock lives on the variants (what cart/checkout sell from), not the parent row."""
+        if not obj.has_variants:
+            return None
+        variants = obj.variants.all()  # prefetched by the view
+        active = [v for v in variants if v.is_active]
+        return {
+            "count": len(variants),
+            "active_count": len(active),
+            "stock_quantity": sum(v.stock_quantity for v in active if v.manage_stock),
+            "untracked_count": sum(1 for v in active if not v.manage_stock),
+        }
 
 
 # --- admin: bulk actions & stock ---------------------------------------------------------------

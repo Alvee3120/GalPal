@@ -291,7 +291,7 @@ def test_detail_carries_everything_staff_need(cce_client, cce_user, product):
     body = cce_client.get(url(order)).json()
     assert body["source"] == "whatsapp" and body["source_note"] == "via Rina's cousin" and body["is_manual"] is True
     assert body["created_by"]["id"] == cce_user.id and body["editable"] is True
-    assert body["allowed_transitions"] == ["cancelled", "confirmed", "failed"]
+    assert body["allowed_transitions"] == ["cancelled", "confirmed", "delivered", "failed", "processing", "returned", "shipped"]
     assert body["history"][0]["changed_by"]["id"] == cce_user.id and body["notes"] == []
     assert body["items"][0]["quantity"] == 2 and body["shipping_zone_name"] == "Inside Dhaka" and body["shipping_overridden"] is False
     assert body["ip_address"] is None and "fingerprint" not in body
@@ -310,13 +310,13 @@ def test_the_list_avoids_n_plus_1_queries(admin_client, admin_user, django_asser
 def test_a_cce_changes_status_with_a_note(cce_client, cce_user, order):
     r = cce_client.post(url(order, "status/"), {"status": "confirmed", "note": "customer confirmed by phone"}, format="json")
     assert r.status_code == 200 and r.json()["status"] == "confirmed"
-    assert r.json()["allowed_transitions"] == ["cancelled", "failed", "processing"]
+    assert r.json()["allowed_transitions"] == ["cancelled", "delivered", "failed", "pending", "processing", "returned", "shipped"]
     last = r.json()["history"][-1]
     assert (last["from_status"], last["to_status"], last["note"], last["changed_by"]["id"]) == ("pending", "confirmed", "customer confirmed by phone", cce_user.id)
 
 
 def test_an_invalid_transition_is_a_400_naming_the_status_field(cce_client, order):
-    r = cce_client.post(url(order, "status/"), {"status": "delivered"}, format="json")
+    r = cce_client.post(url(order, "status/"), {"status": "pending"}, format="json")  # already pending
     assert r.status_code == 400 and "status" in details(r) and Order.objects.get(pk=order.pk).status == "pending"
 
 
