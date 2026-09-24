@@ -8,6 +8,7 @@ import { backendFetch } from "@/lib/backendAuth";
 // are Admin-only backend-side and aren't needed by the CCE UI, so they're left unreachable here too.
 const isPath = (path, method) => {
   if (path.length === 0) return method === "GET" || method === "POST"; // list+filter / create manual order
+  if (path.length === 1 && path[0] === "dashboard") return method === "GET"; // dashboard overview numbers
   if (path.length === 2 && path[0] === "helpers") return method === "GET" && ["products", "shipping", "customers"].includes(path[1]);
   if (path.length === 1 && /^\d+$/.test(path[0])) return method === "GET" || method === "PATCH"; // retrieve / edit pending order
   if (path.length === 2 && /^\d+$/.test(path[0]) && path[1] === "status") return method === "POST"; // change status

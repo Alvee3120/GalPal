@@ -7,10 +7,14 @@ import { usePathname } from "next/navigation";
 // deliberately ONLY the links list (no logout, no wrapper chrome) so DashboardShell can put it alone inside the
 // sidebar's scrollable region while the logo/profile/logout stay fixed outside it. A link is "active" for its own
 // route and any route nested under it (e.g. "My Orders" stays active on an order's own page), except "/dashboard"
-// itself which only matches exactly (every dashboard route would otherwise match that prefix too).
+// itself which only matches exactly (every dashboard route would otherwise match that prefix too). When several
+// entries match (Orders and Add Order on /dashboard/CCE/orders/new), only the most specific one is active.
 export default function DashboardNavList({ items, onNavigate }) {
   const pathname = usePathname();
-  const isActive = (href) => (href === "/dashboard" ? pathname === href : pathname === href || pathname.startsWith(`${href}/`));
+  const matches = (href) => (href === "/dashboard" ? pathname === href : pathname === href || pathname.startsWith(`${href}/`));
+  // The most specific match wins, so a nested entry (Add Order under Orders) doesn't light up its parent too.
+  const activeHref = items.map((item) => item.href).filter(matches).sort((a, b) => b.length - a.length)[0];
+  const isActive = (href) => href === activeHref;
 
   return (
     <nav aria-label="Dashboard">

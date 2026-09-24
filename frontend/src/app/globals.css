@@ -142,6 +142,12 @@
   --color-status-returned-text: #991b1b;
   --color-status-returned-bg: #fee2e2;
 
+  /* Dashboard charts (TimeSeriesChart): one brand-colored series on the page surface */
+  --color-chart-mark: var(--color-brand);
+  --color-chart-area: color-mix(in srgb, var(--color-brand) 10%, transparent);
+  --color-chart-grid: var(--color-cart-line);
+  --color-chart-axis: var(--color-muted);
+
   /* Kept for existing usages */
   --background: var(--color-background);
   --foreground: var(--color-foreground);
@@ -1075,6 +1081,61 @@ a.dashboard-card:hover {
 
 .order-status--dot[data-status] {
   background-color: var(--status-text);
+}
+
+/* Dashboard charts (component/dashboard/overview/TimeSeriesChart.jsx) */
+.chart-svg:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 4px;
+  border-radius: 0.5rem;
+}
+.chart-grid {
+  stroke: var(--color-chart-grid);
+  stroke-width: 1;
+}
+.chart-axis-text {
+  fill: var(--color-chart-axis);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.chart-line {
+  fill: none;
+  stroke: var(--color-chart-mark);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+.chart-area {
+  fill: var(--color-chart-area);
+}
+.chart-bar {
+  fill: var(--color-chart-mark);
+  opacity: 0.85;
+}
+.chart-bar--active {
+  opacity: 1;
+}
+.chart-dot {
+  fill: var(--color-chart-mark);
+  stroke: var(--color-background);
+  stroke-width: 2;
+}
+.chart-crosshair {
+  stroke: var(--color-chart-axis);
+  stroke-width: 1;
+}
+.chart-tooltip {
+  background-color: var(--color-background);
+  border: 1px solid var(--color-cart-line);
+  box-shadow: 0 6px 20px -8px var(--color-shadow-soft);
+  white-space: nowrap;
+}
+.chart-empty {
+  background-color: var(--color-shop-sidebar-bg);
+  color: var(--color-muted);
+}
+.chart-table-row + .chart-table-row {
+  border-top: 1px solid var(--color-cart-line);
 }
 
 /* ================================
