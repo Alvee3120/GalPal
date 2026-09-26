@@ -3,7 +3,7 @@
 from drf_spectacular.utils import OpenApiResponse, extend_schema, extend_schema_view
 from rest_framework import viewsets
 
-from apps.accounts.permissions import IsAdmin
+from apps.accounts.permissions import CatalogStaffActionsMixin, IsAdmin
 from apps.core.serializers import ErrorResponseSerializer
 
 from . import services
@@ -24,9 +24,11 @@ ERR = OpenApiResponse(ErrorResponseSerializer)
     partial_update=extend_schema(tags=["Admin – Video Cards"], summary="Update a video card", responses={200: AdminVideoCardSerializer, 400: ERR}),
     destroy=extend_schema(tags=["Admin – Video Cards"], summary="Delete a video card"),
 )
-class AdminVideoCardViewSet(viewsets.ModelViewSet):
+class AdminVideoCardViewSet(CatalogStaffActionsMixin, viewsets.ModelViewSet):
     serializer_class = AdminVideoCardSerializer
     permission_classes = [IsAdmin]
+    # Video Card Management is shared by Admin and CCE (IsCatalogStaff); the product picker stays Admin only.
+    cce_actions = frozenset({"list", "retrieve", "create", "partial_update", "destroy"})
     queryset = VideoCard.objects.prefetch_related("products")
     http_method_names = ["get", "post", "patch", "delete", "head", "options"]
     filterset_fields = ["is_active"]

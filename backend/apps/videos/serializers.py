@@ -58,16 +58,21 @@ class AdminVideoCardSerializer(AbsoluteVideoUrlMixin, ReplacedFilesMixin, serial
     )
     products = ProductPickerSerializer(many=True, read_only=True)
     video_url = serializers.SerializerMethodField()
+    # A multipart form can't send "no file", so switching an uploaded video to an external link says so explicitly;
+    # the old file is then removed from storage (ReplacedFilesMixin) once saved.
+    remove_video_file = serializers.BooleanField(write_only=True, required=False, default=False)
 
     class Meta:
         model = VideoCard
         fields = [
             "id", "title", "video_file", "external_url", "video_url", "thumbnail",
-            "product_ids", "products", "sort_order", "is_active", "created_at", "updated_at",
+            "product_ids", "products", "sort_order", "is_active", "remove_video_file", "created_at", "updated_at",
         ]
         read_only_fields = ["id", "video_url", "created_at", "updated_at"]
 
     def validate(self, attrs):
+        if attrs.pop("remove_video_file", False) and not attrs.get("video_file"):
+            attrs["video_file"] = ""
         video_file = attrs.get("video_file", self.instance.video_file if self.instance else None)
         external_url = attrs.get("external_url", self.instance.external_url if self.instance else "")
         if bool(video_file) == bool(external_url):

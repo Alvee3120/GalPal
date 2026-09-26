@@ -13,7 +13,8 @@ export const PRODUCT_ROTATION_INTERVAL = 4000;
 const isDirectVideo = (url) => typeof url === "string" && /\.(mp4|webm|mov|m4v|ogv)(\?.*)?$/i.test(url);
 
 async function getJson(url) {
-  const res = await fetch(url, { next: { revalidate: REVALIDATE_SECONDS } });
+  // Tagged "videos": Video Card Management (app/api/admin/videos) revalidates it after every change.
+  const res = await fetch(url, { next: { revalidate: REVALIDATE_SECONDS, tags: ["videos"] } });
   if (!res.ok) throw new Error(`API responded ${res.status} for ${url}`);
   return res.json();
 }
