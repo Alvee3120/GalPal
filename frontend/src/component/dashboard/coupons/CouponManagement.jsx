@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { FiEdit2, FiPlus, FiSearch, FiTrash2 } from "react-icons/fi";
+import { FiEdit2, FiEye, FiPlus, FiSearch, FiTrash2 } from "react-icons/fi";
 import { notify } from "@/lib/notify";
 import formatPrice from "@/lib/formatPrice";
 import { errorText } from "@/lib/productAdmin";
@@ -26,7 +26,39 @@ function StatusBadge({ status }) {
   );
 }
 
-function Actions({ coupon, onDelete }) {
+// The amount's conditions, shown under it: minimum order and (percentage only) the cap.
+function Conditions({ coupon, symbol }) {
+  const parts = [];
+  if (Number(coupon.min_order_amount) > 0) parts.push(`Min order ${formatPrice(coupon.min_order_amount, symbol)}`);
+  if (coupon.max_discount_amount != null) parts.push(`Max ${formatPrice(coupon.max_discount_amount, symbol)}`);
+  if (coupon.free_shipping) parts.push("Free delivery");
+  return parts.length ? <span className="showcase-muted block text-xs">{parts.join(" · ")}</span> : null;
+}
+
+const scopeText = (c) => {
+  const parts = [
+    c.products?.length && `${c.products.length} product${c.products.length === 1 ? "" : "s"}`,
+    c.categories?.length && `${c.categories.length} categor${c.categories.length === 1 ? "y" : "ies"}`,
+    c.brands?.length && `${c.brands.length} brand${c.brands.length === 1 ? "" : "s"}`,
+  ].filter(Boolean);
+  return parts.length ? parts.join(", ") : "All products";
+};
+
+function ViewLink({ coupon }) {
+  return (
+    <Link
+      href={`/dashboard/CCE/coupons/${coupon.id}`}
+      title="View coupon"
+      aria-label={`View coupon ${coupon.code}`}
+      className="icon-action flex h-9 w-9 items-center justify-center rounded-full"
+    >
+      <FiEye className="h-4 w-4" aria-hidden="true" />
+    </Link>
+  );
+}
+
+function Actions({ coupon, onDelete, readOnly }) {
+  if (readOnly) return <ViewLink coupon={coupon} />;
   return (
     <div className="flex items-center gap-1.5">
       <Link
@@ -53,8 +85,9 @@ function Actions({ coupon, onDelete }) {
 // Admin Coupons over the EXISTING /admin/coupons/ API (apps.coupons — IsAdmin). Search (code, description), the status
 // filter (the backend's own active / scheduled / expired / used up / inactive, from dates, usage and is_active) and the
 // type filter all run on the server with pagination. A used coupon can't be deleted (the backend keeps its usage history
-// for past orders) — its message says to deactivate it instead.
-export default function CouponManagement({ initialCoupons, initialCount, currencySymbol }) {
+// for past orders) — its message says to deactivate it instead. `readOnly` (CCE): the same list and filters, with a
+// View link instead of Add / Edit / Delete — the backend only lets CCE read coupons anyway.
+export default function CouponManagement({ initialCoupons, initialCount, currencySymbol, readOnly = false }) {
   const [coupons, setCoupons] = useState(initialCoupons);
   const [count, setCount] = useState(initialCount);
   const [search, setSearch] = useState("");
@@ -127,10 +160,12 @@ export default function CouponManagement({ initialCoupons, initialCount, currenc
             {count} coupon{count === 1 ? "" : "s"}
           </p>
         </div>
-        <Link href="/dashboard/admin/coupons/new" className="auth-btn auth-btn--primary inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-medium">
-          <FiPlus className="h-4 w-4" aria-hidden="true" />
-          Add Coupon
-        </Link>
+        {!readOnly && (
+          <Link href="/dashboard/admin/coupons/new" className="auth-btn auth-btn--primary inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-medium">
+            <FiPlus className="h-4 w-4" aria-hidden="true" />
+            Add Coupon
+          </Link>
+        )}
       </div>
 
       {/* A grid, not flex: .checkout-input is width:100%, so the grid (not a w-* class) sizes each control. */}
@@ -201,7 +236,7 @@ export default function CouponManagement({ initialCoupons, initialCount, currenc
       ) : (
         <div className={`transition-opacity ${loading ? "opacity-60" : ""}`} aria-busy={loading}>
           <div className="dashboard-card hidden overflow-x-auto rounded-2xl md:block">
-            <table className="product-table w-full min-w-[900px] text-left text-sm">
+            <table className="product-table w-full min-w-[1000px] text-left text-sm">
               <thead>
                 <tr>
                   <th scope="col" className="px-4 py-3 font-medium">Code</th>
@@ -211,8 +246,15 @@ export default function CouponManagement({ initialCoupons, initialCount, currenc
                   <th scope="col" className="px-4 py-3 font-medium">Expiry At</th>
                   <th scope="col" className="px-4 py-3 font-medium">Status</th>
                   <th scope="col" className="px-4 py-3 font-medium">Usage</th>
-                  <th scope="col" className="px-4 py-3 font-medium">Edit</th>
-                  <th scope="col" className="px-4 py-3 font-medium">Delete</th>
+                  <th scope="col" className="px-4 py-3 font-medium">Applies To</th>
+                  {readOnly ? (
+                    <th scope="col" className="px-4 py-3 font-medium">View</th>
+                  ) : (
+                    <>
+                      <th scope="col" className="px-4 py-3 font-medium">Edit</th>
+                      <th scope="col" className="px-4 py-3 font-medium">Delete</th>
+                    </>
+                  )}
                 </tr>
               </thead>
               <tbody>
@@ -225,7 +267,7 @@ export default function CouponManagement({ initialCoupons, initialCount, currenc
                     <td className="px-4 py-3">{COUPON_TYPE_LABEL[c.type] ?? c.type}</td>
                     <td className="px-4 py-3 tabular-nums">
                       {amountText(c, currencySymbol)}
-                      {c.free_shipping && <span className="showcase-muted block text-xs">+ free delivery</span>}
+                      <Conditions coupon={c} symbol={currencySymbol} />
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-xs">{when(c.start_at, "Immediately")}</td>
                     <td className="whitespace-nowrap px-4 py-3 text-xs">{when(c.expiry_at, "Never")}</td>
@@ -233,27 +275,36 @@ export default function CouponManagement({ initialCoupons, initialCount, currenc
                       <StatusBadge status={c.status} />
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 tabular-nums">{usageText(c)}</td>
-                    <td className="px-4 py-3">
-                      <Link
-                        href={`/dashboard/admin/coupons/${c.id}`}
-                        title="Edit coupon"
-                        aria-label={`Edit coupon ${c.code}`}
-                        className="icon-action flex h-9 w-9 items-center justify-center rounded-full"
-                      >
-                        <FiEdit2 className="h-4 w-4" aria-hidden="true" />
-                      </Link>
-                    </td>
-                    <td className="px-4 py-3">
-                      <button
-                        type="button"
-                        onClick={() => setPendingDelete(c)}
-                        title="Delete coupon"
-                        aria-label={`Delete coupon ${c.code}`}
-                        className="icon-action icon-action--danger flex h-9 w-9 items-center justify-center rounded-full"
-                      >
-                        <FiTrash2 className="h-4 w-4" aria-hidden="true" />
-                      </button>
-                    </td>
+                    <td className="px-4 py-3 text-xs">{scopeText(c)}</td>
+                    {readOnly ? (
+                      <td className="px-4 py-3">
+                        <ViewLink coupon={c} />
+                      </td>
+                    ) : (
+                      <>
+                        <td className="px-4 py-3">
+                          <Link
+                            href={`/dashboard/admin/coupons/${c.id}`}
+                            title="Edit coupon"
+                            aria-label={`Edit coupon ${c.code}`}
+                            className="icon-action flex h-9 w-9 items-center justify-center rounded-full"
+                          >
+                            <FiEdit2 className="h-4 w-4" aria-hidden="true" />
+                          </Link>
+                        </td>
+                        <td className="px-4 py-3">
+                          <button
+                            type="button"
+                            onClick={() => setPendingDelete(c)}
+                            title="Delete coupon"
+                            aria-label={`Delete coupon ${c.code}`}
+                            className="icon-action icon-action--danger flex h-9 w-9 items-center justify-center rounded-full"
+                          >
+                            <FiTrash2 className="h-4 w-4" aria-hidden="true" />
+                          </button>
+                        </td>
+                      </>
+                    )}
                   </tr>
                 ))}
               </tbody>
@@ -279,9 +330,11 @@ export default function CouponManagement({ initialCoupons, initialCount, currenc
                   <dd>{when(c.expiry_at, "Never")}</dd>
                   <dt className="showcase-muted">Usage</dt>
                   <dd className="tabular-nums">{usageText(c)}</dd>
+                  <dt className="showcase-muted">Applies to</dt>
+                  <dd>{scopeText(c)}</dd>
                 </dl>
                 <div className="flex justify-end">
-                  <Actions coupon={c} onDelete={setPendingDelete} />
+                  <Actions coupon={c} onDelete={setPendingDelete} readOnly={readOnly} />
                 </div>
               </li>
             ))}

@@ -47,6 +47,7 @@ CCE_CATALOG_ENDPOINTS = frozenset({
     ("GET", f"{_A}brands/1/"), ("PATCH", f"{_A}brands/1/"), ("DELETE", f"{_A}brands/1/"),
     ("GET", f"{_A}tags/"), ("POST", f"{_A}tags/"), ("GET", f"{_A}tags/1/"),
     ("GET", f"{_A}product-attributes/"), ("GET", f"{_A}product-attributes/1/"),
+    ("GET", f"{_A}coupons/"), ("GET", f"{_A}coupons/1/"),
     ("GET", f"{_A}videos/"), ("POST", f"{_A}videos/"),
     ("GET", f"{_A}videos/1/"), ("PATCH", f"{_A}videos/1/"), ("DELETE", f"{_A}videos/1/"),
     ("GET", f"{_A}reviews/"), ("GET", f"{_A}reviews/1/"), ("DELETE", f"{_A}reviews/1/"),

@@ -1,11 +1,11 @@
-"""Admin endpoints: coupon CRUD and usage history. Admin only (CCE gets 403 — coupons are not
-part of the order module CCE is scoped to)."""
+"""Admin endpoints: coupon CRUD and usage history. Admin only, except that CCE may read coupons (list/retrieve —
+see AdminCouponViewSet.cce_actions); usage history and every write stay Admin only."""
 
 from django.db.models import Count
 from drf_spectacular.utils import OpenApiResponse, extend_schema, extend_schema_view
 from rest_framework import viewsets
 
-from apps.accounts.permissions import IsAdmin
+from apps.accounts.permissions import CatalogStaffActionsMixin, IsAdmin
 from apps.catalog.exceptions import Conflict
 from apps.core.serializers import ErrorResponseSerializer
 
@@ -29,9 +29,11 @@ ERR = OpenApiResponse(ErrorResponseSerializer)
         description="Blocked (409) if the coupon has ever been used — deactivate it instead.",
     ),
 )
-class AdminCouponViewSet(viewsets.ModelViewSet):
+class AdminCouponViewSet(CatalogStaffActionsMixin, viewsets.ModelViewSet):
     serializer_class = AdminCouponSerializer
     permission_classes = [IsAdmin]
+    # CCE may look coupons up (list/search/filter/detail) to help customers; creating, editing and deleting stay Admin only.
+    cce_actions = frozenset({"list", "retrieve"})
     queryset = Coupon.objects.prefetch_related("products", "categories", "brands").annotate(usage_count_db=Count("usages", distinct=True))
     http_method_names = ["get", "post", "patch", "delete", "head", "options"]
     filterset_class = AdminCouponFilter
