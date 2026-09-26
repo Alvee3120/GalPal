@@ -1,4 +1,4 @@
-"""Admin endpoints, mounted at /api/v1/admin/. Admin only (CCE gets 403)."""
+"""Admin endpoints, mounted at /api/v1/admin/. Admin only; CCE may read coupons (see views_admin)."""
 from rest_framework.routers import SimpleRouter
 
 from .views_admin import AdminCouponUsageViewSet, AdminCouponViewSet

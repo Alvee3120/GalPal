@@ -15,7 +15,7 @@ Role permissions: the single place where the access matrix from the spec lives.
 | brands; attributes read-only; tags and attribute |       | categories and brands; |            |                    |
 | values list+create; Notify Me requests (status); |       |                        |            |                    |
 | reviews: list, view, approve, reject, delete;    |       |                        |            |                    |
-| video cards: full)                               |       | no bulk/duplicate      |            |                    |
+| video cards: full; coupons: read only)           |       | no bulk/duplicate      |            |                    |
 
 Use:
     IsAdmin           every admin-panel endpoint

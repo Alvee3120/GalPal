@@ -27,10 +27,11 @@ def details(response):
 
 
 @pytest.mark.parametrize("url", [COUPONS, USAGES])
-def test_only_admin_may_use_coupon_endpoints(api_client, auth_client, customer, cce_user, url):
+def test_only_staff_may_use_coupon_endpoints(api_client, auth_client, customer, cce_user, url):
     assert api_client.get(url).status_code == 401
-    for user in (customer, cce_user):
-        assert auth_client(user).get(url).status_code == 403
+    assert auth_client(customer).get(url).status_code == 403
+    # CCE reads the coupon list (read-only); the usage history stays Admin only
+    assert auth_client(cce_user).get(url).status_code == (200 if url == COUPONS else 403)
 
 
 def test_cce_cannot_write_or_delete_coupons(auth_client, cce_user):
@@ -266,3 +267,15 @@ def test_status_and_status_filter(admin_client):
     assert rows == {"LIVE": "active", "OFF": "inactive", "SOON": "scheduled", "OLD": "expired"}
     for status, code in [("active", "LIVE"), ("inactive", "OFF"), ("scheduled", "SOON"), ("expired", "OLD")]:
         assert [c["code"] for c in admin_client.get(f"{COUPONS}?status={status}").json()["results"]] == [code]
+
+
+
+def test_cce_can_read_coupons_but_not_change_them(auth_client, cce_user):
+    coupon = CouponFactory(code="READONLY")
+    client = auth_client(cce_user)
+    assert [c["code"] for c in client.get(COUPONS).json()["results"]] == ["READONLY"]
+    assert client.get(f"{COUPONS}{coupon.id}/").json()["code"] == "READONLY"
+    assert client.post(COUPONS, {"code": "NEW", "type": "flat", "amount": "10"}, format="json").status_code == 403
+    assert client.patch(f"{COUPONS}{coupon.id}/", {"is_active": False}, format="json").status_code == 403
+    assert client.delete(f"{COUPONS}{coupon.id}/").status_code == 403
+    assert client.get("/api/v1/admin/coupon-usages/").status_code == 403

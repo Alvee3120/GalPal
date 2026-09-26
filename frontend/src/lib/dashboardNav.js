@@ -42,6 +42,7 @@ export const DASHBOARD_NAV = {
     { label: "Notify Me", href: "/dashboard/CCE/stock-notifications", icon: FiBell },
     { label: "Reviews", href: "/dashboard/CCE/reviews", icon: FiStar },
     { label: "Video Cards", href: "/dashboard/CCE/video-cards", icon: FiVideo },
+    { label: "Coupons", href: "/dashboard/CCE/coupons", icon: FiTag },
     { label: "My Orders", href: "/dashboard/CCE/orders/mine", icon: FiShoppingBag },
     { label: "My Account", href: "/dashboard/CCE/account", icon: FiUser },
   ],
