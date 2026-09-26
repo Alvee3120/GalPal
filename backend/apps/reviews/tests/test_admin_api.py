@@ -240,3 +240,26 @@ def test_a_reply_shows_up_publicly_once_the_review_is_approved(api_client, admin
     admin_client.post(url(review, "reply/"), {"text": "Thanks!"}, format="json")
     body = api_client.get(f"/api/v1/reviews/?product={review.product.slug}").json()["results"][0]
     assert body["admin_reply"] == "Thanks!"
+
+
+
+def test_admin_adds_a_review_for_a_real_customer(admin_client, customer, product):
+    r = admin_client.post(REVIEWS, {"product_id": product.id, "user_id": customer.id, "rating": 5, "text": "Lovely", "status": "approved"}, format="json")
+    assert r.status_code == 201
+    body = r.json()
+    assert body["user"] == {"id": customer.id, "full_name": customer.full_name} and body["reviewer_name"] == customer.full_name
+    assert body["is_manual"] is True and body["is_verified_purchase"] is False  # never bought it
+    product.refresh_from_db()
+    assert product.review_count == 1 and product.average_rating == 5
+    again = admin_client.post(REVIEWS, {"product_id": product.id, "user_id": customer.id, "rating": 4, "text": "Again"}, format="json")
+    assert again.status_code == 409 and again.json()["error"]["code"] == "already_reviewed"
+
+
+def test_a_review_needs_a_customer_or_a_name(admin_client, product):
+    r = admin_client.post(REVIEWS, {"product_id": product.id, "rating": 5, "text": "Nice"}, format="json")
+    assert r.status_code == 400 and "user_id" in r.json()["error"]["details"]
+
+
+def test_cce_cannot_add_reviews(auth_client, cce_user, customer, product):
+    r = auth_client(cce_user).post(REVIEWS, {"product_id": product.id, "user_id": customer.id, "rating": 5, "text": "x"}, format="json")
+    assert r.status_code == 403

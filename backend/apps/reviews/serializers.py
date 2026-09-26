@@ -1,5 +1,7 @@
 from rest_framework import serializers
 
+from apps.accounts.models import User
+
 from apps.catalog.models import Product
 
 from .models import Review, ReviewImage, ReviewStatus
@@ -91,15 +93,24 @@ class AdminReviewSerializer(serializers.ModelSerializer):
 
 
 class ManualReviewSerializer(serializers.Serializer):
-    """An Admin's testimonial/import: a product, a name, a star rating and text, with no customer account."""
+    """
+    An Admin-entered review: a product, a star rating and text, and either a real account (`user_id` — the review then
+    shows that person's name) or, for a testimonial/import, just a `reviewer_name`.
+    """
 
     product_id = serializers.PrimaryKeyRelatedField(source="product", queryset=Product.objects.all())
-    reviewer_name = serializers.CharField(max_length=150)
+    user_id = serializers.PrimaryKeyRelatedField(source="user", queryset=User.objects.all(), required=False, allow_null=True)
+    reviewer_name = serializers.CharField(max_length=150, required=False, allow_blank=True)
     rating = serializers.IntegerField(min_value=1, max_value=5)
     title = serializers.CharField(max_length=150, required=False, allow_blank=True)
     text = serializers.CharField(max_length=3000)
     status = serializers.ChoiceField(choices=ReviewStatus.choices, default=ReviewStatus.APPROVED)
     images = serializers.ListField(child=serializers.ImageField(), required=False, allow_empty=True, max_length=5)
+
+    def validate(self, attrs):
+        if attrs.get("user") is None and not (attrs.get("reviewer_name") or "").strip():
+            raise serializers.ValidationError({"user_id": ["Choose the customer, or enter a reviewer name."]})
+        return attrs
 
 
 class ReviewStatusChangeSerializer(serializers.Serializer):

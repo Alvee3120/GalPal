@@ -34,16 +34,18 @@ def test_anonymous_is_401(api_client):
     assert api_client.get(VIDEOS).status_code == 401
 
 
-def test_customer_and_cce_get_403(auth_client, customer, cce_user):
-    for user in (customer, cce_user):
-        client = auth_client(user)
-        assert client.get(VIDEOS).status_code == 403
-        assert client.post(VIDEOS, {}, format="json").status_code == 403
+def test_customers_get_403(auth_client, customer):
+    client = auth_client(customer)
+    assert client.get(VIDEOS).status_code == 403
+    assert client.post(VIDEOS, {}, format="json").status_code == 403
 
 
-def test_cce_cannot_delete(auth_client, cce_user):
+def test_cce_manages_video_cards(auth_client, cce_user):
     video = VideoCardFactory()
-    assert auth_client(cce_user).delete(f"{VIDEOS}{video.id}/").status_code == 403
+    client = auth_client(cce_user)
+    assert client.get(VIDEOS).status_code == 200
+    assert client.patch(f"{VIDEOS}{video.id}/", {"title": "Evening routine"}, format="json").json()["title"] == "Evening routine"
+    assert client.delete(f"{VIDEOS}{video.id}/").status_code == 204
 
 
 # --- create -----------------------------------------------------------------------------------
@@ -241,3 +243,17 @@ def test_picker_is_admin_only(api_client, auth_client, customer, cce_user):
 def test_picker_is_not_paginated(admin_client):
     ProductFactory()
     assert isinstance(admin_client.get(PICKER).json(), list)
+
+
+
+def test_switching_an_uploaded_video_to_an_external_link(admin_client):
+    from .factories import make_video
+
+    video = VideoCardFactory(external_url="", video_file=make_video())
+    r = admin_client.patch(
+        f"{VIDEOS}{video.id}/", {"external_url": "https://example.com/clip.mp4", "remove_video_file": "true"}, format="multipart"
+    )
+    assert r.status_code == 200 and r.json()["video_file"] is None and r.json()["video_url"] == "https://example.com/clip.mp4"
+    # without the flag, sending both a file and a link stays refused
+    both = admin_client.patch(f"{VIDEOS}{video.id}/", {"video_file": make_video()}, format="multipart")
+    assert both.status_code == 400

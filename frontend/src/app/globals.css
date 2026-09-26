@@ -1307,6 +1307,22 @@ a.dashboard-card:hover {
 .coupon-status[data-status="used_up"] { color: var(--color-status-pending-text); background-color: var(--color-status-pending-bg); }
 .coupon-status[data-status="inactive"] { color: var(--color-status-cancelled-text); background-color: var(--color-status-cancelled-bg); }
 
+.picker-choice {
+  border: 1px solid var(--color-cart-line);
+  background-color: var(--color-shop-sidebar-bg);
+}
+
+.video-preview {
+  background-color: var(--color-black);
+}
+.upload-progress {
+  background-color: var(--color-product-tile);
+}
+.upload-progress__bar {
+  background-color: var(--color-chart-mark);
+  transition: width 0.2s ease;
+}
+
 .password-rules {
   background-color: var(--color-shop-sidebar-bg);
   color: var(--color-muted);
