@@ -36,6 +36,7 @@ export default function DashboardShell({ user, children }) {
   const navItems = navFor(user.role);
   const [open, setOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
+  const [avatarFailed, setAvatarFailed] = useState(false);
   const panelRef = useRef(null);
   const closeRef = useRef(null);
   const menuButtonRef = useRef(null);
@@ -89,9 +90,15 @@ export default function DashboardShell({ user, children }) {
 
   const profile = (
     <div className="dashboard-profile flex shrink-0 items-center gap-3 rounded-2xl p-3">
-      <span className="dashboard-profile__avatar flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-semibold" aria-hidden="true">
-        {user.full_name?.trim().charAt(0).toUpperCase() || "?"}
-      </span>
+      {user.avatar && !avatarFailed ? (
+        // The profile photo (GET /account/profile/ avatar); falls back to the initial if it's missing or fails to load.
+        // eslint-disable-next-line @next/next/no-img-element -- remote avatar at a fixed small size
+        <img src={user.avatar} alt="" onError={() => setAvatarFailed(true)} className="h-10 w-10 shrink-0 rounded-full object-cover" />
+      ) : (
+        <span className="dashboard-profile__avatar flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-semibold" aria-hidden="true">
+          {user.full_name?.trim().charAt(0).toUpperCase() || "?"}
+        </span>
+      )}
       <div className="min-w-0">
         <p className="truncate text-sm font-semibold">{user.full_name}</p>
         <p className="showcase-muted truncate text-xs">{user.email || user.phone}</p>

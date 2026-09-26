@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { notify } from "@/lib/notify";
 import { catalogFetch, errorText } from "@/lib/productAdmin";
 import { SingleImageInput } from "../products/ImageInputs";
+import { useStaffHref } from "@/lib/staffPaths";
 
 const INPUT = "checkout-input rounded-lg px-3 py-2.5 text-sm";
 
@@ -13,6 +14,7 @@ const INPUT = "checkout-input rounded-lg px-3 py-2.5 text-sm";
 // is_active), sent as multipart so the logo travels with the rest; the backend removes a replaced/cleared logo
 // file itself (ReplacedFilesMixin) and rejects a duplicate name (case-insensitive).
 export default function BrandForm({ brand = null }) {
+  const to = useStaffHref();
   const router = useRouter();
   const isEdit = Boolean(brand);
 
@@ -45,7 +47,7 @@ export default function BrandForm({ brand = null }) {
       return notify.error(errorText(res, isEdit ? "Unable to update the brand. Please try again." : "Unable to create the brand. Please try again."));
     }
     notify.success(isEdit ? "Brand updated successfully." : "Brand created successfully.");
-    router.push("/dashboard/CCE/brands");
+    router.push(to("/dashboard/CCE/brands"));
     router.refresh();
   }
 
@@ -92,7 +94,7 @@ export default function BrandForm({ brand = null }) {
       </section>
 
       <div className="flex flex-wrap items-center justify-end gap-3">
-        <Link href="/dashboard/CCE/brands" className="auth-btn auth-btn--outline rounded-full px-6 py-2.5 text-sm font-medium">
+        <Link href={to("/dashboard/CCE/brands")} className="auth-btn auth-btn--outline rounded-full px-6 py-2.5 text-sm font-medium">
           Cancel
         </Link>
         <button type="submit" disabled={submitting} aria-busy={submitting} className="auth-btn auth-btn--primary rounded-full px-6 py-2.5 text-sm font-medium">

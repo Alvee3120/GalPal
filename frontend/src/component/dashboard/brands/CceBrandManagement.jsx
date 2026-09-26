@@ -8,6 +8,7 @@ import { catalogFetch, errorText } from "@/lib/productAdmin";
 import ProductImage from "@/component/shared/ProductImage";
 import ConfirmDialog from "@/component/shared/ConfirmDialog";
 import DashboardPagination from "../DashboardPagination";
+import { useStaffHref } from "@/lib/staffPaths";
 
 const PAGE_SIZE = 10;
 const SEARCH_DELAY_MS = 350;
@@ -21,10 +22,11 @@ function ActiveBadge({ active }) {
 }
 
 function RowActions({ brand, onDelete }) {
+  const to = useStaffHref();
   return (
     <div className="flex items-center justify-end gap-1.5">
       <Link
-        href={`/dashboard/CCE/brands/${brand.id}`}
+        href={to(`/dashboard/CCE/brands/${brand.id}`)}
         title="Edit brand"
         aria-label={`Edit brand ${brand.name}`}
         className="icon-action flex h-9 w-9 items-center justify-center rounded-full"
@@ -57,6 +59,7 @@ function Logo({ src }) {
 // endpoints and serializer Admin uses; CCE is let in per action by IsCatalogStaff). Search (name/slug) and
 // pagination are server-side.
 export default function CceBrandManagement({ initialBrands, initialCount }) {
+  const to = useStaffHref();
   const [brands, setBrands] = useState(initialBrands);
   const [count, setCount] = useState(initialCount);
   const [search, setSearch] = useState("");
@@ -121,7 +124,7 @@ export default function CceBrandManagement({ initialBrands, initialCount }) {
             {count} brand{count === 1 ? "" : "s"}
           </p>
         </div>
-        <Link href="/dashboard/CCE/brands/new" className="auth-btn auth-btn--primary inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-medium">
+        <Link href={to("/dashboard/CCE/brands/new")} className="auth-btn auth-btn--primary inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-medium">
           <FiPlus className="h-4 w-4" aria-hidden="true" />
           Add Brand
         </Link>

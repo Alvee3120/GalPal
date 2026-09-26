@@ -62,3 +62,35 @@ def test_date_range_and_granularity(cce_client, cce_user):
 
 def test_customers_cannot_see_it(auth_client, customer):
     assert auth_client(customer).get(URL).status_code == 403
+
+
+ADMIN_URL = "/api/v1/admin/dashboard/"
+
+
+def test_admin_dashboard_is_admin_only(auth_client, cce_user, customer, admin_user):
+    assert auth_client(cce_user).get(ADMIN_URL).status_code == 403
+    assert auth_client(customer).get(ADMIN_URL).status_code == 403
+    assert auth_client(admin_user).get(ADMIN_URL).status_code == 200
+
+
+def test_admin_headline_counts_sold_units_and_compares_periods(auth_client, admin_user, cce_user):
+    product = ProductFactory(status="published", manage_stock=True, stock_quantity=50)
+    today = timezone.localdate()
+    now_order = new_order(cce_user, product=product, quantity=3)
+    old_order = new_order(cce_user, product=product, quantity=1, phone="01787654321")
+    Order.objects.filter(pk=now_order.pk).update(status="delivered")
+    Order.objects.filter(pk=old_order.pk).update(status="confirmed", created_at=timezone.now() - timedelta(days=8))
+    body = auth_client(admin_user).get(ADMIN_URL, {"date_from": today - timedelta(days=6), "date_to": today}).json()
+    head = body["headline"]
+    assert head["products_sold"]["value"] == 3 and head["products_sold"]["previous"] == 1
+    assert head["products_sold"]["change"] == 200.0 and head["orders"]["change"] == 0.0
+    assert body["previous_period"]["date_to"] == (today - timedelta(days=7)).isoformat()
+    top = body["top_products"][0]
+    assert top["product_id"] == product.id and top["sold"] == 3
+    assert body["recent_orders"][0]["id"] == now_order.pk
+
+
+def test_a_single_day_is_grouped_by_hour(auth_client, admin_user):
+    today = timezone.localdate()
+    body = auth_client(admin_user).get(ADMIN_URL, {"date_from": today, "date_to": today}).json()
+    assert body["granularity"] == "hour" and len(body["series"]) == 24

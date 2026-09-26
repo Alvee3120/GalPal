@@ -37,3 +37,11 @@ class StaffFilter(_UserSearchMixin):
     class Meta:
         model = User
         fields = ["is_active", "role"]
+
+
+class UserFilter(_UserSearchMixin):
+    """User Management: every role. `search` covers name, phone (any format) and email."""
+
+    class Meta:
+        model = User
+        fields = ["role", "is_active", "created_via_checkout"]

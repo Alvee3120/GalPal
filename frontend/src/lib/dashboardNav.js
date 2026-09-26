@@ -1,10 +1,11 @@
 import { BiHome } from "react-icons/bi";
 import { FaMapLocationDot } from "react-icons/fa6";
-import { FiAward, FiBell, FiClipboard, FiGrid, FiLayers, FiPackage, FiPlusCircle, FiShoppingBag, FiStar, FiUser } from "react-icons/fi";
+import { FiAward, FiBell, FiClipboard, FiGrid, FiLayers, FiPackage, FiPlusCircle, FiShoppingBag, FiStar, FiUser, FiUsers } from "react-icons/fi";
 
 // Role -> sidebar links, from the authenticated user's real `role` (apps.accounts.models.User.Role: "customer",
-// "admin", "cce" — see lib/currentUser.js). ONLY routes that actually exist are listed here: admin has no
-// management pages built yet (a separate, larger effort), so it still gets just the shared dashboard home. CCE's
+// "admin", "cce" — see lib/currentUser.js). ONLY routes that actually exist are listed here. Admin shares
+// the staff tools, served at /dashboard/admin/ (lib/staffPaths.js) (every one of those backend endpoints already allows Admin); its /dashboard
+// is the full ecommerce overview. CCE's
 // "Dashboard" is the analytics overview and "Orders" the order-management list; "My Orders"/"My Account" are
 // the CCE account's own orders/profile (apps.orders.views.MyOrderViewSet / /account/profile/ — the same
 // customer-facing endpoints, just mounted under /dashboard/CCE/... since /dashboard/customer/... is customer-only;
@@ -17,7 +18,17 @@ export const DASHBOARD_NAV = {
     { label: "Address", href: "/dashboard/customer/address", icon: FaMapLocationDot },
     { label: "My Account", href: "/dashboard/customer/account", icon: FiUser },
   ],
-  admin: [{ label: "Dashboard", href: "/dashboard", icon: FiGrid }],
+  admin: [
+    { label: "Dashboard", href: "/dashboard", icon: FiGrid },
+    { label: "Orders", href: "/dashboard/admin/orders", icon: FiClipboard },
+    { label: "Products", href: "/dashboard/admin/products", icon: FiPackage },
+    { label: "Categories", href: "/dashboard/admin/categories", icon: FiLayers },
+    { label: "Brands", href: "/dashboard/admin/brands", icon: FiAward },
+    { label: "Notify Me", href: "/dashboard/admin/stock-notifications", icon: FiBell },
+    { label: "Reviews", href: "/dashboard/admin/reviews", icon: FiStar },
+    { label: "Users", href: "/dashboard/admin/users", icon: FiUsers },
+    { label: "My Account", href: "/dashboard/admin/account", icon: FiUser },
+  ],
   cce: [
     { label: "Dashboard", href: "/dashboard", icon: FiGrid },
     { label: "Orders", href: "/dashboard/CCE/orders", icon: FiClipboard },

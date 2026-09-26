@@ -9,6 +9,7 @@ import { ORDER_SOURCE_LABEL, PAYMENT_METHOD_LABEL, STATUS_LABEL, formatOrderDate
 import OrderStatusDropdown from "./OrderStatusDropdown";
 import OrderDateRangePicker, { formatCalendarDate } from "./OrderDateRangePicker";
 import DashboardPagination from "./DashboardPagination";
+import { useStaffHref } from "@/lib/staffPaths";
 
 // Matches OrderStatusDropdown's VISIBLE_STATUSES exactly — the same status vocabulary everywhere in this UI.
 const STATUS_OPTIONS = ["", "confirmed", "processing", "shipped", "delivered", "cancelled", "returned"];
@@ -24,6 +25,7 @@ const PAGE_SIZE = 10;
 // two that aren't — see apps.orders.filters.OrderFilter's `date_from`/`date_to`, which this reuses as-is (already
 // inclusive, already resolved against the project's actual timezone — see that filter's own comment).
 export default function CceOrderManagement({ initialOrders, initialCount, currencySymbol }) {
+  const to = useStaffHref();
   const [orders, setOrders] = useState(initialOrders);
   const [count, setCount] = useState(initialCount);
   const [search, setSearch] = useState("");
@@ -171,7 +173,7 @@ export default function CceOrderManagement({ initialOrders, initialCount, curren
 
               <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
                 <p className="font-semibold">{formatPrice(order.grand_total, currencySymbol)}</p>
-                <Link href={`/dashboard/CCE/orders/${order.id}`} className="auth-btn auth-btn--primary rounded-full px-5 py-2 text-xs font-medium">
+                <Link href={to(`/dashboard/CCE/orders/${order.id}`)} className="auth-btn auth-btn--primary rounded-full px-5 py-2 text-xs font-medium">
                   Manage Order
                 </Link>
               </div>

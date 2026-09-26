@@ -1,11 +1,26 @@
 """Filters for the public product list and the admin product list."""
 
 import django_filters
-from django.db.models import Case, DecimalField, F, Q, Value, When
+from django.db.models import Case, DecimalField, Exists, F, OuterRef, Q, Value, When
 from django.utils import timezone
 
 from . import services
-from .models import Product, SkinType
+from .models import Product, ProductVariant, SkinType, StockStatus
+
+
+# --- availability: the storefront's rule (apps.catalog.services._is_available), as a query --------------------------------
+# A product without variants is in stock if it doesn't manage stock, is on backorder, or has quantity > 0; a product with
+# variants is in stock if any active variant doesn't manage stock or has quantity > 0. Needs `annotate_availability`.
+SIMPLE_IN_STOCK = Q(has_variants=False) & (Q(manage_stock=False) | Q(stock_status=StockStatus.BACKORDER) | Q(stock_quantity__gt=0))
+IN_STOCK = SIMPLE_IN_STOCK | (Q(has_variants=True) & Q(any_variant_in_stock=True))
+
+
+def variant_in_stock_subquery():
+    return ProductVariant.objects.filter(product=OuterRef("pk"), is_active=True).filter(Q(manage_stock=False) | Q(stock_quantity__gt=0))
+
+
+def annotate_availability(queryset):
+    return queryset.annotate(any_variant_in_stock=Exists(variant_in_stock_subquery()))
 
 
 def annotate_effective_price(queryset):
@@ -73,6 +88,14 @@ class AdminProductFilter(django_filters.FilterSet):
     category = django_filters.NumberFilter(field_name="category_links__category_id")
     brand = django_filters.NumberFilter(field_name="brand_id")
     tag = django_filters.NumberFilter(field_name="tags__id")
+    stock = django_filters.ChoiceFilter(
+        choices=[("in_stock", "In stock"), ("out_of_stock", "Out of stock")], method="filter_stock",
+        help_text="Availability as the storefront sees it (variant products: any active variant in stock).",
+    )
+
+    def filter_stock(self, queryset, name, value):
+        queryset = annotate_availability(queryset)
+        return queryset.filter(IN_STOCK) if value == "in_stock" else queryset.exclude(IN_STOCK)
 
     class Meta:
         model = Product

@@ -19,6 +19,7 @@ import {
 } from "@/lib/productAdmin";
 import TagSelector from "./TagSelector";
 import { GalleryInput, SingleImageInput } from "./ImageInputs";
+import { useStaffHref } from "@/lib/staffPaths";
 
 // --- small layout helpers ------------------------------------------------------------------------------------------
 
@@ -246,6 +247,7 @@ function CategoryTree({ nodes, depth = 0, selected, primaryId, onToggle, onPrima
 // the product itself, its gallery (images/ + images/reorder/), its variants (variants/), and stock through
 // stock/adjust/ so every quantity change is logged as a StockMovement like any other adjustment.
 export default function ProductForm({ product = null, savedVariants = [] }) {
+  const to = useStaffHref();
   const router = useRouter();
   const isEdit = Boolean(product);
 
@@ -449,7 +451,7 @@ export default function ProductForm({ product = null, savedVariants = [] }) {
     const fail = (message) => {
       setSubmitting(false);
       notify.error(`${isEdit ? "Product saved" : "Product created"}, but not everything was saved. ${message}`);
-      if (!isEdit) router.replace(`/dashboard/CCE/products/${saved.id}`);
+      if (!isEdit) router.replace(to(`/dashboard/CCE/products/${saved.id}`));
       else {
         setFeature({ ...blankImage, url: saved.feature_image });
         setOgImage({ ...blankImage, url: saved.og_image });
@@ -470,7 +472,7 @@ export default function ProductForm({ product = null, savedVariants = [] }) {
     }
 
     notify.success(isEdit ? "Product updated successfully." : "Product created successfully.");
-    router.push("/dashboard/CCE/products");
+    router.push(to("/dashboard/CCE/products"));
     router.refresh();
   }
 
@@ -816,7 +818,7 @@ export default function ProductForm({ product = null, savedVariants = [] }) {
       )}
 
       <div className="flex flex-wrap items-center justify-end gap-3">
-        <Link href="/dashboard/CCE/products" className="auth-btn auth-btn--outline rounded-full px-6 py-2.5 text-sm font-medium">
+        <Link href={to("/dashboard/CCE/products")} className="auth-btn auth-btn--outline rounded-full px-6 py-2.5 text-sm font-medium">
           Cancel
         </Link>
         <button type="submit" disabled={submitting} aria-busy={submitting} className="auth-btn auth-btn--primary rounded-full px-6 py-2.5 text-sm font-medium">

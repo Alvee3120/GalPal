@@ -14,11 +14,14 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from apps.core.serializers import ErrorResponseSerializer
 
 from . import services
-from .filters import CustomerFilter, StaffFilter
+from .filters import CustomerFilter, StaffFilter, UserFilter
 from .models import Address, User
 from .permissions import IsAdmin, IsOwner
 from .serializers import (
     AddressSerializer,
+    AdminUserCreateSerializer,
+    AdminUserSerializer,
+    AdminUserUpdateSerializer,
     AuthResponseSerializer,
     ChangePasswordSerializer,
     CustomerDetailSerializer,
@@ -318,3 +321,59 @@ class CustomerViewSet(viewsets.ReadOnlyModelViewSet):
     def deactivate(self, request, pk=None):
         user = services.set_user_active(self.get_object(), request.user, False)
         return Response(CustomerDetailSerializer(user, context={"request": request}).data)
+
+
+# --- Admin: all users (User Management) --------------------------------------------------------
+
+
+@extend_schema_view(
+    list=extend_schema(
+        tags=["Admin – Users"], summary="List users (every role)",
+        description="`search` (name, phone in any format, email), `role`, `is_active`, `created_via_checkout`. Paginated.",
+    ),
+    retrieve=extend_schema(tags=["Admin – Users"], summary="Get a user"),
+    create=extend_schema(
+        tags=["Admin – Users"], summary="Create a user (any role)",
+        description="Password is checked against AUTH_PASSWORD_VALIDATORS and must match `password_confirm`.",
+        request=AdminUserCreateSerializer, responses={201: AdminUserSerializer},
+    ),
+    partial_update=extend_schema(
+        tags=["Admin – Users"], summary="Update a user",
+        description=(
+            "Phone, name, role, is_active, and optionally a new password (+ confirmation; leave both empty to keep it). "
+            "You can't change your own role or deactivate yourself, and there must always be an active Admin."
+        ),
+        request=AdminUserUpdateSerializer, responses={200: AdminUserSerializer},
+    ),
+    destroy=extend_schema(
+        tags=["Admin – Users"], summary="Delete a user",
+        description="Not yourself, not the last active Admin. Their orders and reviews stay (the link to the account is cleared).",
+    ),
+)
+class UserViewSet(viewsets.ModelViewSet):
+    """User Management: every account, any role. Admin only. Reuses the staff/customer rules in `services`."""
+
+    permission_classes = [IsAdmin]
+    queryset = User.objects.all()
+    filterset_class = UserFilter
+    ordering_fields = ["created_at", "full_name", "phone", "last_login"]
+    ordering = ["-created_at"]
+    http_method_names = ["get", "post", "patch", "delete", "head", "options"]
+
+    def get_serializer_class(self):
+        return {"create": AdminUserCreateSerializer, "partial_update": AdminUserUpdateSerializer}.get(self.action, AdminUserSerializer)
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+        return Response(AdminUserSerializer(user, context={"request": request}).data, status=status.HTTP_201_CREATED)
+
+    def partial_update(self, request, *args, **kwargs):
+        serializer = self.get_serializer(self.get_object(), data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+        return Response(AdminUserSerializer(user, context={"request": request}).data)
+
+    def perform_destroy(self, instance):
+        services.delete_user(instance, self.request.user)

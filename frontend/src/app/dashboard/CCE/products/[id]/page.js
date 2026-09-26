@@ -1,4 +1,4 @@
-import Link from "next/link";
+import StaffLink from "@/component/dashboard/StaffLink";
 import { notFound } from "next/navigation";
 import { backendFetch } from "@/lib/backendAuth";
 import ProductForm from "@/component/dashboard/products/ProductForm";
@@ -28,9 +28,9 @@ export default async function CceEditProductPage({ params }) {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <Link href="/dashboard/CCE/products" className="showcase-muted text-sm hover:underline">
+        <StaffLink href="/dashboard/CCE/products" className="showcase-muted text-sm hover:underline">
           &larr; Product Management
-        </Link>
+        </StaffLink>
         <h1 className="custom-font mt-2 text-2xl sm:text-3xl">Edit Product</h1>
         <p className="showcase-muted mt-1 text-sm">{data.product.name}</p>
       </div>

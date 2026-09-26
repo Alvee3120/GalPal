@@ -253,3 +253,90 @@ class CustomerDetailSerializer(CustomerListSerializer):
     class Meta(CustomerListSerializer.Meta):
         fields = [*CustomerListSerializer.Meta.fields, "avatar", "addresses"]
         read_only_fields = fields
+
+
+# --- Admin: all users (User Management) --------------------------------------------------
+
+
+class AdminUserSerializer(serializers.ModelSerializer):
+    """A user as User Management shows it. Never includes the password or its hash."""
+
+    class Meta:
+        model = User
+        fields = [
+            "id", "avatar", "phone", "full_name", "email", "role", "is_active", "created_via_checkout",
+            "must_change_password", "last_login", "created_at",
+        ]
+        read_only_fields = fields  # created_at / last_login are display-only; last_login is set by services.record_login
+
+
+def _check_password(password, confirm, candidate):
+    """Confirmation first, then Django's AUTH_PASSWORD_VALIDATORS (similarity, length, common, numeric)."""
+    if password != confirm:
+        raise serializers.ValidationError({"password_confirm": ["Passwords do not match."]})
+    try:
+        validate_password(password, candidate)
+    except DjangoValidationError as exc:
+        raise serializers.ValidationError({"password": list(exc.messages)}) from None
+
+
+class AdminUserCreateSerializer(UniqueContactMixin, serializers.Serializer):
+    phone = BDPhoneField()
+    full_name = serializers.CharField(max_length=150)
+    role = serializers.ChoiceField(choices=User.Role.choices, default=User.Role.CUSTOMER)
+    avatar = serializers.ImageField(required=False, allow_null=True, validators=[validate_image_file])
+    password = password_field()
+    password_confirm = password_field()
+
+    def validate_full_name(self, value):
+        value = value.strip()
+        if not value:
+            raise serializers.ValidationError("Full name is required.")
+        return value
+
+    def validate(self, attrs):
+        _check_password(attrs["password"], attrs["password_confirm"], User(full_name=attrs["full_name"], phone=attrs["phone"]))
+        return attrs
+
+    def create(self, validated_data):
+        validated_data.pop("password_confirm")
+        return services.create_user_by_admin(**validated_data)
+
+
+class AdminUserUpdateSerializer(UniqueContactMixin, serializers.Serializer):
+    """Partial update. Leave `password` (and its confirmation) empty to keep the current password."""
+
+    phone = BDPhoneField(required=False)
+    full_name = serializers.CharField(max_length=150, required=False)
+    role = serializers.ChoiceField(choices=User.Role.choices, required=False)
+    is_active = serializers.BooleanField(required=False)
+    avatar = serializers.ImageField(required=False, allow_null=True, validators=[validate_image_file], help_text="Send empty/null to remove.")
+    password = password_field(required=False, allow_blank=True)
+    password_confirm = password_field(required=False, allow_blank=True)
+    must_change_password = serializers.BooleanField(
+        required=False, help_text="With a new password: true makes it temporary (the user must change it at next login)."
+    )
+
+    def validate_full_name(self, value):
+        value = value.strip()
+        if not value:
+            raise serializers.ValidationError("Full name is required.")
+        return value
+
+    def validate(self, attrs):
+        password = attrs.pop("password", "") or ""
+        confirm = attrs.pop("password_confirm", "") or ""
+        if password or confirm:
+            candidate = User(
+                pk=self.instance.pk, full_name=attrs.get("full_name", self.instance.full_name),
+                phone=attrs.get("phone", self.instance.phone), email=self.instance.email,
+            )
+            _check_password(password, confirm, candidate)
+            attrs["password"] = password
+        return attrs
+
+    def update(self, instance, validated_data):
+        try:
+            return services.update_user_by_admin(instance, self.context["request"].user, **validated_data)
+        except DjangoValidationError as exc:
+            raise serializers.ValidationError({"non_field_errors": list(exc.messages)}) from None

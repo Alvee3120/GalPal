@@ -7,6 +7,7 @@ import { notify } from "@/lib/notify";
 import { catalogFetch, errorText } from "@/lib/productAdmin";
 import { parentOptions } from "@/lib/categoryAdmin";
 import { SingleImageInput } from "../products/ImageInputs";
+import { useStaffHref } from "@/lib/staffPaths";
 
 const INPUT = "checkout-input rounded-lg px-3 py-2.5 text-sm";
 
@@ -15,6 +16,7 @@ const INPUT = "checkout-input rounded-lg px-3 py-2.5 text-sm";
 // Fields are the serializer's own: slug, name, image, parent (an id, or null for a top-level category),
 // description, is_active. sort_order and the SEO fields aren't on this form and are left as they are.
 export default function CategoryForm({ category = null }) {
+  const to = useStaffHref();
   const router = useRouter();
   const isEdit = Boolean(category);
 
@@ -64,7 +66,7 @@ export default function CategoryForm({ category = null }) {
       return notify.error(errorText(res, isEdit ? "Unable to update the category. Please try again." : "Unable to create the category. Please try again."));
     }
     notify.success(isEdit ? "Category updated successfully." : "Category created successfully.");
-    router.push("/dashboard/CCE/categories");
+    router.push(to("/dashboard/CCE/categories"));
     router.refresh();
   }
 
@@ -128,7 +130,7 @@ export default function CategoryForm({ category = null }) {
       </section>
 
       <div className="flex flex-wrap items-center justify-end gap-3">
-        <Link href="/dashboard/CCE/categories" className="auth-btn auth-btn--outline rounded-full px-6 py-2.5 text-sm font-medium">
+        <Link href={to("/dashboard/CCE/categories")} className="auth-btn auth-btn--outline rounded-full px-6 py-2.5 text-sm font-medium">
           Cancel
         </Link>
         <button type="submit" disabled={submitting} aria-busy={submitting} className="auth-btn auth-btn--primary rounded-full px-6 py-2.5 text-sm font-medium">

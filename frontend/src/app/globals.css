@@ -141,6 +141,8 @@
   --color-status-cancelled-bg: #f1f5f9;
   --color-status-returned-text: #991b1b;
   --color-status-returned-bg: #fee2e2;
+  --color-status-failed-text: #9a3412;
+  --color-status-failed-bg: #ffedd5;
 
   /* Dashboard charts (TimeSeriesChart): one brand-colored series on the page surface */
   --color-chart-mark: var(--color-brand);
@@ -1067,6 +1069,63 @@ a.dashboard-card:hover {
 .order-status[data-status="delivered"] { --status-text: var(--color-status-delivered-text); --status-bg: var(--color-status-delivered-bg); }
 .order-status[data-status="cancelled"] { --status-text: var(--color-status-cancelled-text); --status-bg: var(--color-status-cancelled-bg); }
 .order-status[data-status="returned"] { --status-text: var(--color-status-returned-text); --status-bg: var(--color-status-returned-bg); }
+.order-status[data-status="failed"] { --status-text: var(--color-status-failed-text); --status-bg: var(--color-status-failed-bg); }
+
+.order-status--pill[data-status] {
+  display: inline-block;
+  white-space: nowrap;
+  color: var(--status-text);
+  background-color: var(--status-bg);
+}
+
+/* Admin dashboard (component/dashboard/overview/AdminDashboardOverview.jsx, StatusDonut.jsx) */
+.donut-track {
+  stroke: var(--color-product-tile);
+}
+.donut-segment {
+  transition: stroke-width 0.15s ease, opacity 0.15s ease;
+}
+.donut-segment[data-status="pending"] { stroke: var(--color-status-pending-text); }
+.donut-segment[data-status="confirmed"] { stroke: var(--color-status-confirmed-text); }
+.donut-segment[data-status="processing"] { stroke: var(--color-status-processing-text); }
+.donut-segment[data-status="shipped"] { stroke: var(--color-status-shipped-text); }
+.donut-segment[data-status="delivered"] { stroke: var(--color-status-delivered-text); }
+.donut-segment[data-status="cancelled"] { stroke: var(--color-status-cancelled-text); }
+.donut-segment[data-status="returned"] { stroke: var(--color-status-returned-text); }
+.donut-segment[data-status="failed"] { stroke: var(--color-status-failed-text); }
+.donut-segment--dim {
+  opacity: 0.35;
+}
+.donut-legend:hover,
+.donut-legend:focus-visible {
+  background-color: var(--color-hover);
+}
+.donut-legend:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 1px;
+}
+.trend-up {
+  color: var(--color-success);
+}
+.trend-down {
+  color: var(--color-danger);
+}
+.stock-seg {
+  display: block;
+}
+.stock-seg--in { background-color: var(--color-status-delivered-text); }
+.stock-seg--low { background-color: var(--color-status-pending-text); }
+.stock-seg--out { background-color: var(--color-status-returned-text); }
+.category-bar {
+  display: block;
+  background-color: var(--color-product-tile);
+}
+.category-bar__fill {
+  background-color: var(--color-chart-mark);
+}
+.customer-stat {
+  background-color: var(--color-shop-sidebar-bg);
+}
 
 .order-status--button[data-status] {
   color: var(--status-text);
@@ -1186,6 +1245,41 @@ a.dashboard-card:hover {
 .status-select:focus-visible {
   outline: 2px solid var(--color-focus);
   outline-offset: 2px;
+}
+
+/* User Management (component/dashboard/users/*) */
+.role-badge {
+  display: inline-block;
+  white-space: nowrap;
+  background-color: var(--color-showcase-empty);
+  color: var(--color-brand);
+}
+.role-badge[data-role="admin"] {
+  background-color: var(--color-brand);
+  color: var(--color-white);
+}
+.role-badge[data-role="customer"] {
+  background-color: color-mix(in srgb, var(--color-foreground) 7%, var(--color-background));
+  color: var(--color-foreground);
+}
+.user-avatar {
+  background-color: var(--color-showcase-empty);
+  color: var(--color-brand);
+}
+.read-only-tag {
+  background-color: color-mix(in srgb, var(--color-foreground) 7%, var(--color-background));
+  color: var(--color-muted);
+}
+.temp-password {
+  background-color: var(--color-shop-sidebar-bg);
+  border: 1px dashed var(--color-cart-line);
+}
+.password-rules {
+  background-color: var(--color-shop-sidebar-bg);
+  color: var(--color-muted);
+}
+.field-error {
+  color: var(--color-danger);
 }
 
 /* Icon-only row actions (Edit / Delete): the label lives in aria-label + title. */

@@ -336,3 +336,44 @@ def delete_staff(user, actor):
         raise ValidationError("You cannot delete your own account.", code="self_delete")
     _ensure_another_active_admin(user)
     user.delete()
+
+
+# --- Admin: all users (User Management) -----------------------------------------------
+
+
+@transaction.atomic
+def create_user_by_admin(*, full_name, phone, password, role, email=None, avatar=None):
+    """An account an Admin creates by hand, of any role. Not a checkout account."""
+    return User.objects.create_user(phone=phone, full_name=full_name, email=email, password=password, role=role, avatar=avatar)
+
+
+_NO_CHANGE = object()
+
+
+@transaction.atomic
+def update_user_by_admin(user, actor, *, password=None, is_active=None, must_change_password=None, avatar=_NO_CHANGE, **fields):
+    """
+    Edit any user. Role and password go through `update_staff` (no changing your own role; never leave the
+    system without an active Admin; a new password logs the user out everywhere), activation through
+    `set_user_active` (no deactivating yourself; same last-Admin rule). `must_change_password=True` marks a new
+    password as temporary (an admin reset): the user is sent to change it at their next login. A replaced or
+    cleared avatar's file is removed once the change has committed.
+    """
+    old_avatar = user.avatar if avatar is not _NO_CHANGE else None
+    if avatar is not _NO_CHANGE:
+        fields["avatar"] = avatar
+    user = update_staff(user, actor, password=password, **fields)
+    if password and must_change_password is not None:
+        user.must_change_password = must_change_password
+        user.save(update_fields=["must_change_password", "updated_at"])
+    if is_active is not None and is_active != user.is_active:
+        user = set_user_active(user, actor, is_active)
+    if old_avatar and old_avatar.name and (not user.avatar or user.avatar.name != old_avatar.name):
+        storage, path = old_avatar.storage, old_avatar.name
+        transaction.on_commit(lambda: storage.delete(path))
+    return user
+
+
+def delete_user(user, actor):
+    """Same rules as staff: not yourself, not the last active Admin. Orders/reviews keep their snapshot (SET_NULL)."""
+    delete_staff(user, actor)
