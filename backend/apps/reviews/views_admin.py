@@ -43,8 +43,12 @@ class AdminReviewViewSet(CatalogStaffActionsMixin, viewsets.ModelViewSet):
         return Response(AdminReviewSerializer(fresh, context=self.get_serializer_context()).data, status=status_code)
 
     @extend_schema(
-        tags=TAG, summary="Create a manual/testimonial review",
-        description="A product, a name, a star rating and text — no customer account. Defaults to approved.",
+        tags=TAG, summary="Create a review (Admin)",
+        description=(
+            "A product, a star rating and text, for a real account (`user_id`: shown under their name, one per product "
+            "per account — 409 `already_reviewed`) or a testimonial with just `reviewer_name`. Defaults to approved. "
+            "Admin only. `images`: up to 5, multipart."
+        ),
         request=ManualReviewSerializer, responses={201: AdminReviewSerializer, 400: ERR},
     )
     def create(self, request, *args, **kwargs):
@@ -52,7 +56,7 @@ class AdminReviewViewSet(CatalogStaffActionsMixin, viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
         review = services.create_manual_review(
-            product=data["product"], reviewer_name=data["reviewer_name"], rating=data["rating"],
+            product=data["product"], user=data.get("user"), reviewer_name=(data.get("reviewer_name") or "").strip(), rating=data["rating"],
             title=data.get("title", ""), text=data["text"], status=data["status"], created_by=request.user,
             images=data.get("images"),
         )

@@ -71,12 +71,27 @@ def create_review(*, product, user, rating, text, title="", images=None):
 
 
 @transaction.atomic
-def create_manual_review(*, product, reviewer_name, rating, text, title="", status=ReviewStatus.APPROVED, created_by, images=None):
-    """An Admin's testimonial/import: no customer account, so no per-product limit applies."""
-    review = Review.objects.create(
-        product=product, reviewer_name=reviewer_name, rating=rating, title=title, text=text,
-        status=status, is_manual=True, created_by=created_by,
-    )
+def create_manual_review(*, product, rating, text, reviewer_name="", user=None, title="", status=ReviewStatus.APPROVED, created_by, images=None):
+    """
+    A review an Admin enters by hand (`is_manual`, `created_by`). Either for a real account (`user`): it then shows
+    under that person's name, gets the Verified Purchase badge only if they really bought the product, and — like a
+    customer's own review — is limited to one per product per account (409 `already_reviewed`); or a testimonial /
+    import with just a `reviewer_name` and no account, which has no such limit. Purchase is never required to review
+    (the badge is only a badge), so there's no purchase rule to apply here either.
+    """
+    if user is not None:
+        if Review.objects.filter(product=product, user=user).exists():
+            raise Conflict("This customer has already reviewed this product.", code="already_reviewed")
+        reviewer_name = user.full_name
+    try:
+        with transaction.atomic():
+            review = Review.objects.create(
+                product=product, user=user, reviewer_name=reviewer_name, rating=rating, title=title, text=text,
+                status=status, is_manual=True, created_by=created_by,
+                is_verified_purchase=is_verified_purchase(user, product) if user is not None else False,
+            )
+    except IntegrityError:  # a concurrent review for the same account and product won the race
+        raise Conflict("This customer has already reviewed this product.", code="already_reviewed") from None
     _save_images(review, images)
     return review
 

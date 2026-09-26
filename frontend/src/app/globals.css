@@ -1307,6 +1307,11 @@ a.dashboard-card:hover {
 .coupon-status[data-status="used_up"] { color: var(--color-status-pending-text); background-color: var(--color-status-pending-bg); }
 .coupon-status[data-status="inactive"] { color: var(--color-status-cancelled-text); background-color: var(--color-status-cancelled-bg); }
 
+.picker-choice {
+  border: 1px solid var(--color-cart-line);
+  background-color: var(--color-shop-sidebar-bg);
+}
+
 .password-rules {
   background-color: var(--color-shop-sidebar-bg);
   color: var(--color-muted);

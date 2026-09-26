@@ -3,7 +3,9 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { FaStar } from "react-icons/fa";
-import { FiCheck, FiEye, FiSearch, FiSlash, FiTrash2 } from "react-icons/fi";
+import { usePathname } from "next/navigation";
+import { FiCheck, FiEdit2, FiEye, FiPlus, FiSearch, FiSlash, FiTrash2 } from "react-icons/fi";
+import { ADMIN_BASE, staffBase } from "@/lib/staffPaths";
 import { notify } from "@/lib/notify";
 import { formatOrderDate, formatOrderDateTime } from "@/lib/orderStatus";
 import { errorText } from "@/lib/productAdmin";
@@ -53,9 +55,19 @@ function StatusBadge({ status }) {
 
 const customerOf = (r) => r.user?.full_name ?? r.reviewer_name;
 
-function Actions({ review, busy, onView, onApprove, onReject, onDelete, showView = true }) {
+function Actions({ review, busy, onView, onApprove, onReject, onDelete, showView = true, canEdit = false }) {
   return (
     <div className="flex items-center justify-end gap-1.5">
+      {canEdit && (
+        <Link
+          href={`/dashboard/admin/reviews/${review.id}`}
+          title="Edit review"
+          aria-label="Edit review"
+          className="icon-action flex h-9 w-9 items-center justify-center rounded-full"
+        >
+          <FiEdit2 className="h-4 w-4" aria-hidden="true" />
+        </Link>
+      )}
       {showView && (
       <button type="button" onClick={() => onView(review)} title="View review" aria-label="View review" className="icon-action flex h-9 w-9 items-center justify-center rounded-full">
         <FiEye className="h-4 w-4" aria-hidden="true" />
@@ -105,6 +117,8 @@ function Actions({ review, busy, onView, onApprove, onReject, onDelete, showView
 // text, product name/SKU and phone). Every change comes from the backend's response — nothing is changed locally
 // first — and the proxy revalidates the public review data so the product page and homepage follow.
 export default function CceReviewManagement({ initialReviews, initialCount }) {
+  // Adding and editing reviews is Admin only (the backend's create/update are IsAdmin); CCE moderates.
+  const isAdmin = staffBase(usePathname()) === ADMIN_BASE;
   const [reviews, setReviews] = useState(initialReviews);
   const [count, setCount] = useState(initialCount);
   const [status, setStatus] = useState("pending");
@@ -181,6 +195,7 @@ export default function CceReviewManagement({ initialReviews, initialCount }) {
   }
 
   const actionProps = {
+    canEdit: isAdmin,
     onView: setViewing,
     onApprove: (r) => moderate(r, "approve"),
     onReject: (r) => moderate(r, "reject"),
@@ -189,9 +204,17 @@ export default function CceReviewManagement({ initialReviews, initialCount }) {
 
   return (
     <div className="flex flex-col gap-6">
+      <div className="flex flex-wrap items-start justify-between gap-3">
       <div>
         <h1 className="custom-font text-2xl sm:text-3xl">Review Management</h1>
         <p className="showcase-muted mt-1 text-sm">New customer reviews wait here as Pending. Approved reviews appear on the product page and count toward its rating.</p>
+      </div>
+        {isAdmin && (
+          <Link href="/dashboard/admin/reviews/new" className="auth-btn auth-btn--primary inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-medium">
+            <FiPlus className="h-4 w-4" aria-hidden="true" />
+            Add Review
+          </Link>
+        )}
       </div>
 
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
