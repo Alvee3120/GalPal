@@ -527,3 +527,17 @@ def test_deleting_an_attribute_cascades_to_its_values():
     from apps.catalog.models import AttributeValue
 
     assert not AttributeValue.objects.filter(pk=value.pk).exists()
+
+
+def test_filter_by_stock_follows_the_storefront_rule(admin_client):
+    in_stock = ProductFactory(manage_stock=True, stock_quantity=3)
+    sold_out = ProductFactory(manage_stock=True, stock_quantity=0, stock_status="out_of_stock")
+    untracked = ProductFactory(manage_stock=False, stock_quantity=0)
+    variant_ok = ProductFactory(has_variants=True, stock_quantity=0)
+    variant_ok.variants.create(sku="VOK", stock_quantity=2, option_signature="a")
+    variant_gone = ProductFactory(has_variants=True, stock_quantity=0)
+    variant_gone.variants.create(sku="VGONE", stock_quantity=0, option_signature="a")
+    ids = lambda q: {r["id"] for r in admin_client.get(f"{PRODUCTS}?stock={q}").json()["results"]}  # noqa: E731
+    assert ids("in_stock") == {in_stock.id, untracked.id, variant_ok.id}
+    assert ids("out_of_stock") == {sold_out.id, variant_gone.id}
+    assert admin_client.get(f"{PRODUCTS}?stock=maybe").status_code == 400

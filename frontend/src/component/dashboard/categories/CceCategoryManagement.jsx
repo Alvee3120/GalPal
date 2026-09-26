@@ -9,6 +9,7 @@ import { flattenCategoryTree } from "@/lib/categoryAdmin";
 import ProductImage from "@/component/shared/ProductImage";
 import ConfirmDialog from "@/component/shared/ConfirmDialog";
 import DashboardPagination from "../DashboardPagination";
+import { useStaffHref } from "@/lib/staffPaths";
 
 const PAGE_SIZE = 10;
 const SEARCH_DELAY_MS = 350;
@@ -22,10 +23,11 @@ function ActiveBadge({ active }) {
 }
 
 function RowActions({ category, onDelete }) {
+  const to = useStaffHref();
   return (
     <div className="flex items-center justify-end gap-1.5">
       <Link
-        href={`/dashboard/CCE/categories/${category.id}`}
+        href={to(`/dashboard/CCE/categories/${category.id}`)}
         title="Edit category"
         aria-label={`Edit category ${category.name}`}
         className="icon-action flex h-9 w-9 items-center justify-center rounded-full"
@@ -50,6 +52,7 @@ function RowActions({ category, onDelete }) {
 // (name/slug) and pagination are server-side. The list returns `parent` as an id, so parent names come from the
 // category tree (/admin/categories/tree/, every category in one small response) rather than guessing from the page.
 export default function CceCategoryManagement({ initialCategories, initialCount, initialTree }) {
+  const to = useStaffHref();
   const [categories, setCategories] = useState(initialCategories);
   const [count, setCount] = useState(initialCount);
   const [names, setNames] = useState(() => new Map(flattenCategoryTree(initialTree).map((c) => [c.id, c.name])));
@@ -119,7 +122,7 @@ export default function CceCategoryManagement({ initialCategories, initialCount,
             {count} categor{count === 1 ? "y" : "ies"}
           </p>
         </div>
-        <Link href="/dashboard/CCE/categories/new" className="auth-btn auth-btn--primary inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-medium">
+        <Link href={to("/dashboard/CCE/categories/new")} className="auth-btn auth-btn--primary inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-medium">
           <FiPlus className="h-4 w-4" aria-hidden="true" />
           Add Category
         </Link>

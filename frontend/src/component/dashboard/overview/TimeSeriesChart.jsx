@@ -15,11 +15,22 @@ function niceScale(max) {
   return { top: step * 4, ticks: [0, 1, 2, 3, 4].map((i) => i * step) };
 }
 
-function formatBucket(iso, granularity, long = false) {
-  const d = new Date(`${iso}T00:00:00`);
-  if (granularity === "month") return d.toLocaleDateString("en-GB", { month: long ? "long" : "short", year: "numeric" });
-  return d.toLocaleDateString("en-GB", long ? { weekday: "short", day: "numeric", month: "short", year: "numeric" } : { day: "numeric", month: "short" });
+// A bucket's label. `point.date` is "YYYY-MM-DD" (day / week start / month) or "YYYY-MM-DDTHH:00" (hour); a week
+// also carries `end`. Built from the string itself, so the site's time zone as the backend grouped it is kept.
+function formatBucket(point, granularity, long = false) {
+  const day = (iso) => new Date(`${iso.slice(0, 10)}T00:00:00`);
+  const dm = (iso) => day(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+  if (granularity === "hour") {
+    const h = Number(point.date.slice(11, 13));
+    const clock = `${h % 12 || 12}${h < 12 ? "am" : "pm"}`;
+    return long ? `${clock} – ${((h + 1) % 12) || 12}${h + 1 < 12 || h + 1 === 24 ? "am" : "pm"}, ${dm(point.date)}` : clock;
+  }
+  if (granularity === "month") return day(point.date).toLocaleDateString("en-GB", { month: long ? "long" : "short", year: "numeric" });
+  if (granularity === "week") return long ? `${dm(point.date)} – ${dm(point.end ?? point.date)} ${point.date.slice(0, 4)}` : dm(point.date);
+  return day(point.date).toLocaleDateString("en-GB", long ? { weekday: "short", day: "numeric", month: "short", year: "numeric" } : { day: "numeric", month: "short" });
 }
+
+const UNIT = { hour: "hour", day: "day", week: "week", month: "month" };
 
 // A single-series time chart drawn in plain SVG (no chart library in the project): `kind="area"` for money (a 2px
 // line over a 10% wash) or `kind="bar"` for counts (<=24px columns, rounded tops, square at the baseline). One
@@ -102,7 +113,7 @@ export default function TimeSeriesChart({ title, data, valueKey, format, formatA
                 onBlur={() => setActive(null)}
                 className="chart-svg block touch-pan-y"
               >
-                <title id={titleId}>{`${title}. Use the left and right arrow keys to read each ${granularity === "month" ? "month" : "day"}.`}</title>
+                <title id={titleId}>{`${title}. Use the left and right arrow keys to read each ${UNIT[granularity] ?? "day"}.`}</title>
                 {ticks.map((t) => (
                   <g key={t}>
                     <line x1={PAD.left} x2={width - PAD.right} y1={yAt(t)} y2={yAt(t)} className="chart-grid" />
@@ -114,7 +125,7 @@ export default function TimeSeriesChart({ title, data, valueKey, format, formatA
                 {data.map((d, i) =>
                   i % labelEvery === 0 ? (
                     <text key={d.date} x={xAt(i)} y={HEIGHT - 8} textAnchor="middle" className="chart-axis-text">
-                      {formatBucket(d.date, granularity)}
+                      {formatBucket(d, granularity)}
                     </text>
                   ) : null,
                 )}
@@ -136,7 +147,7 @@ export default function TimeSeriesChart({ title, data, valueKey, format, formatA
                   style={{ left: tooltipLeft }}
                 >
                   <p className="text-sm font-semibold">{format(values[active])}</p>
-                  <p className="showcase-muted">{formatBucket(data[active].date, granularity, true)}</p>
+                  <p className="showcase-muted">{formatBucket(data[active], granularity, true)}</p>
                 </div>
               )}
             </>
@@ -150,14 +161,14 @@ export default function TimeSeriesChart({ title, data, valueKey, format, formatA
             <table className="w-full text-left text-xs">
               <thead>
                 <tr>
-                  <th scope="col" className="py-1 font-medium">{granularity === "month" ? "Month" : "Date"}</th>
+                  <th scope="col" className="py-1 font-medium">{granularity === "month" ? "Month" : granularity === "hour" ? "Time" : granularity === "week" ? "Week" : "Date"}</th>
                   <th scope="col" className="py-1 text-right font-medium">{title}</th>
                 </tr>
               </thead>
               <tbody>
                 {data.map((d, i) => (
                   <tr key={d.date} className="chart-table-row">
-                    <td className="py-1">{formatBucket(d.date, granularity, true)}</td>
+                    <td className="py-1">{formatBucket(d, granularity, true)}</td>
                     <td className="py-1 text-right tabular-nums">{format(values[i])}</td>
                   </tr>
                 ))}

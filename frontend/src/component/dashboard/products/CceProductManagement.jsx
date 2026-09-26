@@ -5,10 +5,11 @@ import Link from "next/link";
 import { FiEdit2, FiPlus, FiSearch, FiTrash2 } from "react-icons/fi";
 import { notify } from "@/lib/notify";
 import formatPrice from "@/lib/formatPrice";
-import { PRODUCT_STATUS_LABEL, STOCK_STATUS_LABEL, catalogFetch, errorText } from "@/lib/productAdmin";
+import { PRODUCT_STATUS, PRODUCT_STATUS_LABEL, STOCK_STATUS_LABEL, catalogFetch, errorText } from "@/lib/productAdmin";
 import ProductImage from "@/component/shared/ProductImage";
 import ConfirmDialog from "@/component/shared/ConfirmDialog";
 import DashboardPagination from "../DashboardPagination";
+import { useStaffHref } from "@/lib/staffPaths";
 
 const PAGE_SIZE = 10;
 const SEARCH_DELAY_MS = 350;
@@ -49,10 +50,11 @@ function StatusBadge({ status }) {
 }
 
 function RowActions({ product, onDelete }) {
+  const to = useStaffHref();
   return (
     <div className="flex items-center justify-end gap-1.5">
       <Link
-        href={`/dashboard/CCE/products/${product.id}`}
+        href={to(`/dashboard/CCE/products/${product.id}`)}
         title="Edit product"
         aria-label={`Edit product ${product.name}`}
         className="icon-action flex h-9 w-9 items-center justify-center rounded-full"
@@ -74,11 +76,14 @@ function RowActions({ product, onDelete }) {
 
 // CCE Product Management: the EXISTING /admin/products/ API (apps.catalog.views_product_admin.AdminProductViewSet,
 // IsCatalogStaff for list/retrieve/create/edit/delete). Search and pagination are server-side (`search` covers
-// name, SKU, barcode and brand name); nothing is filtered in the browser.
+// name, SKU, barcode and brand name), as are the Status (?status=) and Stock (?stock=) filters; nothing is filtered in the browser.
 export default function CceProductManagement({ initialProducts, initialCount, currencySymbol }) {
+  const to = useStaffHref();
   const [products, setProducts] = useState(initialProducts);
   const [count, setCount] = useState(initialCount);
   const [search, setSearch] = useState("");
+  const [status, setStatus] = useState(""); // "" = all; else a ProductStatus value (draft/published/archived)
+  const [stock, setStock] = useState(""); // "" = all; "in_stock" | "out_of_stock" (backend ?stock=)
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
   const [pendingDelete, setPendingDelete] = useState(null);
@@ -88,17 +93,19 @@ export default function CceProductManagement({ initialProducts, initialCount, cu
 
   const totalPages = Math.max(1, Math.ceil(count / PAGE_SIZE));
 
-  async function load(nextSearch, nextPage) {
+  async function load(nextSearch, nextPage, nextStatus = status, nextStock = stock) {
     const id = ++requestId.current;
     setLoading(true);
     const params = new URLSearchParams({ page_size: String(PAGE_SIZE), page: String(nextPage) });
     if (nextSearch.trim()) params.set("search", nextSearch.trim());
+    if (nextStatus) params.set("status", nextStatus); // the backend's own filters (AdminProductFilter)
+    if (nextStock) params.set("stock", nextStock);
     const res = await catalogFetch(`products?${params.toString()}`);
     if (id !== requestId.current) return; // a newer search/page superseded this one
     setLoading(false);
     if (!res.ok) {
       // A page past the end (e.g. after deleting the last row on it) falls back to the previous page.
-      if (res.status === 404 && nextPage > 1) return load(nextSearch, nextPage - 1);
+      if (res.status === 404 && nextPage > 1) return load(nextSearch, nextPage - 1, nextStatus, nextStock);
       notify.error(errorText(res, "Unable to load products. Please try again."));
       return;
     }
@@ -141,13 +148,15 @@ export default function CceProductManagement({ initialProducts, initialCount, cu
             {count} product{count === 1 ? "" : "s"}
           </p>
         </div>
-        <Link href="/dashboard/CCE/products/new" className="auth-btn auth-btn--primary inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-medium">
+        <Link href={to("/dashboard/CCE/products/new")} className="auth-btn auth-btn--primary inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-medium">
           <FiPlus className="h-4 w-4" aria-hidden="true" />
           Add Product
         </Link>
       </div>
 
-      <div className="relative">
+      {/* A grid, not flex: .checkout-input is width:100%, so the grid (not a w-* class) sizes each control. */}
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,10rem)_minmax(0,10rem)]">
+      <div className="relative col-span-2 min-w-0 sm:col-span-1">
         <label htmlFor="pm-search" className="sr-only">
           Search products
         </label>
@@ -161,11 +170,47 @@ export default function CceProductManagement({ initialProducts, initialCount, cu
           className="checkout-input w-full rounded-lg py-2.5 pl-9 pr-3 text-sm"
         />
       </div>
+        <label htmlFor="pm-status" className="sr-only">
+          Filter by status
+        </label>
+        <select
+          id="pm-status"
+          value={status}
+          onChange={(e) => {
+            setStatus(e.target.value);
+            load(search, 1, e.target.value);
+          }}
+          className="checkout-input rounded-lg px-3 py-2.5 text-sm"
+        >
+          <option value="">All statuses</option>
+          {PRODUCT_STATUS.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </select>
+        <label htmlFor="pm-stock" className="sr-only">
+          Filter by stock
+        </label>
+        <select
+          id="pm-stock"
+          value={stock}
+          onChange={(e) => {
+            setStock(e.target.value);
+            load(search, 1, status, e.target.value);
+          }}
+          className="checkout-input rounded-lg px-3 py-2.5 text-sm"
+        >
+          <option value="">All stock</option>
+          <option value="in_stock">In stock</option>
+          <option value="out_of_stock">Out of stock</option>
+        </select>
+      </div>
 
       {products.length === 0 ? (
         <div className="dashboard-card flex flex-col items-center gap-2 rounded-2xl px-6 py-14 text-center">
           <p className="custom-font text-xl">{loading ? "Loading..." : "No products found"}</p>
-          {!loading && <p className="showcase-muted text-sm">{search.trim() ? "Try a different name or SKU." : "Add your first product to get started."}</p>}
+          {!loading && <p className="showcase-muted text-sm">{search.trim() || status || stock ? "Try a different search or filter." : "Add your first product to get started."}</p>}
         </div>
       ) : (
         <div className={`transition-opacity ${loading ? "opacity-60" : ""}`} aria-busy={loading}>

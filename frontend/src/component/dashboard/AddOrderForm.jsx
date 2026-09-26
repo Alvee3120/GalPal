@@ -13,6 +13,7 @@ import SelectField from "@/component/shared/SelectField";
 import ProductImage from "@/component/shared/ProductImage";
 import ProductSearchPicker from "./ProductSearchPicker";
 import { ORDER_SOURCE_LABEL, PAYMENT_METHOD_LABEL } from "@/lib/orderStatus";
+import { useStaffHref } from "@/lib/staffPaths";
 
 // "website" is reserved for real storefront checkout (apps.orders.models.OrderSource docstring) — staff pick
 // from everything else.
@@ -30,6 +31,7 @@ const lineKey = (productId, variantId) => `${productId}:${variantId ?? "base"}`;
 // call to the same status-change action the order detail page uses (POST /admin/orders/<id>/status/) — not a
 // new status path invented on the frontend.
 export default function AddOrderForm({ currencySymbol }) {
+  const to = useStaffHref();
   const router = useRouter();
 
   const [name, setName] = useState("");
@@ -230,7 +232,7 @@ export default function AddOrderForm({ currencySymbol }) {
         notify.error("Order created, but couldn't be confirmed automatically. Please confirm it from the order page.");
       }
 
-      router.push(`/dashboard/CCE/orders/${order.id}`);
+      router.push(to(`/dashboard/CCE/orders/${order.id}`));
     } catch {
       notify.error("Unable to create order. Please try again.");
     } finally {

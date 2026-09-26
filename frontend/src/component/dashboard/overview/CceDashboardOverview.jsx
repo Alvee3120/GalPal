@@ -8,6 +8,7 @@ import { notify } from "@/lib/notify";
 import formatPrice from "@/lib/formatPrice";
 import { STATUS_LABEL } from "@/lib/orderStatus";
 import { splitStoreDateTime } from "@/lib/productAdmin";
+import { GRANULARITY_WORD, compactMoney } from "@/lib/dashboardFormat";
 import OrderDateRangePicker, { formatCalendarDate } from "../OrderDateRangePicker";
 import TimeSeriesChart from "./TimeSeriesChart";
 
@@ -26,16 +27,6 @@ const PRESETS = [
   { key: "month", label: "This month", range: () => ({ start: `${todayIso().slice(0, 8)}01`, end: todayIso() }) },
   { key: "12m", label: "Last 12 months", range: () => ({ start: shiftIso(todayIso(), -364), end: todayIso() }) },
 ];
-
-// From 10,000 up: "10k", "10.34k" (at most 2 decimals, trailing zeros dropped); from a million: "1.04M".
-// Below 10,000 the full amount is short enough ("9,850"). Cards show the full figure on hover (title).
-const trim2 = (n) => String(Number(n.toFixed(2)));
-function compactMoney(value, symbol) {
-  const n = Number(value) || 0;
-  if (Math.abs(n) >= 1_000_000) return `${symbol}${trim2(n / 1_000_000)}M`;
-  if (Math.abs(n) >= 10_000) return `${symbol}${trim2(n / 1_000)}k`;
-  return formatPrice(n, symbol);
-}
 
 function StatCard({ label, value, fullValue, hint, icon: Icon, loading }) {
   return (
@@ -195,7 +186,7 @@ export default function CceDashboardOverview({ initialData, currencySymbol }) {
           <div className={`grid grid-cols-1 gap-6 xl:grid-cols-2 ${loading ? "opacity-60 transition-opacity" : ""}`} aria-busy={loading}>
             <Panel
               title="Sales Overview"
-              subtitle={`Confirmed, processing, shipped and delivered orders, by ${data?.granularity === "month" ? "month" : "day"} placed`}
+              subtitle={`Confirmed, processing, shipped and delivered orders, by ${GRANULARITY_WORD[data?.granularity] ?? "day"} placed`}
               action={<p className="text-sm font-semibold tabular-nums">{money(data?.sales.total ?? 0)}</p>}
             >
               <TimeSeriesChart
@@ -211,7 +202,7 @@ export default function CceDashboardOverview({ initialData, currencySymbol }) {
             </Panel>
             <Panel
               title="Orders Overview"
-              subtitle={`Every order placed, by ${data?.granularity === "month" ? "month" : "day"}`}
+              subtitle={`Every order placed, by ${GRANULARITY_WORD[data?.granularity] ?? "day"}`}
               action={<p className="text-sm font-semibold tabular-nums">{data?.orders.total ?? 0} orders</p>}
             >
               <TimeSeriesChart

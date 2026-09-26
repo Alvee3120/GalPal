@@ -1,4 +1,4 @@
-import Link from "next/link";
+import StaffLink from "@/component/dashboard/StaffLink";
 import { notFound } from "next/navigation";
 import { backendFetch } from "@/lib/backendAuth";
 import BrandForm from "@/component/dashboard/brands/BrandForm";
@@ -15,9 +15,9 @@ export default async function CceEditBrandPage({ params }) {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <Link href="/dashboard/CCE/brands" className="showcase-muted text-sm hover:underline">
+        <StaffLink href="/dashboard/CCE/brands" className="showcase-muted text-sm hover:underline">
           &larr; Brand Management
-        </Link>
+        </StaffLink>
         <h1 className="custom-font mt-2 text-2xl sm:text-3xl">Edit Brand</h1>
         <p className="showcase-muted mt-1 text-sm">{brand.name}</p>
       </div>

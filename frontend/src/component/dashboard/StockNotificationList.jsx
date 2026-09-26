@@ -8,6 +8,7 @@ import { formatOrderDateTime } from "@/lib/orderStatus";
 import { catalogFetch, errorText } from "@/lib/productAdmin";
 import ProductImage from "@/component/shared/ProductImage";
 import DashboardPagination from "./DashboardPagination";
+import { useStaffHref } from "@/lib/staffPaths";
 
 const PAGE_SIZE = 10;
 const SEARCH_DELAY_MS = 350;
@@ -36,13 +37,14 @@ function StatusSelect({ row, busy, onChange }) {
 }
 
 function ProductCell({ row }) {
+  const to = useStaffHref();
   return (
     <div className="flex min-w-0 items-center gap-3">
       <div className="cart-thumb relative h-12 w-12 shrink-0 overflow-hidden rounded-lg">
         <ProductImage src={row.product.feature_image} alt="" tight />
       </div>
       <div className="min-w-0">
-        <Link href={`/dashboard/CCE/products/${row.product.id}`} className="font-medium leading-snug hover:underline">
+        <Link href={to(`/dashboard/CCE/products/${row.product.id}`)} className="font-medium leading-snug hover:underline">
           {row.product.name}
         </Link>
         <p className="showcase-muted text-xs">

@@ -1,4 +1,4 @@
-import Link from "next/link";
+import StaffLink from "@/component/dashboard/StaffLink";
 import { notFound } from "next/navigation";
 import { backendFetch } from "@/lib/backendAuth";
 import CategoryForm from "@/component/dashboard/categories/CategoryForm";
@@ -15,9 +15,9 @@ export default async function CceEditCategoryPage({ params }) {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <Link href="/dashboard/CCE/categories" className="showcase-muted text-sm hover:underline">
+        <StaffLink href="/dashboard/CCE/categories" className="showcase-muted text-sm hover:underline">
           &larr; Category Management
-        </Link>
+        </StaffLink>
         <h1 className="custom-font mt-2 text-2xl sm:text-3xl">Edit Category</h1>
         <p className="showcase-muted mt-1 text-sm">{category.name}</p>
       </div>

@@ -274,3 +274,26 @@ class DashboardView(APIView):
         query.is_valid(raise_exception=True)
         data = analytics.dashboard(query.validated_data.get("date_from"), query.validated_data.get("date_to"))
         return Response(data)
+
+
+class AdminDashboardView(APIView):
+    permission_classes = [IsAdmin]
+
+    @extend_schema(
+        tags=TAG, summary="Admin dashboard overview",
+        description=(
+            "Everything the CCE overview returns, plus a comparison of revenue / orders / products sold / new customers "
+            "with the preceding period of the same length, best sellers, sales by primary category, recent orders, "
+            "out-of-stock products, low-stock count and customer figures — all for `date_from`..`date_to` (inclusive, "
+            "site time zone; default the last 30 days). Admin only. See apps.orders.analytics.admin_dashboard."
+        ),
+        parameters=[OpenApiParameter("date_from", OpenApiTypes.DATE), OpenApiParameter("date_to", OpenApiTypes.DATE)],
+        responses={200: OpenApiResponse(description="Dashboard numbers"), 400: ERR},
+    )
+    def get(self, request):
+        query = DashboardQuerySerializer(data=request.query_params)
+        query.is_valid(raise_exception=True)
+        data = analytics.admin_dashboard(
+            query.validated_data.get("date_from"), query.validated_data.get("date_to"), absolute=request.build_absolute_uri,
+        )
+        return Response(data)

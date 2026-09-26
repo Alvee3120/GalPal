@@ -11,6 +11,7 @@ import Modal from "@/component/shared/Modal";
 import ProductSearchPicker from "./ProductSearchPicker";
 import OrderStatusDropdown from "./OrderStatusDropdown";
 import { ORDER_SOURCE_LABEL, PAYMENT_METHOD_LABEL, PAYMENT_STATUS_LABEL, STATUS_LABEL, formatOrderDateTime } from "@/lib/orderStatus";
+import { useStaffHref } from "@/lib/staffPaths";
 
 const toLine = (item) => ({ product_id: item.product_id, variant_id: item.variant_id, quantity: item.quantity });
 
@@ -24,6 +25,7 @@ const toLine = (item) => ({ product_id: item.product_id, variant_id: item.varian
 // quantity endpoints invented. Everything stays backend-authoritative: this component only ever renders whatever
 // the backend's response says the order now is.
 export default function CceOrderDetail({ initialOrder, currencySymbol }) {
+  const to = useStaffHref();
   const [order, setOrder] = useState(initialOrder);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [mutatingItems, setMutatingItems] = useState(false);
@@ -79,7 +81,7 @@ export default function CceOrderDetail({ initialOrder, currencySymbol }) {
 
   return (
     <div className="flex flex-col gap-6">
-      <Link href="/dashboard/CCE/orders" className="showcase-muted inline-flex w-fit items-center gap-1.5 text-sm hover:text-current">
+      <Link href={to("/dashboard/CCE/orders")} className="showcase-muted inline-flex w-fit items-center gap-1.5 text-sm hover:text-current">
         <FiArrowLeft className="h-4 w-4" aria-hidden="true" />
         Back to Order Management
       </Link>
