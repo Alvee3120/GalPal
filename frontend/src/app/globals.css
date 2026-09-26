@@ -1296,6 +1296,17 @@ a.dashboard-card:hover {
 .delivery-zone__changed {
   color: var(--color-brand);
 }
+/* Coupon status (apps.coupons.services.status_of): reuses the order-status palette tokens */
+.coupon-status {
+  display: inline-block;
+  white-space: nowrap;
+}
+.coupon-status[data-status="active"] { color: var(--color-status-delivered-text); background-color: var(--color-status-delivered-bg); }
+.coupon-status[data-status="scheduled"] { color: var(--color-status-processing-text); background-color: var(--color-status-processing-bg); }
+.coupon-status[data-status="expired"] { color: var(--color-status-returned-text); background-color: var(--color-status-returned-bg); }
+.coupon-status[data-status="used_up"] { color: var(--color-status-pending-text); background-color: var(--color-status-pending-bg); }
+.coupon-status[data-status="inactive"] { color: var(--color-status-cancelled-text); background-color: var(--color-status-cancelled-bg); }
+
 .password-rules {
   background-color: var(--color-shop-sidebar-bg);
   color: var(--color-muted);

@@ -249,3 +249,20 @@ def test_usage_history_filters_by_coupon_and_is_read_only(admin_client):
 def test_guest_usage_has_no_user_name(admin_client):
     CouponUsageFactory(user=None, phone="01711111111")
     assert admin_client.get(USAGES).json()["results"][0]["user_name"] is None
+
+
+
+def test_status_and_status_filter(admin_client):
+    from datetime import timedelta
+
+    from django.utils import timezone
+
+    now = timezone.now()
+    CouponFactory(code="LIVE")
+    CouponFactory(code="OFF", is_active=False)
+    CouponFactory(code="SOON", start_at=now + timedelta(days=2))
+    CouponFactory(code="OLD", start_at=now - timedelta(days=9), expiry_at=now - timedelta(days=1))
+    rows = {c["code"]: c["status"] for c in admin_client.get(COUPONS).json()["results"]}
+    assert rows == {"LIVE": "active", "OFF": "inactive", "SOON": "scheduled", "OLD": "expired"}
+    for status, code in [("active", "LIVE"), ("inactive", "OFF"), ("scheduled", "SOON"), ("expired", "OLD")]:
+        assert [c["code"] for c in admin_client.get(f"{COUPONS}?status={status}").json()["results"]] == [code]
