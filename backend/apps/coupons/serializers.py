@@ -32,6 +32,7 @@ class AdminCouponSerializer(serializers.ModelSerializer):
     brands = BrandLinkSerializer(many=True, read_only=True)
 
     usage_count = serializers.SerializerMethodField()
+    status = serializers.SerializerMethodField(help_text="inactive | scheduled | expired | used_up | active — right now.")
 
     class Meta:
         model = Coupon
@@ -39,14 +40,20 @@ class AdminCouponSerializer(serializers.ModelSerializer):
             "id", "code", "description", "type", "amount", "max_discount_amount", "min_order_amount",
             "start_at", "expiry_at", "is_active", "total_usage_limit", "per_customer_usage_limit",
             "product_ids", "products", "category_ids", "categories", "brand_ids", "brands",
-            "exclude_sale_items", "first_order_only", "free_shipping", "usage_count",
+            "exclude_sale_items", "first_order_only", "free_shipping", "usage_count", "status",
             "created_at", "updated_at",
         ]
-        read_only_fields = ["id", "products", "categories", "brands", "usage_count", "created_at", "updated_at"]
+        read_only_fields = ["id", "products", "categories", "brands", "usage_count", "status", "created_at", "updated_at"]
         validators = []  # `validate_code` below does the (case-insensitive) uniqueness check
 
     def get_usage_count(self, obj) -> int:
-        return obj.usages.count()
+        annotated = getattr(obj, "usage_count_db", None)  # the list/detail queryset counts in SQL
+        return annotated if annotated is not None else obj.usages.count()
+
+    def get_status(self, obj) -> str:
+        from . import services
+
+        return services.status_of(obj, used=self.get_usage_count(obj))
 
     def validate_code(self, value):
         value = value.strip().upper()

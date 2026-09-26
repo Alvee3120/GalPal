@@ -31,6 +31,24 @@ def _is_within_schedule(coupon, now=None):
     return True
 
 
+def status_of(coupon, *, used=None, now=None):
+    """
+    What a coupon is right now, for the admin list: "inactive" (switched off), "scheduled" (before start_at),
+    "expired" (after expiry_at), "used_up" (total_usage_limit reached) or "active" (usable, other checks permitting).
+    `used` avoids a query when the caller already counted the usages.
+    """
+    now = now or timezone.now()
+    if not coupon.is_active:
+        return "inactive"
+    if coupon.start_at and now < coupon.start_at:
+        return "scheduled"
+    if coupon.expiry_at and now > coupon.expiry_at:
+        return "expired"
+    if coupon.total_usage_limit is not None and (total_usage_count(coupon) if used is None else used) >= coupon.total_usage_limit:
+        return "used_up"
+    return "active"
+
+
 def total_usage_count(coupon):
     return CouponUsage.objects.filter(coupon=coupon).count()
 
@@ -125,6 +143,13 @@ def apply_coupon_to_cart(cart, code, *, user=None, phone=None):
     is_valid, message, _ = evaluate(coupon, subtotal=summary["subtotal"], rows=summary["rows"], user=user, phone=phone)
     if not is_valid:
         raise field_error("code", message, "coupon_not_applicable")
+    if coupon.first_order_only and user is not None and user.is_authenticated:
+        # Checkout enforces this for everyone (guests by phone); a signed-in customer can be told now instead of
+        # seeing the discount vanish at checkout. Same rule as checkout: any earlier order that went ahead counts.
+        from apps.orders.services import _has_previous_orders  # lazy: orders already imports this module
+
+        if _has_previous_orders(user, user.phone):
+            raise field_error("code", "This coupon is only for a customer's first order.", "coupon_not_applicable")
 
     cart.coupon = coupon
     cart.save(update_fields=["coupon", "updated_at"])

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCart } from "@/component/cart/CartProvider";
+import CouponBox from "@/component/cart/CouponBox";
 import ProductImage from "@/component/shared/ProductImage";
 import SelectField from "@/component/shared/SelectField";
 import { notify } from "@/lib/notify";
@@ -92,7 +93,7 @@ export default function CheckoutContent() {
 // sent to the server is the form's city + zone, never an amount, and never a saved address the customer didn't pick.
 function CheckoutForm({ account }) {
   const router = useRouter();
-  const { items, itemCount, subtotal, discount, currencySymbol, refreshCart } = useCart();
+  const { items, itemCount, subtotal, discount, coupon, couponBusy, applyCoupon, removeCoupon, currencySymbol, refreshCart } = useCart();
   const loggedIn = account !== null;
   const [values, setValues] = useState(() => (loggedIn ? initialValuesFor(account.profile, account.addresses) : INITIAL));
   const options = loggedIn ? addressOptions(account.addresses) : [];
@@ -299,6 +300,10 @@ function CheckoutForm({ account }) {
             Some items in your cart are out of stock and won&apos;t be included in this order. They&apos;ll stay in your cart.
           </p>
         )}
+
+        <div className="mt-4">
+          <CouponBox id="checkout-coupon" coupon={coupon} busy={couponBusy} onApply={applyCoupon} onRemove={removeCoupon} />
+        </div>
 
         <dl className="mt-3 flex flex-col gap-2 border-t pt-4 text-sm">
           <div className="flex items-center justify-between">

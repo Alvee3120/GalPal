@@ -161,7 +161,7 @@ export function CartProvider({ children, currencySymbol = "" }) {
     try {
       const data = await cartApi("/coupon/", { method: "POST", body: JSON.stringify({ code }) });
       setCart(data);
-      notify.success(`Coupon "${data.coupon?.code ?? code}" applied!`);
+      notify.success("Coupon applied successfully.");
       return { ok: true };
     } catch (err) {
       notify.error(messageFor(err, "That coupon code isn't valid."));

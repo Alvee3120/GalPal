@@ -1,6 +1,7 @@
 """Admin endpoints: coupon CRUD and usage history. Admin only (CCE gets 403 — coupons are not
 part of the order module CCE is scoped to)."""
 
+from django.db.models import Count
 from drf_spectacular.utils import OpenApiResponse, extend_schema, extend_schema_view
 from rest_framework import viewsets
 
@@ -8,6 +9,7 @@ from apps.accounts.permissions import IsAdmin
 from apps.catalog.exceptions import Conflict
 from apps.core.serializers import ErrorResponseSerializer
 
+from .filters import AdminCouponFilter
 from .models import Coupon, CouponUsage
 from .serializers import AdminCouponSerializer, CouponUsageSerializer
 
@@ -15,7 +17,10 @@ ERR = OpenApiResponse(ErrorResponseSerializer)
 
 
 @extend_schema_view(
-    list=extend_schema(tags=["Admin – Coupons"], summary="List coupons (including inactive/expired)"),
+    list=extend_schema(
+        tags=["Admin – Coupons"], summary="List coupons (including inactive/expired)",
+        description="`search` (code, description), `type`, `is_active`, and `status` = active | inactive | scheduled | expired | used_up.",
+    ),
     retrieve=extend_schema(tags=["Admin – Coupons"], summary="Get a coupon"),
     create=extend_schema(tags=["Admin – Coupons"], summary="Create a coupon", responses={201: AdminCouponSerializer, 400: ERR}),
     partial_update=extend_schema(tags=["Admin – Coupons"], summary="Update a coupon", responses={200: AdminCouponSerializer, 400: ERR}),
@@ -27,9 +32,9 @@ ERR = OpenApiResponse(ErrorResponseSerializer)
 class AdminCouponViewSet(viewsets.ModelViewSet):
     serializer_class = AdminCouponSerializer
     permission_classes = [IsAdmin]
-    queryset = Coupon.objects.prefetch_related("products", "categories", "brands")
+    queryset = Coupon.objects.prefetch_related("products", "categories", "brands").annotate(usage_count_db=Count("usages", distinct=True))
     http_method_names = ["get", "post", "patch", "delete", "head", "options"]
-    filterset_fields = ["is_active", "type"]
+    filterset_class = AdminCouponFilter
     search_fields = ["code", "description"]
     ordering_fields = ["created_at", "code", "expiry_at"]
     ordering = ["-created_at"]
