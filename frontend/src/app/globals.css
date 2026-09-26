@@ -1274,6 +1274,28 @@ a.dashboard-card:hover {
   background-color: var(--color-shop-sidebar-bg);
   border: 1px dashed var(--color-cart-line);
 }
+.delivery-zone {
+  border: 1px solid var(--color-cart-line);
+  background-color: var(--color-shop-sidebar-bg);
+}
+.area-chip {
+  background-color: var(--color-background);
+  border: 1px solid var(--color-cart-line);
+}
+.area-chip__remove {
+  color: var(--color-muted);
+}
+.area-chip__remove:hover {
+  background-color: color-mix(in srgb, var(--color-danger) 10%, transparent);
+  color: var(--color-danger);
+}
+.area-chip__remove:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 1px;
+}
+.delivery-zone__changed {
+  color: var(--color-brand);
+}
 .password-rules {
   background-color: var(--color-shop-sidebar-bg);
   color: var(--color-muted);

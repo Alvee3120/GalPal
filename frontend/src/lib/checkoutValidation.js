@@ -1,4 +1,4 @@
-import { isDhaka, DHAKA_ZONES } from "./delivery";
+import { isDhaka } from "./delivery";
 import { isValidBdPhone } from "./phone";
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
@@ -17,6 +17,6 @@ export function validateCheckout(values, { itemCount, availableCount }) {
   if (email && !EMAIL.test(email)) return "Please enter a valid email address.";
   if (!values.address.trim()) return "Please enter your delivery address.";
   if (!values.city) return "Please select your city.";
-  if (isDhaka(values.city) && !DHAKA_ZONES.includes(values.zone)) return "Please select a Dhaka zone.";
+  if (isDhaka(values.city) && !values.zone) return "Please select a Dhaka zone.";
   return null;
 }

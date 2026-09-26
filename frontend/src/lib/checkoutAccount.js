@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useSession } from "./useAuthed";
 import { normalizeBdPhone } from "./phone";
 import { BD_CITIES } from "./bdLocations";
-import { DHAKA_ZONES, isDhaka } from "./delivery";
+import { zoneFromArea } from "./delivery";
 
 // Everything checkout needs from the customer's EXISTING account, via the /api/account proxy:
 //   GET /account/profile/    -> { full_name, phone, email, ... }
@@ -57,7 +57,7 @@ export function useCheckoutAccount() {
 // (the customer picks it), never guessed.
 export function addressToValues(address, profile) {
   const city = BD_CITIES.find((c) => c.toLowerCase() === String(address?.district ?? "").toLowerCase()) ?? "";
-  const zone = isDhaka(city) ? (DHAKA_ZONES.find((z) => z.toLowerCase() === String(address?.area ?? "").toLowerCase()) ?? "") : "";
+  const zone = zoneFromArea(city, address?.area);
   return {
     fullName: address?.full_name || profile?.full_name || "",
     phone: address?.phone || profile?.phone || "",

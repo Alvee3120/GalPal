@@ -22,7 +22,7 @@ from .models import DeliveryZone, District, ShippingChargeHistory, ZoneDistrict,
 
 logger = logging.getLogger(__name__)
 
-CACHE_KEY = "shipping:index:v1"
+CACHE_KEY = "shipping:index:v2"  # v2: zones carry `area_names`
 MONEY = Decimal("0.01")
 
 REASON_THRESHOLD = "free_shipping_threshold"
@@ -64,6 +64,8 @@ def _build_index():
             "estimated_days": zone.estimated_days, "free_shipping_threshold": zone.free_shipping_threshold,
             "is_default": zone.is_default, "sort_order": zone.sort_order,
             "districts": [link.district.name for link in zone.coverage.all()],
+            # As the Admin typed them, for pickers (e.g. checkout's Dhaka zone list); matching uses `coverage`.
+            "area_names": [{"district": link.district.name, "areas": list(link.areas)} for link in zone.coverage.all() if link.areas],
             "coverage": coverage,
         })
     district_ids = {}

@@ -5,14 +5,15 @@ import { FiX } from "react-icons/fi";
 import { notify } from "@/lib/notify";
 import { isValidBdPhone, normalizeBdPhone } from "@/lib/phone";
 import { BD_CITIES } from "@/lib/bdLocations";
-import { DHAKA_ZONES, isDhaka } from "@/lib/delivery";
+import { isDhaka, withCurrent, zoneFromArea } from "@/lib/delivery";
+import useDhakaZones from "@/lib/useDhakaZones";
 import SelectField from "@/component/shared/SelectField";
 
 const FOCUSABLE = 'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"]), input:not([disabled]), select:not([disabled])';
 
 function valuesFrom(address) {
   const city = BD_CITIES.find((c) => c.toLowerCase() === String(address?.district ?? "").toLowerCase()) ?? "";
-  const zone = isDhaka(city) ? (DHAKA_ZONES.find((z) => z.toLowerCase() === String(address?.area ?? "").toLowerCase()) ?? "") : "";
+  const zone = zoneFromArea(city, address?.area);
   return {
     label: address?.label ?? "",
     fullName: address?.full_name ?? "",
@@ -31,7 +32,7 @@ function validate(values) {
   if (!isValidBdPhone(values.phone)) return "Please enter a valid phone number.";
   if (!values.address.trim()) return "Please enter the address.";
   if (!values.city) return "Please select a city.";
-  if (isDhaka(values.city) && !DHAKA_ZONES.includes(values.zone)) return "Please select a Dhaka zone.";
+  if (isDhaka(values.city) && !values.zone) return "Please select a Dhaka zone.";
   return null;
 }
 
@@ -41,6 +42,7 @@ function validate(values) {
 export default function AddressForm({ open, address, onClose, onSubmit }) {
   const isEdit = Boolean(address);
   const [values, setValues] = useState(() => valuesFrom(address));
+  const dhakaZones = useDhakaZones();
   const [saving, setSaving] = useState(false);
   const panelRef = useRef(null);
   const firstFieldRef = useRef(null);
@@ -201,7 +203,7 @@ export default function AddressForm({ open, address, onClose, onSubmit }) {
                 <label htmlFor="addr-zone" className="text-sm font-medium">
                   Zone <span aria-hidden="true">*</span>
                 </label>
-                <SelectField id="addr-zone" value={values.zone} onChange={(zone) => setValues((v) => ({ ...v, zone }))} options={DHAKA_ZONES} placeholder="Select Zone" />
+                <SelectField id="addr-zone" value={values.zone} onChange={(zone) => setValues((v) => ({ ...v, zone }))} options={withCurrent(dhakaZones, values.zone)} placeholder="Select Zone" />
               </div>
             )}
 

@@ -38,6 +38,10 @@ class PublicZoneSerializer(serializers.Serializer):
     )
     is_default = serializers.BooleanField(help_text="The fallback zone: every district not listed elsewhere.")
     districts = serializers.ListField(child=serializers.CharField(), help_text="Districts this zone names (the default zone covers the rest).")
+    areas = serializers.ListField(
+        source="area_names", child=serializers.DictField(), default=list,
+        help_text='Area-limited coverage, e.g. [{"district": "Dhaka", "areas": ["Savar", ...]}] — the storefront lists these as zones.',
+    )
 
 
 class PublicMethodSerializer(serializers.Serializer):

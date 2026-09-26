@@ -41,7 +41,7 @@ def test_zones_are_public_and_list_the_seeded_defaults(api_client, seeded):
     body = r.json()
     assert isinstance(body, list)  # a short config list, deliberately not paginated
     assert [(z["name"], z["charge"]) for z in body] == [("Inside Dhaka", "70.00"), ("Outside Dhaka", "120.00")]
-    assert set(body[0]) == {"id", "name", "slug", "charge", "estimated_days", "free_shipping_threshold", "is_default", "districts"}
+    assert set(body[0]) == {"id", "name", "slug", "charge", "estimated_days", "free_shipping_threshold", "is_default", "districts", "areas"}
     assert body[0]["estimated_days"] == "1-2 days" and body[0]["districts"] == ["Dhaka"]
     assert [z["is_default"] for z in body] == [False, True]
 
@@ -246,3 +246,14 @@ def test_calculating_hits_the_database_only_for_the_cart_not_for_zones(api_clien
     services.calculate_shipping({"district": "Dhaka"}, Decimal("10"))  # warms the zone cache and the site-settings cache
     with django_assert_num_queries(0):
         services.calculate_shipping({"district": "Dhaka"}, Decimal("10"))
+
+
+def test_zones_list_their_named_areas(api_client, seeded):
+    from apps.shipping.models import District, DeliveryZone, ZoneDistrict
+
+    outer = DeliveryZone.objects.create(name="Dhaka Outer Zones", slug="dhaka-outer-zones", charge="100.00", sort_order=2)
+    ZoneDistrict.objects.create(zone=outer, district=District.objects.get(name="Dhaka"), areas=["Savar", "Dohar"])
+    body = api_client.get("/api/v1/shipping/zones/").json()
+    row = next(z for z in body if z["slug"] == "dhaka-outer-zones")
+    assert row["areas"] == [{"district": "Dhaka", "areas": ["Savar", "Dohar"]}]
+    assert next(z for z in body if z["slug"] == "inside-dhaka")["areas"] == []
