@@ -7,7 +7,8 @@ import { notify } from "@/lib/notify";
 import { messageFor } from "@/lib/apiError";
 import { isValidBdPhone, normalizeBdPhone } from "@/lib/phone";
 import { BD_CITIES } from "@/lib/bdLocations";
-import { DHAKA_ZONES, isDhaka } from "@/lib/delivery";
+import { isDhaka, withCurrent, zoneFromArea } from "@/lib/delivery";
+import useDhakaZones from "@/lib/useDhakaZones";
 import formatPrice from "@/lib/formatPrice";
 import SelectField from "@/component/shared/SelectField";
 import ProductImage from "@/component/shared/ProductImage";
@@ -31,6 +32,7 @@ const lineKey = (productId, variantId) => `${productId}:${variantId ?? "base"}`;
 // call to the same status-change action the order detail page uses (POST /admin/orders/<id>/status/) — not a
 // new status path invented on the frontend.
 export default function AddOrderForm({ currencySymbol }) {
+  const dhakaZones = useDhakaZones();
   const to = useStaffHref();
   const router = useRouter();
 
@@ -124,7 +126,7 @@ export default function AddOrderForm({ currencySymbol }) {
     setPostalCode(addr.postal_code ?? "");
     const matchedCity = BD_CITIES.find((c) => c.toLowerCase() === String(addr.district ?? "").toLowerCase()) ?? "";
     setCity(matchedCity);
-    const matchedZone = isDhaka(matchedCity) ? (DHAKA_ZONES.find((z) => z.toLowerCase() === String(addr.area ?? "").toLowerCase()) ?? "") : "";
+    const matchedZone = zoneFromArea(matchedCity, addr.area);
     setZone(matchedZone);
     refreshShipping(matchedCity, matchedZone, subtotal);
   }
@@ -315,7 +317,7 @@ export default function AddOrderForm({ currencySymbol }) {
                   <label htmlFor="ao-zone" className="text-sm font-medium">
                     Zone <span aria-hidden="true">*</span>
                   </label>
-                  <SelectField id="ao-zone" value={zone} onChange={changeZone} options={DHAKA_ZONES} placeholder="Select Zone" />
+                  <SelectField id="ao-zone" value={zone} onChange={changeZone} options={withCurrent(dhakaZones, zone)} placeholder="Select Zone" />
                 </div>
               )}
 

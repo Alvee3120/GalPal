@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCart } from "@/component/cart/CartProvider";
@@ -12,7 +12,8 @@ import formatPrice from "@/lib/formatPrice";
 import { variantLabel } from "@/lib/cartItem";
 import { normalizeBdPhone } from "@/lib/phone";
 import { BD_CITIES } from "@/lib/bdLocations";
-import { calculateDeliveryCharge, DHAKA_ZONES, isDhaka } from "@/lib/delivery";
+import { canQuote, fetchDeliveryQuote, isDhaka, withCurrent } from "@/lib/delivery";
+import useDhakaZones from "@/lib/useDhakaZones";
 import { validateCheckout } from "@/lib/checkoutValidation";
 import { addressToValues, initialValuesFor, rememberCheckoutAddress, useCheckoutAccount } from "@/lib/checkoutAccount";
 
@@ -87,7 +88,7 @@ export default function CheckoutContent() {
 }
 
 // Contact + delivery form (left) and the order summary built from the SAME cart state as the drawer and the cart page
-// (useCart) (right; below the form on mobile). The delivery charge comes only from calculateDeliveryCharge(); what is
+// (useCart) (right; below the form on mobile). The delivery charge comes only from the backend's quote; what is
 // sent to the server is the form's city + zone, never an amount, and never a saved address the customer didn't pick.
 function CheckoutForm({ account }) {
   const router = useRouter();
@@ -119,7 +120,24 @@ function CheckoutForm({ account }) {
     );
   }
 
-  const deliveryCharge = calculateDeliveryCharge(values.city, values.zone);
+  // The delivery charge is the backend's (the Admin-configured zone charge, with the cart's free-delivery rules), fetched
+  // whenever the city/zone or the cart's totals change. Checkout recomputes it on the server again, so this is display only.
+  const [quote, setQuote] = useState({ key: "", data: null });
+  const dhakaZones = useDhakaZones();
+  const quoteKey = canQuote(values.city, values.zone) ? `${values.city}|${isDhaka(values.city) ? values.zone : ""}|${subtotal}|${discount}` : "";
+  useEffect(() => {
+    if (!quoteKey) return;
+    let cancelled = false;
+    fetchDeliveryQuote(values.city, values.zone).then((data) => {
+      if (!cancelled) setQuote({ key: quoteKey, data });
+    });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [quoteKey]);
+  const quoteLoading = Boolean(quoteKey) && quote.key !== quoteKey; // a quote for this address hasn't come back yet
+  const deliveryCharge = quoteKey && quote.key === quoteKey && quote.data ? Number(quote.data.charge) : null;
   const orderTotal = Number(subtotal) - Number(discount) + (deliveryCharge ?? 0);
   const hasDiscount = Number(discount) > 0;
   const availableCount = items.filter((item) => item.is_available !== false).length;
@@ -219,7 +237,7 @@ function CheckoutForm({ account }) {
           </Field>
           {dhaka && (
             <Field id="checkout-zone" label="Zone" required>
-              <SelectField id="checkout-zone" name="zone" value={values.zone} onChange={(zone) => setValues((v) => ({ ...v, zone }))} options={DHAKA_ZONES} placeholder="Select Zone" />
+              <SelectField id="checkout-zone" name="zone" value={values.zone} onChange={(zone) => setValues((v) => ({ ...v, zone }))} options={withCurrent(dhakaZones, values.zone)} placeholder="Select Zone" />
             </Field>
           )}
           <div className="sm:col-span-2">
@@ -296,7 +314,13 @@ function CheckoutForm({ account }) {
           <div className="flex items-center justify-between">
             <dt>Delivery Charge</dt>
             <dd className="font-medium" data-testid="delivery-charge">
-              {deliveryCharge === null ? <span className="showcase-muted font-normal">{dhaka ? "Select zone" : "Select city"}</span> : formatPrice(deliveryCharge, currencySymbol)}
+              {deliveryCharge !== null ? (
+                deliveryCharge === 0 ? "Free" : formatPrice(deliveryCharge, currencySymbol)
+              ) : quoteKey ? (
+                <span className="showcase-muted font-normal">{quoteLoading ? "Calculating..." : "Unavailable"}</span>
+              ) : (
+                <span className="showcase-muted font-normal">{dhaka ? "Select zone" : "Select city"}</span>
+              )}
             </dd>
           </div>
         </dl>

@@ -2,14 +2,15 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { FiSearch } from "react-icons/fi";
+import { FiPlus, FiSearch } from "react-icons/fi";
 import { notify } from "@/lib/notify";
 import formatPrice from "@/lib/formatPrice";
 import { ORDER_SOURCE_LABEL, PAYMENT_METHOD_LABEL, STATUS_LABEL, formatOrderDate } from "@/lib/orderStatus";
 import OrderStatusDropdown from "./OrderStatusDropdown";
 import OrderDateRangePicker, { formatCalendarDate } from "./OrderDateRangePicker";
 import DashboardPagination from "./DashboardPagination";
-import { useStaffHref } from "@/lib/staffPaths";
+import { usePathname } from "next/navigation";
+import { ADMIN_BASE, staffBase, useStaffHref } from "@/lib/staffPaths";
 
 // Matches OrderStatusDropdown's VISIBLE_STATUSES exactly — the same status vocabulary everywhere in this UI.
 const STATUS_OPTIONS = ["", "confirmed", "processing", "shipped", "delivered", "cancelled", "returned"];
@@ -26,6 +27,8 @@ const PAGE_SIZE = 10;
 // inclusive, already resolved against the project's actual timezone — see that filter's own comment).
 export default function CceOrderManagement({ initialOrders, initialCount, currencySymbol }) {
   const to = useStaffHref();
+  // Admin gets an "Add Order" button here (their sidebar has no Add Order entry); CCE already has one in the sidebar.
+  const isAdminSection = staffBase(usePathname()) === ADMIN_BASE;
   const [orders, setOrders] = useState(initialOrders);
   const [count, setCount] = useState(initialCount);
   const [search, setSearch] = useState("");
@@ -96,8 +99,16 @@ export default function CceOrderManagement({ initialOrders, initialCount, curren
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="custom-font text-2xl sm:text-3xl">Order Management</h1>
-        <p className="showcase-muted text-sm">{count} order{count === 1 ? "" : "s"}</p>
+        <div>
+          <h1 className="custom-font text-2xl sm:text-3xl">Order Management</h1>
+          <p className="showcase-muted mt-1 text-sm">{count} order{count === 1 ? "" : "s"}</p>
+        </div>
+        {isAdminSection && (
+          <Link href={to("/dashboard/CCE/orders/new")} className="auth-btn auth-btn--primary inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-medium">
+            <FiPlus className="h-4 w-4" aria-hidden="true" />
+            Add Order
+          </Link>
+        )}
       </div>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
