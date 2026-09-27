@@ -3,7 +3,7 @@
 import { usePathname } from "next/navigation";
 
 // Routes that render as standalone full-screen pages, without the site footer.
-const HIDDEN_ON = ["/login", "/register"];
+const HIDDEN_ON = ["/login", "/register", "/forgot-password"];
 // Whole sections that never get the public footer — the dashboard has its own full-height shell instead.
 const HIDDEN_ON_PREFIX = ["/dashboard"];
 

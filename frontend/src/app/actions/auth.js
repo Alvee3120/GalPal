@@ -101,6 +101,34 @@ export async function loginAction(_prev, formData) {
   };
 }
 
+// Forgot password, step 1: the EXISTING POST /auth/password/forgot/ { identifier } (apps.accounts.views.ForgotPasswordView).
+// The backend answers the same way whether or not the account exists (it never reveals that), sends a 6-digit code by
+// email (an email identifier) or SMS (a phone), and ignores a repeat within its resend cooldown. So success here only
+// means "request accepted", and the message says exactly that.
+export async function forgotPasswordAction(identifier) {
+  const value = String(identifier ?? "").trim();
+  if (!value) return { ok: false, error: "Please enter your email or phone number." };
+  const result = await callApi("/auth/password/forgot/", { identifier: value });
+  if (!result.ok) return { ok: false, ...toErrorState(result, {}, "Unable to send a reset code. Please try again.") };
+  return { ok: true, message: result.data?.detail || "If an account exists, a reset code has been sent." };
+}
+
+// Forgot password, step 2: the EXISTING POST /auth/password/reset/ { identifier, otp, new_password }. The backend checks
+// the code (expiry, attempts, single use) and the password (AUTH_PASSWORD_VALIDATORS), then logs the account out
+// everywhere. It doesn't sign anyone in — the user logs in with the new password.
+export async function resetPasswordAction({ identifier, otp, newPassword }) {
+  const result = await callApi("/auth/password/reset/", {
+    identifier: String(identifier ?? "").trim(),
+    otp: String(otp ?? "").trim(),
+    new_password: String(newPassword ?? ""),
+  });
+  if (!result.ok) {
+    const state = toErrorState(result, {}, "Unable to reset your password. Please try again.");
+    return { ok: false, ...state, invalidCode: result.data?.error?.code === "invalid_otp" };
+  }
+  return { ok: true, message: "Password reset successfully." };
+}
+
 export async function logoutAction() {
   const store = await cookies();
   const refresh = store.get("refresh_token")?.value;
