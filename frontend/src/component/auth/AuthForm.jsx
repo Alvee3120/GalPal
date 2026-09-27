@@ -111,6 +111,14 @@ export default function AuthForm({ mode }) {
         })}
         </div>
 
+        {mode === "login" && (
+          <div className="-mt-[clamp(0.25rem,1dvh,0.75rem)] flex justify-end">
+            <Link href="/forgot-password" className="auth-link text-xs font-medium">
+              Forgot Password?
+            </Link>
+          </div>
+        )}
+
         <div className="flex flex-col gap-[clamp(0.375rem,1.4dvh,0.75rem)]">
           <button type="submit" disabled={pending} className={`auth-btn auth-btn--primary w-full rounded-full px-6 text-sm font-medium py-[clamp(0.4rem,1.5dvh,0.75rem)]`}>
             {pending ? cfg.pending : cfg.submit}
