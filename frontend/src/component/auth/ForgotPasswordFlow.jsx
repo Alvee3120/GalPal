@@ -111,18 +111,18 @@ export default function ForgotPasswordFlow() {
     return (
       <>
         <h2 className="custom-font text-[clamp(1.125rem,3.4dvh,1.875rem)] leading-tight">Forgot Password</h2>
-        <p className="auth-muted mt-2 text-sm">Enter your email address or phone number and we&apos;ll send you a code to reset your password.</p>
+        <p className="auth-muted mt-2 text-sm">Enter your email address  and we&apos;ll send you a code to reset your password.</p>
         <form onSubmit={requestCode} noValidate className="mt-[clamp(0.5rem,2.4dvh,1.75rem)] flex flex-col gap-[clamp(0.5rem,2dvh,1.5rem)]">
           <div>
             <label htmlFor="forgot-identifier" className="sr-only">
-              Email or phone number
+              Email 
             </label>
             <input
               id="forgot-identifier"
               type="text"
               inputMode="email"
               autoComplete="username"
-              placeholder="Email or phone number"
+              placeholder="Email "
               value={identifier}
               onChange={(e) => setIdentifier(e.target.value)}
               className={INPUT}
@@ -145,7 +145,7 @@ export default function ForgotPasswordFlow() {
     <>
       <h2 className="custom-font text-[clamp(1.125rem,3.4dvh,1.875rem)] leading-tight">Reset Password</h2>
       <p className="auth-muted mt-2 text-sm">
-        If an account exists for <span className="font-medium">{identifier.trim()}</span>, we&apos;ve sent it a 6-digit code. It expires in 10 minutes.
+        If an account exists for <span className="font-medium">{identifier.trim()}</span>, we&apos;ve sent it a 6-digit code on your mail. It expires in 10 minutes.
       </p>
 
       {codeInvalid && (
