@@ -13,7 +13,7 @@ from apps.cart.views import CART_TOKEN_PARAM
 from apps.core.authentication import OptionalJWTAuthentication
 from apps.core.serializers import ErrorResponseSerializer
 
-from . import services
+from . import invoice, services
 from .models import Order
 from .serializers import (
     CancelOrderSerializer,
@@ -130,3 +130,46 @@ class MyOrderViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.
         serializer.is_valid(raise_exception=True)
         services.cancel_by_customer(order, request.user, serializer.validated_data.get("note", ""))
         return Response(PublicOrderSerializer(_fresh(order.pk), context={"request": request}).data)
+
+
+# --- invoices --------------------------------------------------------------------------------------------------------------
+
+
+class MyOrderInvoiceView(APIView):
+    """The logged-in customer's own order's invoice (the `.../pdf/` route: the PDF). Someone else's order is a 404."""
+
+    permission_classes = [IsAuthenticated]
+    pdf = False  # set per route in urls.py; not `?format=pdf`, which DRF reserves for renderer negotiation
+
+    @extend_schema(tags=TAG, summary="My order's invoice", responses=OpenApiResponse(description="Invoice data, or the PDF on .../invoice/pdf/"))
+    def get(self, request, number):
+        order = Order.objects.filter(customer=request.user, number=number.upper()).prefetch_related("items").first()
+        if order is None:
+            raise NotFound("Order not found.")
+        if self.pdf:
+            return invoice.pdf_response(order, request)
+        return Response(invoice.invoice_data(order, request))
+
+
+class TrackedOrderInvoiceView(APIView):
+    """A guest's invoice: order number + the phone it was placed with (the same check, and throttle, as tracking)."""
+
+    authentication_classes = []
+    permission_classes = [AllowAny]
+    throttle_classes = [TrackOrderThrottle]
+    pdf = False
+
+    @extend_schema(
+        tags=TAG, summary="Invoice for a guest order",
+        description="Body as for tracking: `order_number` + `phone`. `.../invoice/pdf/` returns the PDF. A wrong number or phone is the same 404.",
+        request=TrackOrderSerializer, responses={200: OpenApiResponse(description="Invoice data or PDF"), 404: ERR, 429: ERR},
+    )
+    def post(self, request):
+        serializer = TrackOrderSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        order = services.find_for_tracking(serializer.validated_data["order_number"], serializer.validated_data["phone"])
+        if order is None:
+            raise NotFound("No order matches that number and phone.")
+        if self.pdf:
+            return invoice.pdf_response(order, request)
+        return Response(invoice.invoice_data(order, request))

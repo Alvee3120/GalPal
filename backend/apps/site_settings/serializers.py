@@ -6,7 +6,7 @@ from rest_framework.fields import SkipField
 from apps.core.utils import is_masked, mask_secret
 
 from . import services, validators as v
-from .models import HttpURLField, SiteSettings
+from .models import INVOICE_LAYOUT, HttpURLField, SiteSettings
 
 # The public endpoint is an ALLOW-list: a new model field stays private until added here.
 PUBLIC_FIELDS = [
@@ -26,8 +26,13 @@ PUBLIC_FIELDS = [
 ]
 
 SECRET_FIELDS = ["meta_capi_access_token", "ga4_api_secret"]
+# Admin-editable invoice print layout (models.INVOICE_LAYOUT); reaches invoices through apps.orders.invoice, not the
+# public endpoint.
+INVOICE_LAYOUT_FIELDS = list(INVOICE_LAYOUT)
 # Admin-only, never public
-PRIVATE_FIELDS = [*SECRET_FIELDS, "meta_capi_test_event_code", "send_manual_orders_to_capi", "low_stock_threshold"]
+PRIVATE_FIELDS = [
+    *SECRET_FIELDS, "meta_capi_test_event_code", "send_manual_orders_to_capi", "low_stock_threshold", *INVOICE_LAYOUT_FIELDS,
+]
 
 
 class HttpURLSerializerField(serializers.URLField):

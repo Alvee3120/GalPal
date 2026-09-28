@@ -110,6 +110,10 @@ class Order(TimeStampedModel, SoftDeleteModel):
     tracking_id = models.CharField(max_length=100, blank=True)
     consignment_id = models.CharField(max_length=100, blank=True)
 
+    # "Customize This Invoice": ONLY the print-layout values staff changed for this order's invoice, e.g.
+    # {"content_width": 75}. Everything else follows the global Invoice Settings (see apps.orders.invoice.resolve_layout).
+    invoice_layout = models.JSONField(default=dict, blank=True)
+
     stock_released_at = models.DateTimeField(null=True, blank=True, help_text="Set once the order's stock has been put back.")
     fingerprint = models.CharField(max_length=64, blank=True, db_index=True, help_text="Hash of phone + items, for duplicate detection.")
     ip_address = models.GenericIPAddressField(null=True, blank=True)

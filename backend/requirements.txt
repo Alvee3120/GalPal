@@ -22,3 +22,5 @@ drf-spectacular-sidecar>=2024.7.1
 redis>=5.0
 celery[redis]>=5.4,<6.0
 requests>=2.32,<3.0
+reportlab>=4.2,<5.0  # invoices: A4 PDF + QR + Code 128 barcode (apps.orders.invoice)
+svglib==1.5.1  # invoice PDF: draws the GalPal logo SVG as vector (1.6+ adds a pycairo/system-cairo dependency)

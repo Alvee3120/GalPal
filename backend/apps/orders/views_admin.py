@@ -16,25 +16,25 @@ from apps.accounts.permissions import IsAdmin, IsAdminOrCCE
 from apps.core.serializers import ErrorResponseSerializer
 from apps.shipping import services as shipping_services
 from apps.shipping.serializers import ShippingQuoteSerializer
-from apps.site_settings.services import get_site_settings
+from apps.site_settings.models import INVOICE_LAYOUT, SiteSettings
+from apps.site_settings.services import get_site_settings, update_site_settings
 
-from . import analytics, services
+from . import analytics, invoice, services
 from .filters import OrderFilter
 from .models import Order
 from .serializers import (
     CustomerLookupSerializer,
-    InvoiceSerializer,
     ManualOrderResultSerializer,
     ManualOrderSerializer,
     OrderNoteSerializer,
     OrderUpdateSerializer,
     PickerRowSerializer,
     ShippingHelperQuerySerializer,
+    ParcelIdSerializer,
     ShippingOverrideSerializer,
     StaffOrderListSerializer,
     StaffOrderSerializer,
     StatusChangeSerializer,
-    build_invoice,
 )
 
 ERR = OpenApiResponse(ErrorResponseSerializer)
@@ -144,6 +144,23 @@ class AdminOrderViewSet(
         )
         return self._detail(order)
 
+    @extend_schema(
+        tags=TAG, summary="Save the order's Parcel ID",
+        description=(
+            "Admin/CCE enter the courier Parcel ID by hand (stored as `consignment_id`). Trimmed; required; letters, digits "
+            "and - _ / . only; must not be on another order (400 `parcel_id_taken`). The invoice QR code and barcode are "
+            "drawn from it. Returns the order."
+        ),
+        request=ParcelIdSerializer, responses={200: StaffOrderSerializer, 400: ERR},
+    )
+    @action(detail=True, methods=["post"], url_path="parcel", pagination_class=None)
+    def parcel(self, request, pk=None):
+        order = self.get_object()
+        serializer = ParcelIdSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        services.set_parcel_id(order, serializer.validated_data["parcel_id"], user=request.user)
+        return self._detail(order)
+
     @extend_schema(tags=TAG, summary="Internal notes on an order", responses=OrderNoteSerializer(many=True))
     @extend_schema(methods=["POST"], tags=TAG, summary="Add an internal note", request=OrderNoteSerializer, responses={201: OrderNoteSerializer})
     @action(detail=True, methods=["get", "post"], url_path="notes", pagination_class=None)
@@ -169,11 +186,42 @@ class AdminOrderViewSet(
         services.override_shipping(order, user=request.user, **serializer.validated_data)
         return self._detail(order)
 
-    @extend_schema(tags=TAG, summary="Print-friendly invoice data", responses=InvoiceSerializer)
+    @extend_schema(
+        tags=TAG, summary="Invoice data",
+        description="The order's invoice, built from its own stored snapshot (see apps.orders.invoice). Same shape for every role.",
+        responses=OpenApiResponse(description="Invoice data"),
+    )
     @action(detail=True, methods=["get"], url_path="invoice", pagination_class=None)
     def invoice(self, request, pk=None):
+        return Response(invoice.invoice_data(self.get_object(), request))
+
+    @extend_schema(
+        tags=TAG, summary="Customize this invoice's layout",
+        description=(
+            "PUT `{overrides: {content_width: 75, ...}}` saves ONLY this invoice's layout overrides (replacing any "
+            "earlier ones; values equal to the global Invoice Settings are dropped). DELETE removes them — the invoice "
+            "follows the global settings again. Changes nothing else on the order. Returns the invoice data."
+        ),
+        responses={200: OpenApiResponse(description="Invoice data"), 400: ERR},
+    )
+    @action(detail=True, methods=["put", "delete"], url_path="invoice/layout", pagination_class=None)
+    def invoice_layout(self, request, pk=None):
         order = self.get_object()
-        return Response(InvoiceSerializer(build_invoice(order, get_site_settings())).data)
+        overrides = {}
+        if request.method == "PUT":
+            payload = request.data.get("overrides") if isinstance(request.data, dict) else None
+            if not isinstance(payload, dict):
+                raise ValidationError({"overrides": ["Send an object of layout settings."]})
+            overrides = invoice.clean_layout_overrides(payload, invoice.invoice_layout(get_site_settings()))
+        # Only this column: no save(), so nothing else on the order (or its updated_at) changes.
+        Order.objects.filter(pk=order.pk).update(invoice_layout=overrides)
+        order.invoice_layout = overrides
+        return Response(invoice.invoice_data(order, request))
+
+    @extend_schema(tags=TAG, summary="Invoice as an A4 PDF", responses={(200, "application/pdf"): OpenApiResponse(description="PDF file")})
+    @action(detail=True, methods=["get"], url_path="invoice/pdf", pagination_class=None)
+    def invoice_pdf(self, request, pk=None):
+        return invoice.pdf_response(self.get_object(), request)
 
 
 # --- helpers for taking a phone order: read-only, minimal data -----------------------------------------------------
@@ -297,3 +345,42 @@ class AdminDashboardView(APIView):
             query.validated_data.get("date_from"), query.validated_data.get("date_to"), absolute=request.build_absolute_uri,
         )
         return Response(data)
+
+
+# --- invoice print layout ----------------------------------------------------------------------------------------------
+
+
+class InvoiceLayoutSerializer(serializers.ModelSerializer):
+    """Just the invoice print layout fields of Site Settings (ranges enforced by the model's validators)."""
+
+    class Meta:
+        model = SiteSettings
+        fields = [*INVOICE_LAYOUT, "updated_at"]
+        read_only_fields = ["updated_at"]
+
+
+class InvoiceLayoutView(APIView):
+    """
+    Invoice Print Settings — the global A4 layout every invoice's preview, print, PDF and reprint uses. Admin + CCE
+    (IsAdminOrCCE), and ONLY these fields: the rest of Site Settings stays Admin-only at /admin/site-settings/.
+    """
+
+    permission_classes = [IsAdminOrCCE]
+
+    def _row(self):
+        return SiteSettings.objects.get_or_create(id=1)[0]  # the live row, not the cache
+
+    @extend_schema(tags=TAG, summary="Invoice print layout", responses=InvoiceLayoutSerializer)
+    def get(self, request):
+        return Response(InvoiceLayoutSerializer(self._row()).data)
+
+    @extend_schema(
+        tags=TAG, summary="Change the invoice print layout",
+        description="Partial update of the invoice_* layout fields (Admin and CCE). Out-of-range values are 400.",
+        request=InvoiceLayoutSerializer, responses={200: InvoiceLayoutSerializer, 400: ERR, 403: ERR},
+    )
+    def patch(self, request):
+        serializer = InvoiceLayoutSerializer(self._row(), data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        row = update_site_settings(serializer.instance, user=request.user, **serializer.validated_data)
+        return Response(InvoiceLayoutSerializer(row).data)

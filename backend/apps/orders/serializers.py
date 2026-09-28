@@ -6,7 +6,7 @@ from rest_framework import serializers
 from apps.accounts.models import Address, User
 from apps.core.validators import normalize_bd_phone
 
-from . import services
+from . import invoice, services
 from .models import Order, OrderItem, OrderNote, OrderSource, OrderStatus, OrderStatusHistory, PaymentMethod
 
 
@@ -131,6 +131,10 @@ class StatusChangeSerializer(serializers.Serializer):
     courier_name = serializers.CharField(max_length=60, required=False, allow_blank=True)
     tracking_id = serializers.CharField(max_length=100, required=False, allow_blank=True)
     consignment_id = serializers.CharField(max_length=100, required=False, allow_blank=True)
+
+
+class ParcelIdSerializer(serializers.Serializer):
+    parcel_id = serializers.CharField(max_length=100, allow_blank=True, help_text="The courier's parcel ID, e.g. DHK-2026-001245.")
 
 
 class ShippingOverrideSerializer(serializers.Serializer):
@@ -288,6 +292,7 @@ class StaffOrderSerializer(serializers.ModelSerializer):
     allowed_transitions = serializers.SerializerMethodField()
     editable = serializers.SerializerMethodField()
     item_count = serializers.SerializerMethodField()
+    parcel_codes = serializers.SerializerMethodField(help_text="QR + Code 128 SVG for the saved Parcel ID (consignment_id), or null.")
 
     class Meta:
         model = Order
@@ -295,7 +300,7 @@ class StaffOrderSerializer(serializers.ModelSerializer):
             "id", "number", "status", "allowed_transitions", "editable", "source", "source_note", "is_manual", "created_by",
             "customer", "email", *_ADDRESS, "payment_method", "payment_status", "items", "item_count", *_MONEY_AND_SHIPPING,
             "shipping_overridden", "shipping_override_reason", "courier_name", "tracking_id", "consignment_id",
-            "ip_address", "history", "notes", "created_at", "updated_at",
+            "parcel_codes", "ip_address", "history", "notes", "created_at", "updated_at",
         ]
 
     def get_allowed_transitions(self, obj) -> list[str]:
@@ -307,51 +312,16 @@ class StaffOrderSerializer(serializers.ModelSerializer):
     def get_item_count(self, obj) -> int:
         return obj.item_count
 
+    def get_parcel_codes(self, obj) -> dict | None:
+        return invoice.parcel_codes(obj)
+
 
 class ManualOrderResultSerializer(serializers.Serializer):
     order = StaffOrderSerializer()
     warnings = serializers.ListField(child=serializers.CharField(), help_text="e.g. a similar recent order for this phone. The order was still created.")
 
 
-# --- output: invoice + helpers ---------------------------------------------------------------------------------------------
-
-
-class _InvoiceParty(serializers.Serializer):
-    name = serializers.CharField()
-    phone = serializers.CharField(allow_blank=True)
-    email = serializers.CharField(allow_blank=True)
-    address = serializers.CharField(allow_blank=True)
-
-
-class _InvoiceLine(serializers.Serializer):
-    name = serializers.CharField()
-    sku = serializers.CharField()
-    variant = serializers.CharField(allow_blank=True)
-    quantity = serializers.IntegerField()
-    unit_price = serializers.DecimalField(max_digits=12, decimal_places=2)
-    line_total = serializers.DecimalField(max_digits=12, decimal_places=2)
-
-
-class InvoiceSerializer(serializers.Serializer):
-    number = serializers.CharField()
-    date = serializers.DateTimeField()
-    status = serializers.CharField()
-    currency_symbol = serializers.CharField()
-    seller = _InvoiceParty()
-    bill_to = _InvoiceParty()
-    ship_to = _InvoiceParty()
-    items = _InvoiceLine(many=True)
-    subtotal = serializers.DecimalField(max_digits=12, decimal_places=2)
-    discount = serializers.DecimalField(max_digits=12, decimal_places=2)
-    coupon_code = serializers.CharField(allow_blank=True)
-    shipping_zone = serializers.CharField(allow_blank=True)
-    shipping_charge = serializers.DecimalField(max_digits=10, decimal_places=2)
-    tax_percent = serializers.DecimalField(max_digits=5, decimal_places=2)
-    tax_amount = serializers.DecimalField(max_digits=12, decimal_places=2)
-    grand_total = serializers.DecimalField(max_digits=12, decimal_places=2)
-    payment_method = serializers.CharField()
-    payment_status = serializers.CharField()
-    note = serializers.CharField(allow_blank=True)
+# --- output: order-form helpers ---------------------------------------------------------------------------------------------
 
 
 class PickerRowSerializer(serializers.Serializer):
@@ -390,26 +360,3 @@ class CustomerLookupSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ["id", "full_name", "phone", "addresses"]
-
-
-def build_invoice(order, site):
-    """Print-ready invoice data: everything on the page, all from the order's own snapshot."""
-    def party_address(o):
-        return ", ".join(p for p in (o.address_line, o.area, o.district, o.division, o.postal_code) if p)
-
-    return {
-        "number": order.number, "date": order.created_at, "status": order.status, "currency_symbol": site.currency_symbol,
-        "seller": {"name": site.site_name, "phone": site.phone, "email": site.email, "address": site.address},
-        "bill_to": {"name": order.customer_name, "phone": order.phone, "email": order.email, "address": party_address(order)},
-        "ship_to": {"name": order.customer_name, "phone": order.phone, "email": order.email, "address": party_address(order)},
-        "items": [
-            {"name": i.product_name, "sku": i.sku, "variant": i.variant_label, "quantity": i.quantity,
-             "unit_price": i.unit_price, "line_total": i.line_total}
-            for i in order.items.all()
-        ],
-        "subtotal": order.subtotal, "discount": order.discount_amount, "coupon_code": order.coupon_code,
-        "shipping_zone": order.shipping_zone_name, "shipping_charge": order.shipping_charge,
-        "tax_percent": order.tax_percent, "tax_amount": order.tax_amount, "grand_total": order.grand_total,
-        "payment_method": order.get_payment_method_display(), "payment_status": order.get_payment_status_display(),
-        "note": order.note,
-    }

@@ -113,6 +113,15 @@
   --color-toast-error-text: var(--color-white);
   --color-toast-shadow: var(--color-shadow-soft);
 
+  /* Invoice (A4 sheet — prints on white paper whatever the site theme) */
+  --color-invoice-paper: var(--color-white);
+  --color-invoice-ink: var(--color-foreground);
+  --color-invoice-muted: var(--color-muted);
+  --color-invoice-line: var(--color-border);
+  --color-invoice-accent: var(--color-brand);
+  --color-invoice-code: var(--color-black);
+  --color-invoice-backdrop: color-mix(in srgb, var(--color-brand) 5%, var(--color-background));
+
   /* Skincare video section */
   --color-editorial-text: color-mix(in srgb, var(--color-foreground) 82%, transparent);
 
@@ -2513,4 +2522,466 @@ a.dashboard-card:hover {
 
 .cart-warranty-note {
   color: var(--color-muted);
+}
+
+/* ============================================================================================================
+   Invoice (component/invoice/InvoiceTemplate.jsx) — A4 width, content-based height, admin-configurable layout.
+   The layout comes from Site Settings (Invoice Print Settings) and is set on the sheet as custom properties by
+   lib/invoiceLayout.js#layoutStyle: --inv-pad-top/right/bottom/left, --inv-content-width, --inv-text, --inv-gap,
+   --inv-logo, --inv-qr, --inv-barcode. Every other size is derived below in the standard design's proportions — type
+   and cell padding from the 9pt text size, gaps from the 4mm section spacing — exactly as the PDF derives them
+   (backend apps/orders/invoice.py, Layout). The defaults here are the standard design. Nothing is scaled to fit the
+   content, and the sheet is never stretched to the full A4 height.
+   ============================================================================================================ */
+
+.invoice-preview {
+  background-color: var(--color-invoice-backdrop);
+  border-radius: 1rem;
+  padding: 2rem;
+}
+
+.invoice-sheet {
+  /* the saved layout (overridden inline per invoice) */
+  --inv-pad-top: 9mm;
+  --inv-pad-right: 9mm;
+  --inv-pad-bottom: 9mm;
+  --inv-pad-left: 9mm;
+  --inv-content-width: 100%;
+  --inv-text: 9pt;
+  --inv-gap: 4mm;
+  --inv-logo: 58mm;
+  --inv-qr: 28mm;
+  --inv-barcode: 16mm;
+  /* derived: type (standard 9pt design) and spacing (standard 4mm design) */
+  --inv-leading: calc(var(--inv-text) * 12 / 9);
+  --inv-small: calc(var(--inv-text) * 7.5 / 9);
+  --inv-small-leading: calc(var(--inv-text) * 10 / 9);
+  --inv-detail: calc(var(--inv-text) * 6.5 / 9);
+  --inv-detail-leading: calc(var(--inv-text) * 8.5 / 9);
+  --inv-title: calc(var(--inv-text) * 20 / 9);
+  --inv-title-leading: calc(var(--inv-text) * 23 / 9);
+  --inv-parcel-id: calc(var(--inv-text) * 10.5 / 9);
+  --inv-parcel-id-leading: calc(var(--inv-text) * 13 / 9);
+  --inv-thanks: calc(var(--inv-text) * 11 / 9);
+  --inv-thanks-leading: calc(var(--inv-text) * 14 / 9);
+  --inv-cell-pad: calc(var(--inv-text) * 3.5 / 9);
+  --inv-row-pad: calc(var(--inv-text) * 1.5 / 9);
+  --inv-box-pad: calc(var(--inv-text) * 4 / 9);
+  --inv-box-pad-x: calc(var(--inv-text) * 6 / 9);
+  --inv-rule-gap: calc(var(--inv-text) * 6 / 9);
+
+  page: invoice;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 210mm;
+  height: auto;
+  min-height: 0;
+  margin: 0 auto;
+  padding: var(--inv-pad-top) var(--inv-pad-right) var(--inv-pad-bottom) var(--inv-pad-left);
+  background-color: var(--color-invoice-paper);
+  color: var(--color-invoice-ink);
+  box-shadow: 0 10px 30px var(--color-shadow-soft);
+  /* The site's fonts, same as the PDF embeds: Montserrat for text, Honacu (--font-custom) for the headings below. */
+  font-family: "Montserrat", sans-serif;
+  font-size: var(--inv-text);
+  line-height: var(--inv-leading);
+  overflow-wrap: anywhere;
+}
+
+/* The content area: the chosen share of the width inside the page padding, centred. */
+.invoice-content {
+  width: var(--inv-content-width);
+  margin: 0 auto;
+}
+
+.invoice-sheet p {
+  margin: 0;
+}
+
+.invoice-muted {
+  color: var(--color-invoice-muted);
+}
+
+.invoice-strong {
+  font-weight: 600;
+}
+
+.invoice-block {
+  display: block;
+  font-size: var(--inv-detail); /* the variant / SKU line under each product name */
+  line-height: var(--inv-detail-leading);
+}
+
+.invoice-label {
+  color: var(--color-invoice-muted);
+  font-size: var(--inv-small);
+  line-height: var(--inv-small-leading);
+  text-transform: uppercase;
+}
+
+.invoice-header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 6mm;
+  padding-bottom: var(--inv-rule-gap);
+  border-bottom: 1pt solid var(--color-invoice-accent);
+}
+
+.invoice-store .invoice-muted {
+  font-size: var(--inv-small);
+  line-height: var(--inv-small-leading);
+}
+
+.invoice-logo {
+  display: block;
+  width: var(--inv-logo);
+  max-width: 100%;
+  height: auto; /* keeps the logo's aspect ratio */
+  margin-bottom: calc(var(--inv-gap) * 2 / 4);
+}
+
+.invoice-meta {
+  text-align: right;
+  margin-left: auto;
+}
+
+.invoice-title {
+  color: var(--color-invoice-accent);
+  font-family: var(--font-custom);
+  font-size: var(--inv-title);
+  font-weight: 400; /* Honacu has one weight; don't let the browser fake a bold */
+  line-height: var(--inv-title-leading);
+}
+
+.invoice-meta dl div {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.3em;
+}
+
+.invoice-meta dt {
+  font-weight: 600;
+}
+
+.invoice-meta dt::after {
+  content: ":";
+}
+
+.invoice-parties {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(60mm, 1fr));
+  gap: 6mm;
+  padding: var(--inv-gap) 0;
+}
+
+.invoice-parties__payment {
+  text-align: right;
+}
+
+.invoice-items {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.invoice-items th {
+  text-align: left;
+  font-weight: 600;
+  padding: var(--inv-cell-pad) 6pt;
+  border-bottom: 0.8pt solid var(--color-invoice-ink);
+}
+
+.invoice-items td {
+  vertical-align: top;
+  padding: var(--inv-cell-pad) 6pt;
+  border-bottom: 0.4pt solid var(--color-invoice-line);
+}
+
+.invoice-items .invoice-num {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.invoice-items th:first-child,
+.invoice-items td:first-child {
+  padding-left: 0;
+}
+
+.invoice-items th:last-child,
+.invoice-items td:last-child {
+  padding-right: 0;
+}
+
+.invoice-summary {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: calc(var(--inv-gap) * 3 / 4);
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.invoice-summary dl {
+  width: 50%;
+  min-width: min(100%, 80mm);
+}
+
+.invoice-summary dl div {
+  display: flex;
+  justify-content: space-between;
+  gap: 6pt;
+  padding: var(--inv-row-pad) 0;
+}
+
+.invoice-summary dd {
+  white-space: nowrap;
+}
+
+.invoice-summary__total {
+  border-top: 0.8pt solid var(--color-invoice-ink);
+  font-weight: 700;
+}
+
+.invoice-parcel {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6mm;
+  margin-top: calc(var(--inv-gap) * 5 / 4);
+  padding: var(--inv-box-pad) var(--inv-box-pad-x);
+  border: 0.6pt solid var(--color-invoice-line);
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.invoice-parcel > div:first-child {
+  flex: 1 1 45mm;
+}
+
+.invoice-parcel__id {
+  font-size: var(--inv-parcel-id);
+  line-height: var(--inv-parcel-id-leading);
+  font-weight: 600;
+}
+
+.invoice-codes {
+  display: flex;
+  flex-wrap: wrap; /* a barcode too wide to sit beside the QR code moves below it (the PDF does the same) */
+  align-items: center;
+  gap: 6mm;
+}
+
+/* White behind the codes wherever they appear (order details cards too) so scanners get a clean quiet zone.
+   The SVGs come from the backend at the standard physical size; on an invoice they're resized to the saved layout,
+   keeping their proportions (so the barcode's bars scale with its height, as in the PDF). */
+.invoice-code {
+  color: var(--color-invoice-code);
+  background-color: var(--color-invoice-paper);
+}
+
+.invoice-code svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+.invoice-sheet .invoice-code--qr svg {
+  width: var(--inv-qr);
+  height: var(--inv-qr);
+}
+
+.invoice-sheet .invoice-code--bar svg {
+  width: auto;
+  height: var(--inv-barcode);
+}
+
+.invoice-code--bar {
+  text-align: center;
+}
+
+.invoice-code__text {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.1em;
+  font-size: var(--inv-small, 7.5pt);
+}
+
+.invoice-note {
+  margin-top: calc(var(--inv-gap) * 3 / 4) !important;
+}
+
+.invoice-footer {
+  margin-top: calc(var(--inv-gap) * 6 / 4);
+  color: var(--color-invoice-accent);
+  font-family: var(--font-custom);
+  font-weight: 400;
+  font-size: var(--inv-thanks);
+  line-height: var(--inv-thanks-leading);
+}
+
+/* Phones (screen only — never print, and never the fixed-A4 settings preview): smaller preview frame, and item rows
+   become labelled blocks (no sideways scrolling). Type sizes stay the same. */
+@media screen and (max-width: 639px) {
+  .invoice-preview {
+    padding: 0.5rem;
+  }
+
+  .invoice-sheet:not(.invoice-sheet--a4) {
+    padding: 6mm;
+  }
+
+  .invoice-sheet:not(.invoice-sheet--a4) .invoice-content {
+    width: 100%;
+  }
+
+  .invoice-sheet:not(.invoice-sheet--a4) .invoice-meta {
+    text-align: left;
+    margin-left: 0;
+  }
+
+  .invoice-sheet:not(.invoice-sheet--a4) .invoice-meta dl div {
+    justify-content: flex-start;
+  }
+
+  .invoice-sheet:not(.invoice-sheet--a4) .invoice-parties__payment {
+    text-align: left;
+  }
+
+  .invoice-sheet:not(.invoice-sheet--a4) .invoice-summary dl {
+    width: 100%;
+  }
+
+  .invoice-sheet:not(.invoice-sheet--a4) .invoice-items thead {
+    display: none;
+  }
+
+  .invoice-sheet:not(.invoice-sheet--a4) .invoice-items tr {
+    display: block;
+    padding: var(--inv-cell-pad) 0;
+    border-bottom: 0.4pt solid var(--color-invoice-line);
+  }
+
+  .invoice-sheet:not(.invoice-sheet--a4) .invoice-items td {
+    display: flex;
+    justify-content: space-between;
+    gap: 6pt;
+    padding: 1pt 0;
+    border: 0;
+  }
+
+  .invoice-sheet:not(.invoice-sheet--a4) .invoice-items td:first-child {
+    display: block;
+    padding-bottom: 3pt;
+  }
+
+  .invoice-sheet:not(.invoice-sheet--a4) .invoice-items td:not(:first-child)::before {
+    content: attr(data-label);
+    color: var(--color-invoice-muted);
+  }
+}
+
+/* The fixed-A4 preview on Invoice Print Settings: always the real 210mm sheet (scaled down to fit only on screen). */
+.invoice-sheet--a4 {
+  width: 210mm;
+  max-width: none;
+}
+
+/* A4 paper, no page margin: the sheet's own padding (the saved layout) is the margin, repeated on every printed page
+   via box-decoration-break, so a long invoice continues on page 2 at exactly the same size. */
+@page invoice {
+  size: A4;
+  margin: 0;
+}
+
+/* Printing a page that shows an invoice prints ONLY the invoice sheet: everything that neither is nor contains it
+   is removed, and the sheet's ancestors are flattened (no padding, sidebars, backgrounds, preview scaling). Pages
+   without an invoice are untouched. */
+@media print {
+  html:has(.invoice-sheet),
+  body:has(.invoice-sheet) {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: var(--color-invoice-paper) !important;
+  }
+
+  body:has(.invoice-sheet) *:not(:has(.invoice-sheet)):not(.invoice-sheet):not(.invoice-sheet *) {
+    display: none !important;
+  }
+
+  body:has(.invoice-sheet) :has(.invoice-sheet) {
+    display: block !important;
+    position: static !important;
+    width: auto !important;
+    max-width: none !important;
+    height: auto !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    background: none !important;
+    overflow: visible !important;
+    transform: none !important;
+  }
+
+  .invoice-sheet {
+    width: 210mm;
+    max-width: 210mm;
+    height: auto;
+    min-height: 0;
+    margin: 0;
+    box-shadow: none;
+    -webkit-box-decoration-break: clone;
+    box-decoration-break: clone;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .invoice-items thead {
+    display: table-header-group; /* repeat the column headings on each printed page */
+  }
+
+  .invoice-items tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}
+
+/* Invoice Print Settings (component/dashboard/InvoiceLayoutSettings.jsx): the live preview is a real 210×297mm A4
+   sheet — the grey is the part of the page the invoice doesn't use, the dashed line is where page 2 would start — scaled
+   down only on screen. None of this chrome prints. */
+.invoice-a4-frame {
+  width: 100%;
+  overflow: hidden;
+  border-radius: 1rem;
+  background-color: var(--color-invoice-backdrop);
+}
+
+.invoice-a4-page {
+  position: relative;
+  width: 210mm;
+  min-height: 297mm;
+  background-color: color-mix(in srgb, var(--color-invoice-muted) 14%, var(--color-invoice-paper));
+  box-shadow: 0 10px 30px var(--color-shadow-soft);
+}
+
+.invoice-a4-page::after {
+  content: "";
+  position: absolute;
+  top: 297mm;
+  left: 0;
+  right: 0;
+  border-top: 1px dashed var(--color-invoice-muted);
+}
+
+.invoice-a4-page .invoice-sheet {
+  box-shadow: none;
+}
+
+.invoice-layout-range {
+  accent-color: var(--color-brand);
+}
+
+@media print {
+  .invoice-a4-page::after {
+    display: none;
+  }
 }

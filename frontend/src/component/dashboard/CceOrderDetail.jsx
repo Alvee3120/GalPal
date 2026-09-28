@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { FiArrowLeft, FiMinus, FiPlus, FiTrash2 } from "react-icons/fi";
+import { FiArrowLeft, FiMinus, FiPlus, FiPrinter, FiTrash2 } from "react-icons/fi";
 import { notify } from "@/lib/notify";
 import { messageFor } from "@/lib/apiError";
 import formatPrice from "@/lib/formatPrice";
@@ -10,6 +10,7 @@ import ProductImage from "@/component/shared/ProductImage";
 import Modal from "@/component/shared/Modal";
 import ProductSearchPicker from "./ProductSearchPicker";
 import OrderStatusDropdown from "./OrderStatusDropdown";
+import ParcelPanel from "./ParcelPanel";
 import { ORDER_SOURCE_LABEL, PAYMENT_METHOD_LABEL, PAYMENT_STATUS_LABEL, STATUS_LABEL, formatOrderDateTime } from "@/lib/orderStatus";
 import { useStaffHref } from "@/lib/staffPaths";
 
@@ -91,8 +92,17 @@ export default function CceOrderDetail({ initialOrder, currencySymbol }) {
           <h1 className="custom-font text-2xl sm:text-3xl">Order #{order.number}</h1>
           <p className="showcase-muted text-sm">{formatOrderDateTime(order.created_at)}</p>
         </div>
-        <div className="w-44">
-          <OrderStatusDropdown orderId={order.id} status={order.status} onChanged={setOrder} />
+        <div className="flex flex-wrap items-center gap-3">
+          <Link
+            href={to(`/dashboard/CCE/orders/${order.id}/invoice`)}
+            className="auth-btn auth-btn--outline inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium"
+          >
+            <FiPrinter className="h-4 w-4" aria-hidden="true" />
+            Invoice / Reprint
+          </Link>
+          <div className="w-44">
+            <OrderStatusDropdown orderId={order.id} status={order.status} onChanged={setOrder} />
+          </div>
         </div>
       </div>
 
@@ -204,6 +214,8 @@ export default function CceOrderDetail({ initialOrder, currencySymbol }) {
               <p className="showcase-muted mt-3 text-xs">Items can only be added while the order is still Pending.</p>
             )}
           </section>
+
+          <ParcelPanel key={order.consignment_id || ""} order={order} onSaved={setOrder} />
 
           {order.history.length > 0 && (
             <section className="dashboard-card rounded-2xl p-5 sm:p-6">

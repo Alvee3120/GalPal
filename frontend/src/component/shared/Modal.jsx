@@ -8,7 +8,7 @@ const FOCUSABLE = 'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1
 // A generic titled dialog for content richer than a Yes/Cancel prompt (e.g. the Add Product picker), reusing the
 // same .stock-modal* mechanics/classes already established by NotifyMeModal/ConfirmDialog (backdrop, Escape,
 // focus trap, body-scroll lock) instead of a third pattern.
-export default function Modal({ open, title, onClose, children, wide = false }) {
+export default function Modal({ open, title, onClose, children, wide = false, xl = false }) {
   const panelRef = useRef(null);
   const closeRef = useRef(null);
 
@@ -52,7 +52,7 @@ export default function Modal({ open, title, onClose, children, wide = false }) 
           role="dialog"
           aria-modal="true"
           aria-labelledby="modal-title"
-          className={`stock-modal__panel relative flex max-h-[85dvh] w-full flex-col rounded-(--radius-card) p-5 sm:p-6 ${wide ? "max-w-lg" : "max-w-sm"}`}
+          className={`stock-modal__panel relative flex max-h-[85dvh] w-full flex-col rounded-(--radius-card) p-5 sm:p-6 ${xl ? "max-w-6xl" : wide ? "max-w-lg" : "max-w-sm"}`}
         >
           <div className="mb-4 flex items-center justify-between gap-4">
             <h2 id="modal-title" className="custom-font text-xl">

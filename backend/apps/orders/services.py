@@ -17,6 +17,7 @@ Rules that hold everywhere in this module
   fixed order is what keeps concurrent orders from deadlocking.
 """
 import hashlib
+import re
 import logging
 import secrets
 from dataclasses import dataclass, field
@@ -670,6 +671,33 @@ def override_shipping(order, *, charge, reason, user):
         order=order, from_status=order.status, to_status=order.status, changed_by=user,
         note=f"Shipping charge overridden from {old} to {charge}: {reason}"[:500],
     )
+    return order
+
+
+PARCEL_ID_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9\-_/.]{0,99}")
+
+
+@transaction.atomic
+def set_parcel_id(order, parcel_id, *, user):
+    """
+    Save the courier Parcel ID staff typed in (stored in `consignment_id`, the order's existing courier field). Trimmed;
+    required; letters, digits and - _ / . only, so the Code 128 barcode can always encode it exactly; and not already
+    on another order. Recorded as an internal note. The invoice's QR/barcode are drawn from this value, never stored.
+    """
+    value = (parcel_id or "").strip()
+    if not value:
+        raise field_error("parcel_id", "Enter the parcel ID.", "required")
+    if not PARCEL_ID_RE.fullmatch(value):
+        raise field_error("parcel_id", "Parcel ID can use letters, numbers and - _ / . only (no spaces), up to 100 characters.", "invalid")
+    order = Order.objects.select_for_update().get(pk=order.pk)
+    if order.consignment_id == value:
+        return order
+    if Order.objects.filter(consignment_id__iexact=value).exclude(pk=order.pk).exists():
+        raise field_error("parcel_id", f"Parcel ID {value} is already used by another order.", "parcel_id_taken")
+    previous = order.consignment_id
+    order.consignment_id = value
+    order.save(update_fields=["consignment_id", "updated_at"])
+    add_note(order, user, f"Parcel ID set to {value}" + (f" (was {previous})." if previous else "."))
     return order
 
 

@@ -30,6 +30,31 @@ def _social(label):
     return HttpURLField(max_length=300, blank=True, help_text=f"{label} page URL")
 
 
+# Invoice print layout (A4): field -> (default, min, max, unit). The defaults are the invoice's standard design; the
+# limits keep text readable and the QR code / barcode scannable. Used by the fields below and by the invoice PDF
+# (apps.orders.invoice); the admin settings screen mirrors them (frontend lib/invoiceLayout.js).
+INVOICE_LAYOUT = {
+    "invoice_content_width": (100, 70, 100, "%"),  # of the A4 width inside the page padding, centred
+    "invoice_padding_top": (9, 0, 25, "mm"),
+    "invoice_padding_right": (9, 0, 25, "mm"),
+    "invoice_padding_bottom": (9, 0, 25, "mm"),
+    "invoice_padding_left": (9, 0, 25, "mm"),
+    "invoice_text_size": (9, 8, 12, "pt"),  # body text; headings/small text keep their proportions
+    "invoice_section_spacing": (4, 1, 10, "mm"),
+    "invoice_logo_width": (58, 30, 80, "mm"),
+    "invoice_qr_size": (28, 20, 40, "mm"),
+    "invoice_barcode_height": (16, 12, 24, "mm"),  # bar width scales with it
+}
+
+
+def _layout_field(name, label):
+    default, low, high, unit = INVOICE_LAYOUT[name]
+    return models.DecimalField(
+        max_digits=4, decimal_places=1, default=default, validators=[MinValueValidator(low), MaxValueValidator(high)],
+        help_text=f"Invoice print: {label} ({low}–{high} {unit})",
+    )
+
+
 class SiteSettings(TimeStampedModel):
     """
     The one and only row of global site settings (always `id=1`).
@@ -99,6 +124,18 @@ class SiteSettings(TimeStampedModel):
     )
     low_stock_threshold = models.PositiveIntegerField(default=5)
     maintenance_mode = models.BooleanField(default=False)
+
+    # --- Invoice print layout (A4; every invoice's preview, print, PDF and reprint) ------------------------------
+    invoice_content_width = _layout_field("invoice_content_width", "content width")
+    invoice_padding_top = _layout_field("invoice_padding_top", "top padding")
+    invoice_padding_right = _layout_field("invoice_padding_right", "right padding")
+    invoice_padding_bottom = _layout_field("invoice_padding_bottom", "bottom padding")
+    invoice_padding_left = _layout_field("invoice_padding_left", "left padding")
+    invoice_text_size = _layout_field("invoice_text_size", "text size")
+    invoice_section_spacing = _layout_field("invoice_section_spacing", "section spacing")
+    invoice_logo_width = _layout_field("invoice_logo_width", "logo width")
+    invoice_qr_size = _layout_field("invoice_qr_size", "QR code size")
+    invoice_barcode_height = _layout_field("invoice_barcode_height", "barcode height")
 
     # --- SEO defaults --------------------------------------------------------
     default_meta_title = models.CharField(max_length=70, blank=True)

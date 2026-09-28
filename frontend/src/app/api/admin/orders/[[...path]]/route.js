@@ -1,19 +1,27 @@
 import { backendFetch } from "@/lib/backendAuth";
+import { relayInvoice } from "@/lib/invoiceProxy";
 
 // Thin proxy to the EXISTING /admin/orders/* API (apps.orders.views_admin.AdminOrderViewSet + its 3 read-only
 // helper views) — the ONLY admin-prefixed area a CCE account may reach (apps.accounts.permissions.IsAdminOrCCE
 // enforces this backend-side; nothing here decides who may act, it only forwards whatever the backend answers,
 // including a 401/403). Deliberately narrow to the actions this dashboard actually uses: list/search, create a
-// manual order, retrieve, edit a pending order's items/contact, and change status. Delete and shipping-override
+// manual order, retrieve, edit a pending order's items/contact, change status, and view/download its invoice (the
+// PDF is passed through as bytes). Delete and shipping-override
 // are Admin-only backend-side and aren't needed by the CCE UI, so they're left unreachable here too.
 const isPath = (path, method) => {
   if (path.length === 0) return method === "GET" || method === "POST"; // list+filter / create manual order
   if (path.length === 1 && path[0] === "dashboard") return method === "GET"; // dashboard overview numbers
+  if (path.length === 1 && path[0] === "invoice-layout") return method === "GET" || method === "PATCH"; // invoice print settings
   if (path.length === 2 && path[0] === "helpers") return method === "GET" && ["products", "shipping", "customers"].includes(path[1]);
   if (path.length === 1 && /^\d+$/.test(path[0])) return method === "GET" || method === "PATCH"; // retrieve / edit pending order
   if (path.length === 2 && /^\d+$/.test(path[0]) && path[1] === "status") return method === "POST"; // change status
+  if (path.length === 2 && /^\d+$/.test(path[0]) && path[1] === "parcel") return method === "POST"; // save Parcel ID
+  if (path.length === 3 && /^\d+$/.test(path[0]) && path[1] === "invoice" && path[2] === "layout") return method === "PUT" || method === "DELETE"; // Customize This Invoice / Reset to Global
+  if (/^\d+$/.test(path[0]) && path[1] === "invoice") return method === "GET" && (path.length === 2 || (path.length === 3 && path[2] === "pdf")); // invoice data / PDF
   return false;
 };
+
+const isPdf = (path) => path[1] === "invoice" && path[2] === "pdf";
 
 async function handler(request, { params }) {
   const { path = [] } = await params;
@@ -21,7 +29,8 @@ async function handler(request, { params }) {
   if (!isPath(path, method)) return Response.json({ error: { message: "Not found." } }, { status: 404 });
 
   const qs = new URL(request.url).search;
-  const body = method === "GET" ? undefined : await request.text();
+  const body = method === "GET" ? undefined : (await request.text()) || undefined;
+  if (isPdf(path)) return relayInvoice(`/admin/orders/${path.join("/")}/`);
 
   let res;
   try {
@@ -33,4 +42,4 @@ async function handler(request, { params }) {
   return Response.json(data, { status: res.status, headers: { "Cache-Control": "no-store" } });
 }
 
-export { handler as GET, handler as POST, handler as PATCH };
+export { handler as GET, handler as POST, handler as PATCH, handler as PUT, handler as DELETE };

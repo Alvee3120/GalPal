@@ -54,7 +54,8 @@ def every_order_route(order):
     return [
         ("get", ORDERS), ("post", ORDERS), ("get", url(order)), ("patch", url(order)), ("delete", url(order)),
         ("post", url(order, "status/")), ("get", url(order, "notes/")), ("post", url(order, "notes/")),
-        ("get", url(order, "invoice/")), ("post", url(order, "shipping-override/")),
+        ("get", url(order, "invoice/")), ("put", url(order, "invoice/layout/")), ("delete", url(order, "invoice/layout/")),
+        ("post", url(order, "shipping-override/")),
         ("get", f"{ORDERS}helpers/products/"), ("get", f"{ORDERS}helpers/shipping/"), ("get", f"{ORDERS}helpers/customers/"),
     ]
 
@@ -539,13 +540,26 @@ def test_the_invoice_has_everything_for_printing(cce_client, admin_user):
     product = ProductFactory(stock_quantity=10, regular_price="500.00", name="Vitamin C Serum")
     order = new_order(admin_user, product=product, quantity=2, coupon="SAVE50", email="rina@example.com", note="ring twice")
     inv = cce_client.get(url(order, "invoice/")).json()
-    assert inv["number"] == order.number and inv["currency_symbol"] == "৳" and inv["status"] == "pending"
-    assert inv["seller"] == {"name": "GalPal", "phone": "0255555555", "email": "hello@galpal.test", "address": "12 Road, Dhaka"}
-    assert inv["bill_to"]["name"] == "Rina Akter" and inv["ship_to"]["address"] == "House 4, Dhaka" and inv["bill_to"]["email"] == "rina@example.com"
-    assert inv["items"] == [{"name": "Vitamin C Serum", "sku": product.sku, "variant": "", "quantity": 2, "unit_price": "500.00", "line_total": "1000.00"}]
-    assert (inv["subtotal"], inv["discount"], inv["coupon_code"], inv["shipping_zone"], inv["shipping_charge"]) == ("1000.00", "50.00", "SAVE50", "Inside Dhaka", "70.00")
-    assert (inv["tax_percent"], inv["tax_amount"], inv["grand_total"]) == ("5.00", "47.50", "1067.50")
+    assert inv["order_number"] == order.number and inv["invoice_number"] == "INV-" + order.number[3:]
+    assert inv["store"]["name"] == "GalPal" and inv["store"]["phone"] == "0255555555" and inv["store"]["address"] == "12 Road, Dhaka"
+    assert inv["customer"]["name"] == "Rina Akter" and inv["customer"]["address"] == "House 4" and inv["customer"]["city"] == "Dhaka"
+    item = inv["items"][0]
+    assert (item["name"], item["quantity"], item["unit_price"], item["total"]) == ("Vitamin C Serum", 2, "500.00", "1000.00")
+    assert (inv["subtotal"], inv["coupon_discount"], inv["coupon_code"], inv["delivery_charge"]) == ("1000.00", "50.00", "SAVE50", "70.00")
+    assert (inv["tax_percent"], inv["tax_amount"], inv["total"], inv["paid"], inv["due"]) == ("5.00", "47.50", "1067.50", "0.00", "1067.50")
     assert (inv["payment_method"], inv["payment_status"], inv["note"]) == ("Cash on delivery", "Unpaid", "ring twice")
+    assert inv["parcel_id"] == "" and inv["parcel_qr_svg"] is None  # nothing invented before the courier assigns one
+
+
+def test_the_invoice_encodes_the_real_parcel_id_and_prints_as_a_pdf(cce_client, admin_user):
+    order = new_order(admin_user)
+    Order.objects.filter(pk=order.pk).update(consignment_id="SF-1234567")
+    inv = cce_client.get(url(order, "invoice/")).json()
+    assert inv["parcel_id"] == "SF-1234567" and "<svg" in inv["parcel_qr_svg"] and "<svg" in inv["parcel_barcode_svg"]
+    pdf = cce_client.get(url(order, "invoice/pdf/"))
+    assert pdf.status_code == 200 and pdf["Content-Type"] == "application/pdf" and pdf.content.startswith(b"%PDF")
+    assert inv["invoice_number"] in pdf["Content-Disposition"]
+    assert cce_client.get(url(order, "invoice/")).json()["invoice_number"] == inv["invoice_number"]  # stable on reprint
 
 
 def test_the_invoice_survives_the_product_being_deleted(cce_client, admin_user):
@@ -617,3 +631,141 @@ def test_the_customer_lookup_404s_for_unknown_phones_staff_and_inactive_customer
 
 def test_helper_routes_are_not_mistaken_for_order_ids(cce_client):
     assert cce_client.get(f"{ORDERS}helpers/products/").status_code == 200  # not a 404 from `orders/<pk>/`
+
+
+# --- Parcel ID -----------------------------------------------------------------------------------------------------------------
+
+
+def test_staff_save_a_parcel_id_and_the_invoice_encodes_exactly_it(cce_client, admin_user):
+    order = new_order(admin_user)
+    res = cce_client.post(url(order, "parcel/"), {"parcel_id": "  DHK-2026-001245 "}, format="json")
+    assert res.status_code == 200 and res.json()["consignment_id"] == "DHK-2026-001245"
+    assert "<svg" in res.json()["parcel_codes"]["qr_svg"] and "<svg" in res.json()["parcel_codes"]["barcode_svg"]
+    inv = cce_client.get(url(order, "invoice/")).json()
+    assert inv["parcel_id"] == "DHK-2026-001245"
+    assert cce_client.get(url(order, "invoice/")).json()["parcel_qr_svg"] == inv["parcel_qr_svg"]  # same value on refresh
+    assert OrderNote.objects.filter(order=order, text__contains="DHK-2026-001245").exists()
+
+
+def test_changing_the_parcel_id_changes_the_codes(cce_client, admin_user):
+    order = new_order(admin_user)
+    first = cce_client.post(url(order, "parcel/"), {"parcel_id": "DHK-1"}, format="json").json()["parcel_codes"]
+    second = cce_client.post(url(order, "parcel/"), {"parcel_id": "DHK-2"}, format="json").json()["parcel_codes"]
+    assert first["qr_svg"] != second["qr_svg"] and first["barcode_svg"] != second["barcode_svg"]
+    assert cce_client.get(url(order, "invoice/")).json()["parcel_id"] == "DHK-2"
+
+
+@pytest.mark.parametrize("value", ["", "   ", "DHK 1", "ঢাকা-1", "-DHK"])
+def test_a_parcel_id_must_be_present_and_barcode_safe(cce_client, admin_user, value):
+    order = new_order(admin_user)
+    res = cce_client.post(url(order, "parcel/"), {"parcel_id": value}, format="json")
+    assert res.status_code == 400 and "parcel_id" in details(res)
+    assert cce_client.get(url(order, "")).json()["parcel_codes"] is None
+
+
+def test_a_parcel_id_cannot_be_on_two_orders(cce_client, admin_user):
+    first, second = new_order(admin_user), new_order(admin_user)
+    cce_client.post(url(first, "parcel/"), {"parcel_id": "DHK-9"}, format="json")
+    res = cce_client.post(url(second, "parcel/"), {"parcel_id": "dhk-9"}, format="json")
+    assert res.status_code == 400 and code(res) == "parcel_id_taken"
+
+
+# --- print layout --------------------------------------------------------------------------------------------------------
+
+
+def test_every_invoice_carries_the_saved_print_layout(cce_client, admin_user):
+    order = new_order(admin_user)
+    assert cce_client.get(url(order, "invoice/")).json()["layout"]["text_size"] == 9.0  # the standard design
+    set_site(invoice_text_size=D("11"), invoice_content_width=D("80"))
+    layout = cce_client.get(url(order, "invoice/")).json()["layout"]
+    assert (layout["text_size"], layout["content_width"]) == (11.0, 80.0)
+
+
+def test_the_pdf_follows_the_saved_layout_and_is_never_scaled_to_fit(admin_user):
+    from apps.orders.invoice import build_invoice, render_invoice_pdf
+
+    order = new_order(admin_user)
+    standard = render_invoice_pdf(build_invoice(order))
+    set_site(invoice_text_size=D("12"), invoice_section_spacing=D("10"))
+    larger = render_invoice_pdf(build_invoice(order))
+    height = lambda pdf: float(pdf.split(b"/MediaBox [")[1].split(b"]")[0].split()[3])  # noqa: E731
+    assert height(larger) > height(standard)  # same A4 width, taller content-based page
+
+
+# --- invoice print settings (Admin + CCE) --------------------------------------------------------------------------------
+
+LAYOUT = "/api/v1/admin/orders/invoice-layout/"
+
+
+def test_a_cce_can_view_and_change_the_invoice_print_layout(cce_client, admin_user):
+    assert cce_client.get(LAYOUT).json()["invoice_text_size"] == "9.0"
+    r = cce_client.patch(LAYOUT, {"invoice_text_size": 10, "invoice_content_width": 85}, format="json")
+    assert r.status_code == 200 and r.json()["invoice_text_size"] == "10.0"
+    order = new_order(admin_user)
+    assert cce_client.get(url(order, "invoice/")).json()["layout"]["content_width"] == 85.0  # every invoice uses it
+
+
+def test_the_layout_endpoint_changes_only_layout_fields(cce_client):
+    cce_client.patch(LAYOUT, {"site_name": "Hacked", "invoice_qr_size": 30}, format="json")
+    assert set_site().site_name != "Hacked"
+
+
+def test_the_layout_limits_apply_to_everyone(cce_client):
+    r = cce_client.patch(LAYOUT, {"invoice_qr_size": 5}, format="json")
+    assert r.status_code == 400 and "invoice_qr_size" in details(r)
+
+
+def test_customers_and_guests_cannot_touch_the_layout(api_client, auth_client, customer):
+    assert api_client.get(LAYOUT).status_code == 401
+    assert auth_client(customer).patch(LAYOUT, {"invoice_text_size": 10}, format="json").status_code == 403
+
+
+# --- Customize This Invoice (per-invoice layout overrides) ---------------------------------------------------------------
+
+
+def custom(client, order, **overrides):
+    return client.put(url(order, "invoice/layout/"), {"overrides": overrides}, format="json")
+
+
+def test_an_invoice_without_customization_uses_the_global_settings(cce_client, admin_user):
+    set_site(invoice_content_width=D("85"), invoice_text_size=D("10"))
+    inv = cce_client.get(url(new_order(admin_user), "invoice/")).json()
+    assert inv["layout_overrides"] == {} and inv["layout"] == inv["layout_global"]
+    assert (inv["layout"]["content_width"], inv["layout"]["text_size"]) == (85.0, 10.0)
+
+
+def test_customizing_one_invoice_keeps_only_the_changed_values_and_nothing_else(cce_client, admin_user):
+    set_site(invoice_content_width=D("85"), invoice_text_size=D("10"))
+    mine, other = new_order(admin_user), new_order(admin_user)
+    before = Order.objects.values("updated_at", "grand_total", "status", "consignment_id").get(pk=mine.pk)
+    r = custom(cce_client, mine, content_width=75, text_size=10)  # text_size equals the global value
+    assert r.status_code == 200 and r.json()["layout_overrides"] == {"content_width": 75.0}
+    assert (r.json()["layout"]["content_width"], r.json()["layout"]["text_size"]) == (75.0, 10.0)
+    assert Order.objects.values("updated_at", "grand_total", "status", "consignment_id").get(pk=mine.pk) == before
+    assert cce_client.get(url(other, "invoice/")).json()["layout"]["content_width"] == 85.0  # other invoices untouched
+    set_site(invoice_text_size=D("11"))  # a later global change still reaches the customized invoice's other values
+    layout = cce_client.get(url(mine, "invoice/")).json()["layout"]
+    assert (layout["content_width"], layout["text_size"]) == (75.0, 11.0)
+
+
+def test_reset_to_global_removes_the_overrides(cce_client, admin_user):
+    order = new_order(admin_user)
+    custom(cce_client, order, qr_size=35)
+    r = cce_client.delete(url(order, "invoice/layout/"))
+    assert r.status_code == 200 and r.json()["layout_overrides"] == {} and r.json()["layout"] == r.json()["layout_global"]
+    assert Order.objects.get(pk=order.pk).invoice_layout == {}
+
+
+@pytest.mark.parametrize("overrides", [{"qr_size": 5}, {"text_size": 30}, {"bogus": 1}, {"content_width": "wide"}])
+def test_invoice_overrides_are_validated(cce_client, admin_user, overrides):
+    order = new_order(admin_user)
+    assert custom(cce_client, order, **overrides).status_code == 400
+    assert Order.objects.get(pk=order.pk).invoice_layout == {}
+
+
+def test_the_pdf_uses_the_customized_layout(cce_client, admin_user):
+    order = new_order(admin_user)
+    height = lambda pdf: float(pdf.split(b"/MediaBox [")[1].split(b"]")[0].split()[3])  # noqa: E731
+    standard = height(cce_client.get(url(order, "invoice/pdf/")).content)
+    custom(cce_client, order, text_size=12, section_spacing=10)
+    assert height(cce_client.get(url(order, "invoice/pdf/")).content) > standard
