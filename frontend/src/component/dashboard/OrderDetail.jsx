@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FiCheck } from "react-icons/fi";
+import { FiCheck, FiFileText } from "react-icons/fi";
 import { notify } from "@/lib/notify";
 import { messageFor } from "@/lib/apiError";
 import formatPrice from "@/lib/formatPrice";
@@ -92,7 +93,16 @@ export default function OrderDetail({ initialOrder, currencySymbol }) {
           <h1 className="custom-font text-2xl sm:text-3xl">Order #{order.number}</h1>
           <p className="showcase-muted text-sm">{formatOrderDate(order.created_at)}</p>
         </div>
-        <span className="product-card__chip rounded-full px-3 py-1 text-xs font-medium">{STATUS_LABEL[order.status] ?? order.status}</span>
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="product-card__chip rounded-full px-3 py-1 text-xs font-medium">{STATUS_LABEL[order.status] ?? order.status}</span>
+          <Link
+            href={`/invoice/${encodeURIComponent(order.number)}`}
+            className="auth-btn auth-btn--outline inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium"
+          >
+            <FiFileText className="h-4 w-4" aria-hidden="true" />
+            View Invoice
+          </Link>
+        </div>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
@@ -170,6 +180,12 @@ export default function OrderDetail({ initialOrder, currencySymbol }) {
               <div className="flex items-center justify-between">
                 <dt>Courier</dt>
                 <dd className="font-medium">{[order.courier_name, order.tracking_id].filter(Boolean).join(" · ")}</dd>
+              </div>
+            )}
+            {order.consignment_id && (
+              <div className="flex items-center justify-between gap-3">
+                <dt>Parcel ID</dt>
+                <dd className="font-medium break-all text-right">{order.consignment_id}</dd>
               </div>
             )}
           </dl>

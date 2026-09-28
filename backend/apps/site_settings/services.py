@@ -10,7 +10,7 @@ from .models import SiteSettings
 
 logger = logging.getLogger(__name__)
 
-CACHE_KEY = "site_settings:v1"
+CACHE_KEY = "site_settings:v2"  # v2: invoice layout fields
 IMAGE_FIELDS = ("logo", "favicon", "default_og_image")
 
 

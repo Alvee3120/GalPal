@@ -296,3 +296,32 @@ def test_multipart_update_without_booleans_does_not_reset_them(auth_client, admi
     r = patch(client, {"logo": png("logo.png")}, format="multipart")
     assert r.status_code == 200
     assert r.json()["guest_checkout_enabled"] is False and r.json()["maintenance_mode"] is True
+
+
+# --- invoice print layout ------------------------------------------------------------------------------------------------
+
+
+def test_invoice_layout_defaults_are_the_standard_design(auth_client, admin_user):
+    data = auth_client(admin_user).get(ADMIN).json()
+    assert data["invoice_content_width"] == "100.0" and data["invoice_text_size"] == "9.0"
+    assert data["invoice_padding_top"] == "9.0" and data["invoice_qr_size"] == "28.0"
+
+
+def test_admin_saves_the_invoice_layout(auth_client, admin_user):
+    r = patch(auth_client(admin_user), {"invoice_content_width": 85, "invoice_padding_top": "12.5", "invoice_text_size": 10})
+    assert r.status_code == 200
+    row = SiteSettings.objects.get()
+    assert (float(row.invoice_content_width), float(row.invoice_padding_top), float(row.invoice_text_size)) == (85, 12.5, 10)
+
+
+@pytest.mark.parametrize("field,value", [
+    ("invoice_content_width", 60), ("invoice_text_size", 6), ("invoice_text_size", 20),
+    ("invoice_qr_size", 10), ("invoice_barcode_height", 5), ("invoice_padding_left", 40),
+])
+def test_invoice_layout_limits_keep_it_readable_and_scannable(auth_client, admin_user, field, value):
+    r = patch(auth_client(admin_user), {field: value})
+    assert r.status_code == 400 and field in r.json()["error"]["details"]
+
+
+def test_cce_edits_the_layout_only_through_the_orders_area_never_the_full_site_settings(auth_client, cce_user):
+    assert patch(auth_client(cce_user), {"invoice_text_size": 11}).status_code == 403

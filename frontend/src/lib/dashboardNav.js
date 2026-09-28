@@ -1,6 +1,6 @@
 import { BiHome } from "react-icons/bi";
 import { FaMapLocationDot } from "react-icons/fa6";
-import { FiAward, FiBell, FiClipboard, FiGrid, FiLayers, FiPackage, FiPlusCircle, FiShoppingBag, FiStar, FiTag, FiTruck, FiUser, FiUsers, FiVideo } from "react-icons/fi";
+import { FiAward, FiBell, FiClipboard, FiGrid, FiLayers, FiPackage, FiPlusCircle, FiPrinter, FiShoppingBag, FiStar, FiTag, FiTruck, FiUser, FiUsers, FiVideo } from "react-icons/fi";
 
 // Role -> sidebar links, from the authenticated user's real `role` (apps.accounts.models.User.Role: "customer",
 // "admin", "cce" — see lib/currentUser.js). ONLY routes that actually exist are listed here. Admin shares
@@ -30,6 +30,7 @@ export const DASHBOARD_NAV = {
     { label: "Users", href: "/dashboard/admin/users", icon: FiUsers },
     { label: "Coupons", href: "/dashboard/admin/coupons", icon: FiTag },
     { label: "Delivery Charges", href: "/dashboard/admin/delivery-charges", icon: FiTruck },
+    { label: "Invoice Settings", href: "/dashboard/admin/invoice-settings", icon: FiPrinter },
     { label: "My Account", href: "/dashboard/admin/account", icon: FiUser },
   ],
   cce: [
@@ -43,6 +44,7 @@ export const DASHBOARD_NAV = {
     { label: "Reviews", href: "/dashboard/CCE/reviews", icon: FiStar },
     { label: "Video Cards", href: "/dashboard/CCE/video-cards", icon: FiVideo },
     { label: "Coupons", href: "/dashboard/CCE/coupons", icon: FiTag },
+    { label: "Invoice Settings", href: "/dashboard/CCE/invoice-settings", icon: FiPrinter },
     { label: "My Orders", href: "/dashboard/CCE/orders/mine", icon: FiShoppingBag },
     { label: "My Account", href: "/dashboard/CCE/account", icon: FiUser },
   ],
