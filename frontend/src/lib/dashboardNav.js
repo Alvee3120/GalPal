@@ -1,6 +1,6 @@
 import { BiHome } from "react-icons/bi";
 import { FaMapLocationDot } from "react-icons/fa6";
-import { FiAward, FiBell, FiClipboard, FiGrid, FiLayers, FiPackage, FiPlusCircle, FiPrinter, FiShoppingBag, FiStar, FiTag, FiTruck, FiUser, FiUsers, FiVideo } from "react-icons/fi";
+import { FiAward, FiBell, FiClipboard, FiGrid, FiLayers, FiPackage, FiPlusCircle, FiPrinter, FiSettings, FiShoppingBag, FiStar, FiTag, FiTruck, FiUser, FiUsers, FiVideo } from "react-icons/fi";
 
 // Role -> sidebar links, from the authenticated user's real `role` (apps.accounts.models.User.Role: "customer",
 // "admin", "cce" — see lib/currentUser.js). ONLY routes that actually exist are listed here. Admin shares
@@ -31,6 +31,7 @@ export const DASHBOARD_NAV = {
     { label: "Coupons", href: "/dashboard/admin/coupons", icon: FiTag },
     { label: "Delivery Charges", href: "/dashboard/admin/delivery-charges", icon: FiTruck },
     { label: "Invoice Settings", href: "/dashboard/admin/invoice-settings", icon: FiPrinter },
+    { label: "Site Settings", href: "/dashboard/admin/site-settings", icon: FiSettings },
     { label: "My Account", href: "/dashboard/admin/account", icon: FiUser },
   ],
   cce: [
