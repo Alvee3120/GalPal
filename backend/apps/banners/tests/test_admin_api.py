@@ -214,3 +214,31 @@ def test_reorder_rejects_mismatched_ids(admin_client):
     a = HeroBannerFactory()
     r = admin_client.post(f"{BANNERS}reorder/", [a.id, 999999], format="json")
     assert r.status_code == 400
+
+
+# --- at most 3 banners ---------------------------------------------------------------------------------------------------
+
+
+def test_a_fourth_banner_is_refused(admin_client):
+    HeroBannerFactory.create_batch(2)
+    assert admin_client.post(BANNERS, minimal_payload(), format="multipart").status_code == 201  # the third is fine
+    r = admin_client.post(BANNERS, minimal_payload(), format="multipart")
+    assert r.status_code == 400 and r.json()["error"]["details"]["non_field_errors"]
+    assert HeroBanner.objects.count() == 3
+
+
+def test_inactive_banners_count_towards_the_limit(admin_client):
+    HeroBannerFactory.create_batch(3, is_active=False)
+    assert admin_client.post(BANNERS, minimal_payload(), format="multipart").status_code == 400
+
+
+def test_deleting_a_banner_frees_a_slot(admin_client):
+    first, *_ = HeroBannerFactory.create_batch(3)
+    admin_client.delete(f"{BANNERS}{first.id}/")
+    assert admin_client.post(BANNERS, minimal_payload(), format="multipart").status_code == 201
+
+
+def test_editing_a_banner_at_the_limit_still_works(admin_client):
+    banner, *_ = HeroBannerFactory.create_batch(3)
+    r = admin_client.patch(f"{BANNERS}{banner.id}/", {"desktop_image": make_image("new.png")}, format="multipart")
+    assert r.status_code == 200 and HeroBanner.objects.count() == 3

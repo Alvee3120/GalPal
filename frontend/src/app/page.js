@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import Banner from "@/component/homepage/Banner";
+import Banner, { BannerSkeleton } from "@/component/homepage/Banner";
 import Marquee from "@/component/homepage/Marquee";
 import CategoryShowcase, {
   CategoryShowcaseSkeleton,
@@ -17,7 +17,9 @@ import CustomerReviews, { CustomerReviewsSkeleton } from "@/component/homepage/C
 export default function Home() {
   return (
     <main>
-      <Banner />
+      <Suspense fallback={<BannerSkeleton />}>
+        <Banner />
+      </Suspense>
       <Marquee />
       <Suspense fallback={<CategoryShowcaseSkeleton />}>
         <CategoryShowcase />

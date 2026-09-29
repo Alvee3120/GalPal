@@ -113,6 +113,12 @@
   --color-toast-error-text: var(--color-white);
   --color-toast-shadow: var(--color-shadow-soft);
 
+  /* Homepage hero banners (component/homepage/HeroSwiper.jsx) */
+  --color-hero-dot: color-mix(in srgb, var(--color-white) 70%, transparent);
+  --color-hero-dot-active: var(--color-brand);
+  --color-hero-dot-ring: color-mix(in srgb, var(--color-black) 25%, transparent);
+  --color-hero-skeleton: var(--color-product-skeleton);
+
   /* Invoice (A4 sheet — prints on white paper whatever the site theme) */
   --color-invoice-paper: var(--color-white);
   --color-invoice-ink: var(--color-foreground);
@@ -1395,6 +1401,26 @@ a.dashboard-card:hover {
 .image-drop {
   background-color: var(--color-product-tile);
   border: 1px dashed var(--color-cart-line);
+}
+
+/* "Choose a file or drag & drop it here" box (component/dashboard/banners/ImageDropzone.jsx) */
+.image-dropzone {
+  border: 1.5px dashed var(--color-cart-line);
+  background-color: var(--color-background);
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.image-dropzone__icon {
+  color: var(--color-foreground);
+}
+
+.image-dropzone[data-dragging] {
+  border-color: var(--color-brand);
+  background-color: color-mix(in srgb, var(--color-brand) 5%, var(--color-background));
+}
+
+.image-dropzone[data-busy] {
+  opacity: 0.7;
 }
 
 .variant-card {
@@ -2985,3 +3011,127 @@ a.dashboard-card:hover {
     display: none;
   }
 }
+
+/* ============================================================================================================
+   Homepage hero banners (component/homepage/Banner.jsx, HeroSwiper.jsx, HeroBannerSlide.jsx).
+   A fixed height of one full screen (100svh: the visible screen on phones too, so the browser toolbar doesn't make it
+   jump), like the original static banner. Each image covers that area, centred, never stretched — on a screen whose
+   shape differs from the image, the edges are trimmed rather than distorted.
+   ============================================================================================================ */
+
+.hero-banner {
+  position: relative;
+  width: 100%;
+  height: 100vh;
+  height: 100svh;
+}
+
+.hero-banner__picture,
+.hero-banner__link {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.hero-banner__img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  user-select: none;
+}
+
+.hero-banner__link:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: -4px;
+}
+
+.hero-banner__swiper,
+.hero-banner__swiper .swiper-slide {
+  height: 100%;
+}
+
+/* Smooth cross-fade (Swiper's fade effect): a gentle ease-in-out (instead of the default "ease", which starts
+   abruptly), each slide on its own GPU layer so the images never repaint mid-fade. */
+.hero-banner__swiper .swiper-slide {
+  transition-timing-function: cubic-bezier(0.45, 0, 0.2, 1);
+  backface-visibility: hidden;
+  will-change: opacity;
+}
+
+/* "Grow and change": the showing banner slowly zooms in (8%) for exactly as long as it's shown. The same animation
+   stays applied while it fades out (active -> prev), so it keeps growing instead of snapping back; once hidden it
+   resets, ready for its next turn. */
+.hero-banner__swiper--grow .swiper-slide-active .hero-banner__img,
+.hero-banner__swiper--grow .swiper-slide-prev .hero-banner__img {
+  animation: hero-grow var(--hero-grow-duration, 5.7s) linear both;
+}
+
+@keyframes hero-grow {
+  from {
+    transform: scale(1);
+  }
+  to {
+    transform: scale(1.08);
+  }
+}
+
+.hero-banner__dots {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 1rem;
+  z-index: 2;
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  pointer-events: none;
+}
+
+.hero-banner__dot {
+  width: 0.625rem;
+  height: 0.625rem;
+  border-radius: 9999px;
+  background-color: var(--color-hero-dot);
+  box-shadow: 0 0 0 1px var(--color-hero-dot-ring);
+  pointer-events: auto;
+  cursor: pointer;
+  transition: width 0.3s ease, background-color 0.3s ease;
+}
+
+.hero-banner__dot[aria-current="true"] {
+  width: 1.75rem;
+  background-color: var(--color-hero-dot-active);
+}
+
+.hero-banner__dot:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+/* Loading state: a quiet block the same size as the banner (one full screen). */
+.hero-banner-skeleton {
+  height: 100vh;
+  height: 100svh;
+  background-color: var(--color-hero-skeleton);
+  animation: hero-skeleton-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes hero-skeleton-pulse {
+  50% {
+    opacity: 0.55;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-banner-skeleton,
+  .hero-banner__img {
+    animation: none !important;
+  }
+
+  .hero-banner__dot {
+    transition: none;
+  }
+}
+
