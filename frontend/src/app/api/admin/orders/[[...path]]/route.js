@@ -16,6 +16,7 @@ const isPath = (path, method) => {
   if (path.length === 1 && /^\d+$/.test(path[0])) return method === "GET" || method === "PATCH"; // retrieve / edit pending order
   if (path.length === 2 && /^\d+$/.test(path[0]) && path[1] === "status") return method === "POST"; // change status
   if (path.length === 2 && /^\d+$/.test(path[0]) && path[1] === "parcel") return method === "POST"; // save Parcel ID
+  if (path.length === 2 && /^\d+$/.test(path[0]) && path[1] === "payment-received") return method === "POST"; // Mark as Paid
   if (path.length === 3 && /^\d+$/.test(path[0]) && path[1] === "invoice" && path[2] === "layout") return method === "PUT" || method === "DELETE"; // Customize This Invoice / Reset to Global
   if (/^\d+$/.test(path[0]) && path[1] === "invoice") return method === "GET" && (path.length === 2 || (path.length === 3 && path[2] === "pdf")); // invoice data / PDF
   return false;

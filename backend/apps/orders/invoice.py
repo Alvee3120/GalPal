@@ -273,6 +273,8 @@ def build_invoice(order, request=None):
         "due": max(order.grand_total - paid, ZERO),
         "payment_method": order.get_payment_method_display(),
         "payment_status": order.get_payment_status_display(),
+        # The online payment's reference (e.g. bKash TrxID) staff recorded on the order's Payment, or blank.
+        "payment_reference": getattr(getattr(order, "payment", None), "transaction_id", "") or "",
         "parcel_id": parcel,
         "courier": order.courier_name,
         "parcel_qr_svg": qr_svg,
@@ -436,6 +438,8 @@ def _invoice_story(invoice, width, layout, keep_together=True):
     pay = [Paragraph("PAYMENT", right_small),
            Paragraph(esc(invoice["payment_method"]), ParagraphStyle("pm", parent=bold, alignment=TA_RIGHT)),
            Paragraph(f"Status: {esc(invoice['payment_status'])}", right)]
+    if invoice.get("payment_reference"):
+        pay.append(Paragraph(f"Ref: {esc(invoice['payment_reference'])}", right))
     parties = Table([[bill, pay]], colWidths=[width * 0.6, width * 0.4])
     parties.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "TOP"), ("LEFTPADDING", (0, 0), (-1, -1), 0), ("RIGHTPADDING", (0, 0), (-1, -1), 0)]))
     story += [parties, Spacer(1, L.gap(4))]
