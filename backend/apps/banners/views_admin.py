@@ -33,7 +33,11 @@ class AdminSliderConfigView(generics.RetrieveUpdateAPIView):
 @extend_schema_view(
     list=extend_schema(tags=["Admin – Hero Banners"], summary="List banners (including inactive/expired)"),
     retrieve=extend_schema(tags=["Admin – Hero Banners"], summary="Get a banner"),
-    create=extend_schema(tags=["Admin – Hero Banners"], summary="Create a banner", responses={201: AdminHeroBannerSerializer, 400: ERR}),
+    create=extend_schema(
+        tags=["Admin – Hero Banners"], summary="Create a banner",
+        description="At most 3 banners in total (active or not): a fourth is 400 `max_banners`. Delete one to add another.",
+        responses={201: AdminHeroBannerSerializer, 400: ERR},
+    ),
     partial_update=extend_schema(tags=["Admin – Hero Banners"], summary="Update a banner", responses={200: AdminHeroBannerSerializer, 400: ERR}),
     destroy=extend_schema(tags=["Admin – Hero Banners"], summary="Delete a banner"),
 )
@@ -46,6 +50,9 @@ class AdminHeroBannerViewSet(viewsets.ModelViewSet):
     search_fields = ["title"]
     ordering_fields = ["sort_order", "created_at", "start_at", "end_at"]
     ordering = ["sort_order", "-created_at"]
+
+    def perform_create(self, serializer):
+        services.create_banner(serializer)  # at most services.MAX_BANNERS (3) banners
 
     def perform_destroy(self, instance):
         images = [instance.desktop_image, instance.tablet_image, instance.mobile_image]

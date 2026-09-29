@@ -4,9 +4,11 @@ import logging
 
 from django.conf import settings
 from django.core.cache import cache
+from django.db import transaction
 from django.db.models import Q
 from django.utils import timezone
 
+from .exceptions import field_error
 from .models import HeroBanner, HeroSliderConfig
 
 logger = logging.getLogger(__name__)
@@ -41,6 +43,22 @@ def get_slider_config():
     except Exception:  # noqa: BLE001
         logger.warning("Could not cache the hero slider config", exc_info=True)
     return instance
+
+
+MAX_BANNERS = 3  # hero banners in total (active or not)
+
+
+def create_banner(serializer):
+    """
+    Save a new banner, allowing at most MAX_BANNERS. The slider config row is locked first, so two uploads at once
+    can't both pass the count and make a fourth.
+    """
+    with transaction.atomic():
+        HeroSliderConfig.objects.get_or_create(id=1)
+        HeroSliderConfig.objects.select_for_update().get(id=1)
+        if HeroBanner.objects.count() >= MAX_BANNERS:
+            raise field_error("non_field_errors", f"Maximum {MAX_BANNERS} banners allowed. Delete one to add another.", "max_banners")
+        return serializer.save()
 
 
 def visible_banners():
