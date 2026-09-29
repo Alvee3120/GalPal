@@ -219,16 +219,22 @@ class PublicOrderSerializer(serializers.ModelSerializer):
     history = PublicHistorySerializer(many=True, read_only=True)
     can_cancel = serializers.SerializerMethodField()
     item_count = serializers.SerializerMethodField()
+    payment_reference = serializers.SerializerMethodField(help_text="The customer's own online payment reference (e.g. bKash TrxID), or blank.")
 
     class Meta:
         model = Order
         fields = [
-            "number", "status", "payment_method", "payment_status", "email", *_ADDRESS, "items", "item_count",
-            *_MONEY_AND_SHIPPING, "courier_name", "tracking_id", "consignment_id", "can_cancel", "history", "created_at",
+            "number", "status", "payment_method", "payment_status", "payment_reference", "email", *_ADDRESS, "items",
+            "item_count", *_MONEY_AND_SHIPPING, "courier_name", "tracking_id", "consignment_id", "can_cancel", "history",
+            "created_at",
         ]
 
     def get_can_cancel(self, obj) -> bool:
         return obj.status in services.CUSTOMER_CANCELLABLE
+
+    def get_payment_reference(self, obj) -> str:
+        payment = getattr(obj, "payment", None)
+        return payment.transaction_id if payment else ""
 
     def get_item_count(self, obj) -> int:
         return obj.item_count

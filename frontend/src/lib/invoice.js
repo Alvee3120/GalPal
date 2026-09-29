@@ -46,7 +46,7 @@ export function toInvoiceView(data) {
         data.delivery_zone && `Delivery zone: ${data.delivery_zone}`,
       ].filter(Boolean),
     },
-    payment: { method: data.payment_method, status: data.payment_status },
+    payment: { method: data.payment_method, status: data.payment_status, reference: data.payment_reference || "" },
     items: (data.items ?? []).map((item, index) => ({
       key: `${index}-${item.sku || item.name}`,
       name: item.name,

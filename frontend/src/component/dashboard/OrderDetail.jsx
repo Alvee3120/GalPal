@@ -176,6 +176,12 @@ export default function OrderDetail({ initialOrder, currencySymbol }) {
               <dt>Payment Status</dt>
               <dd className="font-medium">{PAYMENT_STATUS_LABEL[order.payment_status] ?? order.payment_status}</dd>
             </div>
+            {order.payment_reference && (
+              <div className="flex items-center justify-between gap-3">
+                <dt>Payment Reference</dt>
+                <dd className="break-all text-right font-medium">{order.payment_reference}</dd>
+              </div>
+            )}
             {(order.courier_name || order.tracking_id) && (
               <div className="flex items-center justify-between">
                 <dt>Courier</dt>

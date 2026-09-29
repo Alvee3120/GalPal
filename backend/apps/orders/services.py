@@ -487,13 +487,35 @@ def create_manual_order(*, staff, data):
             note=data.get("note", ""), coupon_code=data.get("coupon") or "", delivery_method=data.get("delivery_method", ""),
             customer=data.get("customer"), created_by=staff, is_manual=True,
         )
-        reference = (data.get("payment_reference") or "").strip()
-        if reference and data["payment_method"] == PaymentMethod.ONLINE:
-            # The order's one Payment row (created with the order by apps.payments' signal) keeps the reference.
+        if data["payment_method"] == PaymentMethod.ONLINE:
+            # Staff only choose Online Payment for a phone/social order the customer has ALREADY paid (bKash, Nagad,
+            # card…), so the staff member is recording money received: it goes through the payments app exactly like
+            # a Cash-on-Delivery collection (mark_received — amount, who, when), which is what makes the order and its
+            # invoice Paid. Choosing a method never marks anything paid by itself.
             from apps.payments.models import Payment  # lazy: payments imports orders
 
-            Payment.objects.filter(order=result.order).update(transaction_id=reference)
+            reference = (data.get("payment_reference") or "").strip()
+            if reference:
+                Payment.objects.filter(order=result.order).update(transaction_id=reference)
+            note = f"Online payment recorded at order entry (ref {reference})." if reference else "Online payment recorded at order entry."
+            record_payment_received(result.order, user=staff, note=note)
+            result.order.refresh_from_db()
         return result
+
+
+def record_payment_received(order, *, user, note=""):
+    """
+    Staff record that the rest of an order's amount has been received ("Mark as Paid"), through the payments app's
+    own mark_received — the single place money-received is recorded (it sets Payment.amount_received / status and
+    syncs Order.payment_status). Refused when nothing is owed.
+    """
+    from apps.payments.models import Payment  # lazy: payments imports orders
+    from apps.payments.services import mark_received
+
+    payment = Payment.objects.filter(order=order).first()
+    if payment is None or payment.amount - payment.amount_received <= 0:
+        raise Conflict("Nothing is owed on this order.", code="nothing_owed")
+    return mark_received(payment, user=user, note=note)
 
 
 # --- editing a pending order -------------------------------------------------------------------------------------

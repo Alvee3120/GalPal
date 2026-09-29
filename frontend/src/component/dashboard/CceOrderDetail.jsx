@@ -8,6 +8,7 @@ import { messageFor } from "@/lib/apiError";
 import formatPrice from "@/lib/formatPrice";
 import ProductImage from "@/component/shared/ProductImage";
 import Modal from "@/component/shared/Modal";
+import ConfirmDialog from "@/component/shared/ConfirmDialog";
 import ProductSearchPicker from "./ProductSearchPicker";
 import OrderStatusDropdown from "./OrderStatusDropdown";
 import ParcelPanel from "./ParcelPanel";
@@ -30,6 +31,31 @@ export default function CceOrderDetail({ initialOrder, currencySymbol }) {
   const [order, setOrder] = useState(initialOrder);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [mutatingItems, setMutatingItems] = useState(false);
+  const [confirmPaid, setConfirmPaid] = useState(false);
+  const [markingPaid, setMarkingPaid] = useState(false);
+  // Anything still owed (not fully paid, not refunded) can be recorded as received — e.g. an online payment the
+  // customer confirmed, or cash collected. The backend records it through the payments app (mark_received).
+  const canMarkPaid = ["unpaid", "partially_paid", "failed"].includes(order.payment_status);
+
+  async function markPaid() {
+    if (markingPaid) return;
+    setMarkingPaid(true);
+    try {
+      const res = await fetch(`/api/admin/orders/${order.id}/payment-received`, { method: "POST", cache: "no-store" });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        notify.error(messageFor({ status: res.status, details: data?.error?.details }, data?.error?.message || "Unable to mark the order as paid."));
+        return;
+      }
+      setOrder(data);
+      notify.success("Payment recorded — the order is now Paid.");
+    } catch {
+      notify.error("Unable to mark the order as paid.");
+    } finally {
+      setMarkingPaid(false);
+      setConfirmPaid(false);
+    }
+  }
 
   async function patchItems(items, successMessage) {
     if (mutatingItems) return false;
@@ -254,7 +280,26 @@ export default function CceOrderDetail({ initialOrder, currencySymbol }) {
               <dt>Payment Status</dt>
               <dd className="font-medium">{PAYMENT_STATUS_LABEL[order.payment_status] ?? order.payment_status}</dd>
             </div>
+            {canMarkPaid && (
+              <button
+                type="button"
+                onClick={() => setConfirmPaid(true)}
+                className="auth-btn auth-btn--outline mt-1 w-full rounded-full px-4 py-2 text-sm font-medium"
+              >
+                Mark as Paid
+              </button>
+            )}
           </dl>
+          <ConfirmDialog
+            open={confirmPaid}
+            title="Mark as Paid?"
+            description={`Record that the rest of this order's amount (${formatPrice(order.grand_total, currencySymbol)} total) has been received? The order and its invoice will show Paid.`}
+            confirmLabel="Mark as Paid"
+            busyLabel="Recording..."
+            busy={markingPaid}
+            onConfirm={markPaid}
+            onCancel={() => !markingPaid && setConfirmPaid(false)}
+          />
 
           <dl className="flex flex-col gap-2 border-t pt-4 text-sm">
             <div className="flex items-center justify-between">

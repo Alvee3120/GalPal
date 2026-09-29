@@ -196,6 +196,21 @@ class AdminOrderViewSet(
         return Response(invoice.invoice_data(self.get_object(), request))
 
     @extend_schema(
+        tags=TAG, summary="Mark as paid",
+        description=(
+            "Records that the rest of the order's amount has been received (e.g. an online payment confirmed by the "
+            "customer, or cash collected), through the payments app. The order and its invoice then show Paid. "
+            "409 `nothing_owed` when it's already fully paid."
+        ),
+        request=None, responses={200: StaffOrderSerializer, 409: ERR},
+    )
+    @action(detail=True, methods=["post"], url_path="payment-received", pagination_class=None)
+    def payment_received(self, request, pk=None):
+        order = self.get_object()
+        services.record_payment_received(order, user=request.user, note="Marked as paid from the dashboard.")
+        return self._detail(order)
+
+    @extend_schema(
         tags=TAG, summary="Customize this invoice's layout",
         description=(
             "PUT `{overrides: {content_width: 75, ...}}` saves ONLY this invoice's layout overrides (replacing any "

@@ -55,6 +55,7 @@ def every_order_route(order):
         ("get", ORDERS), ("post", ORDERS), ("get", url(order)), ("patch", url(order)), ("delete", url(order)),
         ("post", url(order, "status/")), ("get", url(order, "notes/")), ("post", url(order, "notes/")),
         ("get", url(order, "invoice/")), ("put", url(order, "invoice/layout/")), ("delete", url(order, "invoice/layout/")),
+        ("post", url(order, "payment-received/")),
         ("post", url(order, "shipping-override/")),
         ("get", f"{ORDERS}helpers/products/"), ("get", f"{ORDERS}helpers/shipping/"), ("get", f"{ORDERS}helpers/customers/"),
     ]
@@ -780,7 +781,9 @@ def test_staff_can_record_an_online_payment_with_a_reference(cce_client, product
     assert r.status_code == 201
     order = r.json()["order"]
     assert order["payment_method"] == "online" and order["payment_reference"] == "TRX9X8Y7"
-    assert Order.objects.get(pk=order["id"]).payment.transaction_id == "TRX9X8Y7"
+    assert order["payment_status"] == "paid"  # staff recorded money already received
+    payment = Order.objects.get(pk=order["id"]).payment
+    assert payment.transaction_id == "TRX9X8Y7" and payment.amount_received == payment.amount
 
 
 def test_the_reference_is_optional_and_ignored_for_cash_on_delivery(cce_client, product):
@@ -792,3 +795,77 @@ def test_the_reference_is_optional_and_ignored_for_cash_on_delivery(cce_client, 
 
 def test_storefront_checkout_still_accepts_only_cash_on_delivery(settings):
     assert settings.ENABLED_PAYMENT_METHODS == ("cod",) and "online" in settings.MANUAL_ORDER_PAYMENT_METHODS
+
+
+# --- invoice payment display follows the verified payment record, never the method alone ---------------------------
+
+
+def _invoice(client, order):
+    inv = client.get(url(order, "invoice/")).json()
+    return inv["payment_method"], inv["payment_status"], inv["total"], inv["paid"], inv["due"]
+
+
+def test_a_successful_online_payment_shows_paid_with_nothing_due(cce_client, admin_user):
+    from apps.payments.services import mark_received
+
+    set_site(tax_percent=None)
+    CouponFactory(code="SAVE200", amount="200.00")
+    product = ProductFactory(stock_quantity=10, regular_price="1130.00")
+    order = new_order(admin_user, product=product, coupon="SAVE200", payment_method="online")  # 1130 - 200 + 70
+    # a staff-entered online payment is recorded as received through payments' mark_received
+    assert _invoice(cce_client, order) == ("Online payment", "Paid", "1000.00", "1000.00", "0.00")
+    with pytest.raises(Exception):  # and can't be collected twice
+        mark_received(Order.objects.get(pk=order.pk).payment, user=admin_user)
+
+
+def _unconfirmed(order, status="unpaid"):
+    """An online payment the gateway hasn't confirmed (nothing received) — the method alone."""
+    from apps.payments.models import Payment
+
+    Payment.objects.filter(order=order).update(amount_received=0, status=status)
+    Order.objects.filter(pk=order.pk).update(payment_status=status)
+
+
+def test_choosing_online_payment_alone_does_not_make_it_paid(cce_client, admin_user):
+    order = new_order(admin_user, payment_method="online")
+    _unconfirmed(order)
+    method, status, total, paid, due = _invoice(cce_client, order)
+    assert (method, status, paid) == ("Online payment", "Unpaid", "0.00") and due == total
+
+
+def test_a_failed_online_payment_is_not_shown_as_paid(cce_client, admin_user):
+    order = new_order(admin_user, payment_method="online")
+    _unconfirmed(order, "failed")
+    method, status, total, paid, due = _invoice(cce_client, order)
+    assert (status, paid) == ("Failed", "0.00") and due == total
+
+
+def test_a_partial_payment_shows_what_was_paid_and_the_rest_due(cce_client, admin_user):
+    from apps.payments.services import mark_received
+
+    order = new_order(admin_user)  # 500 + 70 = 570, Cash on delivery
+    mark_received(Order.objects.get(pk=order.pk).payment, amount=D("200.00"), user=admin_user)
+    assert _invoice(cce_client, order) == ("Cash on delivery", "Partially paid", "570.00", "200.00", "370.00")
+
+
+def test_cash_on_delivery_is_unpaid_with_everything_due_until_collected(cce_client, admin_user):
+    order = new_order(admin_user)
+    assert _invoice(cce_client, order) == ("Cash on delivery", "Unpaid", "570.00", "0.00", "570.00")
+
+
+def test_staff_mark_an_order_as_paid_and_the_invoice_follows(cce_client, admin_user):
+    order = new_order(admin_user)  # Cash on delivery, 570
+    r = cce_client.post(url(order, "payment-received/"))
+    assert r.status_code == 200 and r.json()["payment_status"] == "paid"
+    assert _invoice(cce_client, order) == ("Cash on delivery", "Paid", "570.00", "570.00", "0.00")
+    again = cce_client.post(url(order, "payment-received/"))
+    assert again.status_code == 409 and code(again) == "nothing_owed"
+
+
+def test_mark_as_paid_records_only_the_rest_of_a_partial_payment(cce_client, admin_user):
+    from apps.payments.services import mark_received
+
+    order = new_order(admin_user)
+    mark_received(Order.objects.get(pk=order.pk).payment, amount=D("200.00"), user=admin_user)
+    cce_client.post(url(order, "payment-received/"))
+    assert _invoice(cce_client, order)[3:] == ("570.00", "0.00")

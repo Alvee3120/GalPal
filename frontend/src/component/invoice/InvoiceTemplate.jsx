@@ -53,6 +53,7 @@ export default function InvoiceTemplate({ invoice, a4 = false }) {
             <p className="invoice-label">Payment</p>
             <p className="invoice-strong">{payment.method}</p>
             <p>Status: {payment.status}</p>
+            {payment.reference && <p>Ref: {payment.reference}</p>}
           </div>
         </section>
 
