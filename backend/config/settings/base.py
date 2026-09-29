@@ -181,6 +181,9 @@ ORDER_TRACK_THROTTLE_RATE = env("ORDER_TRACK_THROTTLE_RATE", default="30/hour") 
 STOCK_NOTIFICATION_THROTTLE_RATE = env("STOCK_NOTIFICATION_THROTTLE_RATE", default="30/hour")  # per client IP
 # Payment methods a customer may choose today; Module 11 adds "online" once a gateway exists.
 ENABLED_PAYMENT_METHODS = ("cod",)
+# Payment methods Admin/CCE may record on a manual (phone/social) order: also "online" — e.g. the customer already
+# paid by bKash/Nagad/card — with an optional reference (stored on the order's Payment as transaction_id).
+MANUAL_ORDER_PAYMENT_METHODS = ("cod", "online")
 
 SITE_SETTINGS_CACHE_TTL = env.int("SITE_SETTINGS_CACHE_TTL", default=3600 if REDIS_URL else 30)
 

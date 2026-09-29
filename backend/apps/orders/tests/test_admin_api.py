@@ -769,3 +769,26 @@ def test_the_pdf_uses_the_customized_layout(cce_client, admin_user):
     standard = height(cce_client.get(url(order, "invoice/pdf/")).content)
     custom(cce_client, order, text_size=12, section_spacing=10)
     assert height(cce_client.get(url(order, "invoice/pdf/")).content) > standard
+
+
+# --- online payment on manual orders ---------------------------------------------------------------------------------
+
+
+def test_staff_can_record_an_online_payment_with_a_reference(cce_client, product):
+    body = manual([{"product_id": product.id, "quantity": 1}], payment_method="online", payment_reference="  TRX9X8Y7  ")
+    r = cce_client.post(ORDERS, body, format="json")
+    assert r.status_code == 201
+    order = r.json()["order"]
+    assert order["payment_method"] == "online" and order["payment_reference"] == "TRX9X8Y7"
+    assert Order.objects.get(pk=order["id"]).payment.transaction_id == "TRX9X8Y7"
+
+
+def test_the_reference_is_optional_and_ignored_for_cash_on_delivery(cce_client, product):
+    online = cce_client.post(ORDERS, manual([{"product_id": product.id, "quantity": 1}], payment_method="online"), format="json")
+    assert online.status_code == 201 and online.json()["order"]["payment_reference"] == ""
+    cod = cce_client.post(ORDERS, manual([{"product_id": product.id, "quantity": 1}], payment_reference="TRX1"), format="json")
+    assert cod.status_code == 201 and cod.json()["order"]["payment_reference"] == ""
+
+
+def test_storefront_checkout_still_accepts_only_cash_on_delivery(settings):
+    assert settings.ENABLED_PAYMENT_METHODS == ("cod",) and "online" in settings.MANUAL_ORDER_PAYMENT_METHODS

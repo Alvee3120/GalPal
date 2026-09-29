@@ -30,6 +30,13 @@ export const PAYMENT_METHOD_LABEL = {
   online: "Online Payment",
 };
 
+// The methods a NEW order may use right now. Storefront checkout: settings.ENABLED_PAYMENT_METHODS (only Cash on
+// Delivery until an online payment gateway is connected). Staff (Add Order): settings.MANUAL_ORDER_PAYMENT_METHODS —
+// also Online Payment, e.g. already paid by bKash, with an optional reference. Anything else is refused by the
+// backend ("This payment method is not available."). PAYMENT_METHOD_LABEL above stays complete for displaying orders.
+export const ENABLED_PAYMENT_METHODS = ["cod"];
+export const STAFF_PAYMENT_METHODS = ["cod", "online"];
+
 // apps.orders.models.OrderSource — storefront checkout is always "website"; staff pick the rest on a manual order.
 export const ORDER_SOURCE_LABEL = {
   website: "Website",

@@ -24,8 +24,8 @@ def _media_url(request, path):
     return request.build_absolute_uri(url) if request is not None and url.startswith("/") else url
 
 
-def _payment_method(value):
-    if value not in settings.ENABLED_PAYMENT_METHODS:
+def _payment_method(value, allowed=None):
+    if value not in (allowed or settings.ENABLED_PAYMENT_METHODS):
         raise serializers.ValidationError("This payment method is not available.", code="payment_method_unavailable")
     return value
 
@@ -86,13 +86,22 @@ class ManualOrderSerializer(AddressInputMixin):
     source_note = serializers.CharField(max_length=255, required=False, allow_blank=True)
     coupon = serializers.CharField(max_length=32, required=False, allow_blank=True)
     payment_method = serializers.ChoiceField(choices=PaymentMethod.choices, default=PaymentMethod.COD)
+    payment_reference = serializers.CharField(
+        max_length=100, required=False, allow_blank=True, trim_whitespace=True,
+        help_text="Optional, online payments only: the transaction id / reference (e.g. a bKash TrxID). Ignored for COD.",
+    )
     customer_id = serializers.PrimaryKeyRelatedField(
         source="customer", queryset=User.objects.filter(role=User.Role.CUSTOMER, is_active=True), required=False, allow_null=True,
         help_text="Link the order to an existing customer (from the phone lookup). Omit for a guest order.",
     )
 
     def validate_payment_method(self, value):
-        return _payment_method(value)
+        return _payment_method(value, settings.MANUAL_ORDER_PAYMENT_METHODS)  # staff may also record "online"
+
+    def validate(self, attrs):
+        if attrs.get("payment_method") != PaymentMethod.ONLINE:
+            attrs.pop("payment_reference", None)  # a reference only belongs to an online payment
+        return attrs
 
 
 class OrderUpdateSerializer(serializers.Serializer):
@@ -293,12 +302,13 @@ class StaffOrderSerializer(serializers.ModelSerializer):
     editable = serializers.SerializerMethodField()
     item_count = serializers.SerializerMethodField()
     parcel_codes = serializers.SerializerMethodField(help_text="QR + Code 128 SVG for the saved Parcel ID (consignment_id), or null.")
+    payment_reference = serializers.SerializerMethodField(help_text="Online payment reference (e.g. bKash TrxID) staff recorded, or blank.")
 
     class Meta:
         model = Order
         fields = [
             "id", "number", "status", "allowed_transitions", "editable", "source", "source_note", "is_manual", "created_by",
-            "customer", "email", *_ADDRESS, "payment_method", "payment_status", "items", "item_count", *_MONEY_AND_SHIPPING,
+            "customer", "email", *_ADDRESS, "payment_method", "payment_status", "payment_reference", "items", "item_count", *_MONEY_AND_SHIPPING,
             "shipping_overridden", "shipping_override_reason", "courier_name", "tracking_id", "consignment_id",
             "parcel_codes", "ip_address", "history", "notes", "created_at", "updated_at",
         ]
@@ -311,6 +321,10 @@ class StaffOrderSerializer(serializers.ModelSerializer):
 
     def get_item_count(self, obj) -> int:
         return obj.item_count
+
+    def get_payment_reference(self, obj) -> str:
+        payment = getattr(obj, "payment", None)
+        return payment.transaction_id if payment else ""
 
     def get_parcel_codes(self, obj) -> dict | None:
         return invoice.parcel_codes(obj)
