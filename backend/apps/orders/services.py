@@ -479,7 +479,7 @@ def create_manual_order(*, staff, data):
     charge is always resolved from the address (staff can't type one); no account is ever created.
     """
     with transaction.atomic():
-        return _create_order(
+        result = _create_order(
             lines=data["items"],
             contact={"customer_name": data["name"], "phone": data["phone"], "email": data.get("email", "")},
             address={name: data.get(name, "") for name in ADDRESS_FIELDS},
@@ -487,6 +487,13 @@ def create_manual_order(*, staff, data):
             note=data.get("note", ""), coupon_code=data.get("coupon") or "", delivery_method=data.get("delivery_method", ""),
             customer=data.get("customer"), created_by=staff, is_manual=True,
         )
+        reference = (data.get("payment_reference") or "").strip()
+        if reference and data["payment_method"] == PaymentMethod.ONLINE:
+            # The order's one Payment row (created with the order by apps.payments' signal) keeps the reference.
+            from apps.payments.models import Payment  # lazy: payments imports orders
+
+            Payment.objects.filter(order=result.order).update(transaction_id=reference)
+        return result
 
 
 # --- editing a pending order -------------------------------------------------------------------------------------

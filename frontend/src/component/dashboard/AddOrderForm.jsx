@@ -13,13 +13,14 @@ import formatPrice from "@/lib/formatPrice";
 import SelectField from "@/component/shared/SelectField";
 import ProductImage from "@/component/shared/ProductImage";
 import ProductSearchPicker from "./ProductSearchPicker";
-import { ORDER_SOURCE_LABEL, PAYMENT_METHOD_LABEL } from "@/lib/orderStatus";
+import { ORDER_SOURCE_LABEL, PAYMENT_METHOD_LABEL, STAFF_PAYMENT_METHODS } from "@/lib/orderStatus";
 import { useStaffHref } from "@/lib/staffPaths";
 
 // "website" is reserved for real storefront checkout (apps.orders.models.OrderSource docstring) — staff pick
 // from everything else.
 const SOURCE_OPTIONS = Object.keys(ORDER_SOURCE_LABEL).filter((s) => s !== "website");
-const PAYMENT_OPTIONS = Object.keys(PAYMENT_METHOD_LABEL);
+// Only the methods the backend accepts for a staff order (lib/orderStatus.js#STAFF_PAYMENT_METHODS).
+const PAYMENT_OPTIONS = STAFF_PAYMENT_METHODS;
 
 const lineKey = (productId, variantId) => `${productId}:${variantId ?? "base"}`;
 
@@ -46,6 +47,7 @@ export default function AddOrderForm({ currencySymbol }) {
   const [note, setNote] = useState("");
   const [source, setSource] = useState("facebook");
   const [paymentMethod, setPaymentMethod] = useState("cod");
+  const [paymentReference, setPaymentReference] = useState(""); // online payments only, optional
   const [couponCode, setCouponCode] = useState("");
   const [customerId, setCustomerId] = useState(null);
   const [savedAddresses, setSavedAddresses] = useState([]);
@@ -206,6 +208,7 @@ export default function AddOrderForm({ currencySymbol }) {
           note: note.trim(),
           source,
           payment_method: paymentMethod,
+          payment_reference: paymentMethod === "online" ? paymentReference.trim() : "",
           coupon: couponCode.trim(),
           customer_id: customerId ?? undefined,
           items: products.map((p) => ({ product_id: p.product_id, variant_id: p.variant_id ?? undefined, quantity: p.quantity })),
@@ -374,6 +377,24 @@ export default function AddOrderForm({ currencySymbol }) {
                   ))}
                 </select>
               </div>
+
+              {paymentMethod === "online" && (
+                <div className="flex flex-col gap-1.5">
+                  <label htmlFor="ao-payment-ref" className="text-sm font-medium">
+                    Payment Reference <span className="showcase-muted font-normal">(optional)</span>
+                  </label>
+                  <input
+                    id="ao-payment-ref"
+                    type="text"
+                    maxLength={100}
+                    value={paymentReference}
+                    onChange={(e) => setPaymentReference(e.target.value)}
+                    placeholder="e.g. bKash / Nagad TrxID"
+                    autoComplete="off"
+                    className="checkout-input rounded-lg px-3 py-2.5 text-sm"
+                  />
+                </div>
+              )}
             </div>
           </section>
 
