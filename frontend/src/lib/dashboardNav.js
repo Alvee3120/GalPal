@@ -1,6 +1,6 @@
 import { BiHome } from "react-icons/bi";
 import { FaMapLocationDot } from "react-icons/fa6";
-import { FiAward, FiBell, FiClipboard, FiGrid, FiHeart, FiLayers, FiPackage, FiPlusCircle, FiImage, FiPrinter, FiSettings, FiShoppingBag, FiShoppingCart, FiStar, FiTag, FiTruck, FiUser, FiUsers, FiVideo } from "react-icons/fi";
+import { FiAward, FiBell, FiClipboard, FiGrid, FiInbox, FiLayers, FiPackage, FiPlusCircle, FiImage, FiRotateCcw, FiUserX, FiPrinter, FiSettings, FiShoppingBag, FiShoppingCart, FiStar, FiTag, FiTruck, FiUser, FiUsers, FiVideo } from "react-icons/fi";
 
 // Role -> sidebar links, from the authenticated user's real `role` (apps.accounts.models.User.Role: "customer",
 // "admin", "cce" — see lib/currentUser.js). ONLY routes that actually exist are listed here. Admin shares
@@ -15,7 +15,6 @@ export const DASHBOARD_NAV = {
   customer: [
     { label: "Home", href: "/", icon: BiHome },
     { label: "My Orders", href: "/dashboard/customer/orders", icon: FiShoppingBag },
-    { label: "My Wishlist", href: "/dashboard/customer/wishlist", icon: FiHeart },
     { label: "Address", href: "/dashboard/customer/address", icon: FaMapLocationDot },
     { label: "My Account", href: "/dashboard/customer/account", icon: FiUser },
   ],
@@ -31,6 +30,9 @@ export const DASHBOARD_NAV = {
     { label: "Video Cards", href: "/dashboard/admin/video-cards", icon: FiVideo },
     { label: "Hero Banners", href: "/dashboard/admin/banners", icon: FiImage },
     { label: "Users", href: "/dashboard/admin/users", icon: FiUsers },
+    { label: "Support Inbox", href: "/dashboard/admin/support", icon: FiInbox },
+    { label: "Abandoned Checkouts", href: "/dashboard/admin/abandoned-checkouts", icon: FiUserX },
+    { label: "Return Requests", href: "/dashboard/admin/returns", icon: FiRotateCcw },
     { label: "Coupons", href: "/dashboard/admin/coupons", icon: FiTag },
     { label: "Delivery Charges", href: "/dashboard/admin/delivery-charges", icon: FiTruck },
     { label: "Invoice Settings", href: "/dashboard/admin/invoice-settings", icon: FiPrinter },

@@ -62,6 +62,7 @@ INSTALLED_APPS = [
     "apps.reviews",
     "apps.marketing",
     "apps.care",
+    "apps.content",
 ]
 
 MIDDLEWARE = [
@@ -183,6 +184,8 @@ STOCK_NOTIFICATION_THROTTLE_RATE = env("STOCK_NOTIFICATION_THROTTLE_RATE", defau
 # Module 14 (customer care)
 CONTACT_THROTTLE_RATE = env("CONTACT_THROTTLE_RATE", default="10/hour")  # public contact form, per client IP
 CHECKOUT_LEAD_THROTTLE_RATE = env("CHECKOUT_LEAD_THROTTLE_RATE", default="60/hour")  # checkout capture, per client IP
+NEWSLETTER_THROTTLE_RATE = env("NEWSLETTER_THROTTLE_RATE", default="10/hour")  # newsletter sign-up/opt-out, per client IP
+SEARCH_THROTTLE_RATE = env("SEARCH_THROTTLE_RATE", default="120/minute")  # global search, per client IP
 CHECKOUT_ABANDON_MINUTES = env.int("CHECKOUT_ABANDON_MINUTES", default=30)  # a captured checkout counts as abandoned after this
 RETURN_REQUEST_WINDOW_HOURS = env.int("RETURN_REQUEST_WINDOW_HOURS", default=48)  # matches the Return & Cancellation Policy
 # Payment methods a customer may choose today; Module 11 adds "online" once a gateway exists.

@@ -2,7 +2,6 @@ import Link from "next/link";
 import formatPrice from "@/lib/formatPrice";
 import ProductImage from "./ProductImage";
 import ProductCardAction from "./ProductCardAction";
-import WishlistButton from "@/component/wishlist/WishlistButton";
 
 // Reusable product tile. `product` is an item from the backend's /products/ list.
 // The link covers the photo and text; the Add to Cart button sits outside it (a button must not live inside a link).
@@ -35,9 +34,7 @@ export default function ProductCard({ product, currencySymbol = "", variant = "d
   }
 
   return (
-    <article className="product-card group relative flex h-full flex-col overflow-hidden">
-      {/* Outside the link (a button can't live inside one), laid over the photo's corner. */}
-      <WishlistButton productId={product.id} productName={name} className="absolute right-2 top-2 z-[1] sm:right-3 sm:top-3" />
+    <article className="product-card group flex h-full flex-col overflow-hidden">
       <Link href={`/products/${slug}`} className="product-card__link block rounded-[inherit]">
         <div className="product-card__media product-card__media--bleed relative aspect-square overflow-hidden">
           <ProductImage src={image} alt={name} bleed />

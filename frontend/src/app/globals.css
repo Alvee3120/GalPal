@@ -2550,44 +2550,20 @@ a.dashboard-card:hover {
   color: var(--color-muted);
 }
 
-/* Wishlist heart (component/wishlist/WishlistButton.jsx): on product cards and the product page */
-.wishlist-btn {
-  background-color: color-mix(in srgb, var(--color-background) 90%, transparent);
-  color: var(--color-foreground);
-  border: 1px solid var(--color-border);
-  transition: color 0.2s ease, background-color 0.2s ease, transform 0.15s ease;
+/* Customer care lists (component/dashboard/care/): the selected support message */
+.care-row {
+  border: 1px solid transparent;
+  transition: border-color 0.2s ease;
 }
 
-.wishlist-btn:hover:not(:disabled) {
-  color: var(--color-brand);
-  transform: scale(1.06);
+.care-row:hover,
+.care-row[aria-pressed="true"] {
+  border-color: var(--color-brand);
 }
 
-.wishlist-btn[data-saved] {
-  color: var(--color-brand);
-}
-
-.wishlist-btn[data-saved] svg {
-  fill: currentColor;
-}
-
-.wishlist-btn:focus-visible {
+.care-row:focus-visible {
   outline: 2px solid var(--color-focus);
   outline-offset: 2px;
-}
-
-.wishlist-btn:disabled {
-  opacity: 0.6;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .wishlist-btn {
-    transition: none;
-  }
-
-  .wishlist-btn:hover:not(:disabled) {
-    transform: none;
-  }
 }
 
 /* Old Carts card on the Admin / CCE dashboards (component/dashboard/oldCarts/OldCartsCard.jsx) */

@@ -81,20 +81,3 @@ class CartItem(TimeStampedModel):
 
     def __str__(self):
         return f"{self.quantity} x {self.product_id}" + (f" ({self.variant_id})" if self.variant_id else "")
-
-
-class WishlistItem(TimeStampedModel):
-    """
-    A product a logged-in customer saved for later (Module 7). One row per user + product; adding the same product
-    again is a no-op. Wishlists are account-only — a guest is asked to log in. Never touches stock or the cart.
-    """
-
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="wishlist_items")
-    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="+")
-
-    class Meta:
-        ordering = ["-created_at", "-id"]
-        constraints = [models.UniqueConstraint(fields=["user", "product"], name="wishlist_item_unique_user_product")]
-
-    def __str__(self):
-        return f"{self.user_id} ♥ {self.product_id}"

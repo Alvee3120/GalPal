@@ -12,7 +12,6 @@ import formatPrice from "@/lib/formatPrice";
 import { notify } from "@/lib/notify";
 import { getStockCap, quantityInCart, remainingToAdd } from "@/lib/stockLimit";
 import { buildAttributeGroups } from "@/lib/productVariants";
-import WishlistButton from "@/component/wishlist/WishlistButton";
 
 // Product detail page: gallery, price, (if any) a variant picker, and a stock-aware action area
 // using the SAME three-case rule as the product card (Add to Cart / choose a variant / Notify Me),
@@ -231,7 +230,6 @@ export default function ProductDetailContent({ product, currencySymbol }) {
             />
           )}
 
-          <WishlistButton productId={product.id} productName={product.name} size="lg" />
         </div>
 
         {product.tags?.length > 0 && (
