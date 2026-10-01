@@ -61,6 +61,7 @@ INSTALLED_APPS = [
     "apps.payments",
     "apps.reviews",
     "apps.marketing",
+    "apps.care",
 ]
 
 MIDDLEWARE = [
@@ -179,6 +180,11 @@ ORDER_MAX_PER_PHONE_PER_HOUR = env.int("ORDER_MAX_PER_PHONE_PER_HOUR", default=5
 CHECKOUT_THROTTLE_RATE = env("CHECKOUT_THROTTLE_RATE", default="30/hour")  # per client IP
 ORDER_TRACK_THROTTLE_RATE = env("ORDER_TRACK_THROTTLE_RATE", default="30/hour")  # per client IP
 STOCK_NOTIFICATION_THROTTLE_RATE = env("STOCK_NOTIFICATION_THROTTLE_RATE", default="30/hour")  # per client IP
+# Module 14 (customer care)
+CONTACT_THROTTLE_RATE = env("CONTACT_THROTTLE_RATE", default="10/hour")  # public contact form, per client IP
+CHECKOUT_LEAD_THROTTLE_RATE = env("CHECKOUT_LEAD_THROTTLE_RATE", default="60/hour")  # checkout capture, per client IP
+CHECKOUT_ABANDON_MINUTES = env.int("CHECKOUT_ABANDON_MINUTES", default=30)  # a captured checkout counts as abandoned after this
+RETURN_REQUEST_WINDOW_HOURS = env.int("RETURN_REQUEST_WINDOW_HOURS", default=48)  # matches the Return & Cancellation Policy
 # Payment methods a customer may choose today; Module 11 adds "online" once a gateway exists.
 ENABLED_PAYMENT_METHODS = ("cod",)
 # Payment methods Admin/CCE may record on a manual (phone/social) order: also "online" — e.g. the customer already

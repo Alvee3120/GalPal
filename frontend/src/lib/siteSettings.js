@@ -34,6 +34,8 @@ export async function getContactDetails() {
     email: text("email"),
     address: text("address"),
     supportHours: text("support_hours"),
+    // Stored as digits with country code (e.g. 8801712345678) by the backend; used for a wa.me chat link.
+    whatsapp: text("whatsapp_number").replace(/\D/g, ""),
     // Only http(s) links (the backend enforces this too), keyed by field name, e.g. { facebook_url: "https://…" }.
     socials: Object.fromEntries(SOCIAL_KEYS.map((key) => [key, text(key)]).filter(([, url]) => /^https?:\/\//i.test(url))),
   };

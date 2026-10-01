@@ -36,7 +36,6 @@ function StaticFallbackBanner() {
     height: 1000,
     sizes: "100vw",
     quality: 85,
-    priority: true,
     alt: "",
   });
   const { props: mobile } = getImageProps({
@@ -45,7 +44,8 @@ function StaticFallbackBanner() {
     height: 1376,
     sizes: "100vw",
     quality: 85,
-    priority: true,
+    loading: "eager", // the hero is above the fold (Next 16 replaced `priority`; no preload, so only one image downloads)
+    fetchPriority: "high",
     alt: "",
   });
 

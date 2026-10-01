@@ -11,6 +11,7 @@ import { splitStoreDateTime } from "@/lib/productAdmin";
 import { GRANULARITY_WORD, compactMoney } from "@/lib/dashboardFormat";
 import OrderDateRangePicker, { formatCalendarDate } from "../OrderDateRangePicker";
 import TimeSeriesChart from "./TimeSeriesChart";
+import OldCartsCard from "../oldCarts/OldCartsCard";
 
 const STATUS_ORDER = ["pending", "confirmed", "processing", "shipped", "delivered", "cancelled", "returned", "failed"];
 
@@ -68,7 +69,7 @@ function Panel({ title, subtitle, children, action }) {
 // (GET /admin/orders/dashboard/, apps.orders.analytics — counts, sums and the time series are aggregated there, never
 // from lists fetched into the browser). Inventory is always "now"; the date range drives sales, orders and the charts.
 // Order Management is its own page (/dashboard/CCE/orders).
-export default function CceDashboardOverview({ initialData, currencySymbol }) {
+export default function CceDashboardOverview({ initialData, currencySymbol, oldCartCount = null }) {
   const [data, setData] = useState(initialData);
   const [preset, setPreset] = useState("30d");
   const [customRange, setCustomRange] = useState(null);
@@ -129,6 +130,9 @@ export default function CceDashboardOverview({ initialData, currencySymbol }) {
           Go to Order Management
         </Link>
       </div>
+
+      {/* Not tied to the period filter: cart age is measured from when items were added. */}
+      <OldCartsCard count={oldCartCount} href="/dashboard/CCE/old-carts" />
 
       {failed ? (
         <div className="dashboard-card flex flex-col items-center gap-3 rounded-2xl px-6 py-14 text-center">

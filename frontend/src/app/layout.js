@@ -5,6 +5,7 @@ import Footer from "@/component/shared/Footer";
 import FooterGate from "@/component/shared/FooterGate";
 import AppToaster from "@/component/shared/AppToaster";
 import { CartProvider } from "@/component/cart/CartProvider";
+import { WishlistProvider } from "@/component/wishlist/WishlistProvider";
 import CartDrawer from "@/component/cart/CartDrawer";
 import { getCurrencySymbol } from "@/lib/siteSettings";
 
@@ -32,12 +33,14 @@ export default async function RootLayout({ children }) {
     >
       <body className="min-h-full flex flex-col" suppressHydrationWarning>
         <CartProvider currencySymbol={currencySymbol}>
-          <Navbar />
-          {children}
-          <FooterGate>
-            <Footer />
-          </FooterGate>
-          <CartDrawer />
+          <WishlistProvider>
+            <Navbar />
+            {children}
+            <FooterGate>
+              <Footer />
+            </FooterGate>
+            <CartDrawer />
+          </WishlistProvider>
         </CartProvider>
         <AppToaster />
       </body>

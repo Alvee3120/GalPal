@@ -80,7 +80,7 @@ export default function SiteSettingsForm({ initial }) {
                   className: "checkout-input w-full rounded-lg px-3 py-2.5 text-sm",
                 };
                 return (
-                  <div key={field.key} className={`flex min-w-0 flex-col gap-1.5 ${field.type === "textarea" ? "sm:col-span-2" : ""}`}>
+                  <div key={field.key} className={`flex min-w-0 flex-col gap-1.5 ${field.type === "textarea" || field.wide ? "sm:col-span-2" : ""}`}>
                     <label htmlFor={id} className="text-sm font-medium">
                       {field.label}
                       {field.required && <span aria-hidden="true"> *</span>}

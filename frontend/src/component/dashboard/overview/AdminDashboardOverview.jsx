@@ -24,6 +24,7 @@ import ProductImage from "@/component/shared/ProductImage";
 import OrderDateRangePicker from "../OrderDateRangePicker";
 import TimeSeriesChart from "./TimeSeriesChart";
 import StatusDonut from "./StatusDonut";
+import OldCartsCard from "../oldCarts/OldCartsCard";
 
 const STATUS_ORDER = ["pending", "confirmed", "processing", "shipped", "delivered", "cancelled", "returned", "failed"];
 
@@ -201,7 +202,7 @@ function RangeFilter({ range, onChange, disabled }) {
 // (apps.orders.analytics.admin_dashboard — aggregated in the database; nothing is computed from lists in the browser).
 // Inventory figures are current stock (no history is stored); everything else follows the range, and the four headline
 // figures are compared with the preceding period of the same length. Order Management stays its own page.
-export default function AdminDashboardOverview({ user, initialRange, initialData, currencySymbol }) {
+export default function AdminDashboardOverview({ user, initialRange, initialData, currencySymbol, oldCartCount = null }) {
   const [range, setRange] = useState(initialRange);
   const [data, setData] = useState(initialData);
   const [loading, setLoading] = useState(false);
@@ -260,6 +261,9 @@ export default function AdminDashboardOverview({ user, initialRange, initialData
         </div>
         <RangeFilter range={range} onChange={changeRange} disabled={loading} />
       </header>
+
+      {/* Not tied to the date range above: cart age is measured from when items were added. */}
+      <OldCartsCard count={oldCartCount} href="/dashboard/admin/old-carts" />
 
       {failed ? (
         <div className="dashboard-card flex flex-col items-center gap-3 rounded-2xl px-6 py-14 text-center">

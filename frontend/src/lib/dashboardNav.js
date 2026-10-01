@@ -1,6 +1,6 @@
 import { BiHome } from "react-icons/bi";
 import { FaMapLocationDot } from "react-icons/fa6";
-import { FiAward, FiBell, FiClipboard, FiGrid, FiLayers, FiPackage, FiPlusCircle, FiImage, FiPrinter, FiSettings, FiShoppingBag, FiStar, FiTag, FiTruck, FiUser, FiUsers, FiVideo } from "react-icons/fi";
+import { FiAward, FiBell, FiClipboard, FiGrid, FiHeart, FiLayers, FiPackage, FiPlusCircle, FiImage, FiPrinter, FiSettings, FiShoppingBag, FiShoppingCart, FiStar, FiTag, FiTruck, FiUser, FiUsers, FiVideo } from "react-icons/fi";
 
 // Role -> sidebar links, from the authenticated user's real `role` (apps.accounts.models.User.Role: "customer",
 // "admin", "cce" — see lib/currentUser.js). ONLY routes that actually exist are listed here. Admin shares
@@ -15,12 +15,14 @@ export const DASHBOARD_NAV = {
   customer: [
     { label: "Home", href: "/", icon: BiHome },
     { label: "My Orders", href: "/dashboard/customer/orders", icon: FiShoppingBag },
+    { label: "My Wishlist", href: "/dashboard/customer/wishlist", icon: FiHeart },
     { label: "Address", href: "/dashboard/customer/address", icon: FaMapLocationDot },
     { label: "My Account", href: "/dashboard/customer/account", icon: FiUser },
   ],
   admin: [
     { label: "Dashboard", href: "/dashboard", icon: FiGrid },
     { label: "Orders", href: "/dashboard/admin/orders", icon: FiClipboard },
+    { label: "Old Carts", href: "/dashboard/admin/old-carts", icon: FiShoppingCart },
     { label: "Products", href: "/dashboard/admin/products", icon: FiPackage },
     { label: "Categories", href: "/dashboard/admin/categories", icon: FiLayers },
     { label: "Brands", href: "/dashboard/admin/brands", icon: FiAward },
@@ -38,6 +40,7 @@ export const DASHBOARD_NAV = {
   cce: [
     { label: "Dashboard", href: "/dashboard", icon: FiGrid },
     { label: "Orders", href: "/dashboard/CCE/orders", icon: FiClipboard },
+    { label: "Old Carts", href: "/dashboard/CCE/old-carts", icon: FiShoppingCart },
     { label: "Add Order", href: "/dashboard/CCE/orders/new", icon: FiPlusCircle },
     { label: "Products", href: "/dashboard/CCE/products", icon: FiPackage },
     { label: "Categories", href: "/dashboard/CCE/categories", icon: FiLayers },

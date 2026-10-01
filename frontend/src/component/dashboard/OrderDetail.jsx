@@ -10,6 +10,7 @@ import formatPrice from "@/lib/formatPrice";
 import ProductImage from "@/component/shared/ProductImage";
 import ConfirmDialog from "@/component/shared/ConfirmDialog";
 import {
+import ReturnRequestPanel from "./ReturnRequestPanel";
   ORDER_STATUS_FLOW,
   PAYMENT_METHOD_LABEL,
   PAYMENT_STATUS_LABEL,
@@ -163,6 +164,8 @@ export default function OrderDetail({ initialOrder, currencySymbol }) {
               )}
             </div>
           </section>
+
+          <ReturnRequestPanel order={order} />
         </div>
 
         <aside className="order-summary flex flex-col gap-4 rounded-2xl p-5 sm:p-6 lg:sticky lg:top-24">
