@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import CheckoutLead, ContactMessage, ContactMessageNote, CustomerNote, CustomerTag, ReturnRequest
+from .models import CheckoutLead, ContactMessage, ContactMessageNote, CustomerNote, CustomerTag
 
 
 @admin.register(CustomerTag)
@@ -35,10 +35,3 @@ class CheckoutLeadAdmin(admin.ModelAdmin):
     list_display = ["phone", "name", "status", "cart_value", "updated_at"]
     list_filter = ["status"]
     search_fields = ["phone", "name", "email"]
-
-
-@admin.register(ReturnRequest)
-class ReturnRequestAdmin(admin.ModelAdmin):
-    list_display = ["order", "customer", "reason", "status", "created_at"]
-    list_filter = ["status", "reason"]
-    raw_id_fields = ["order", "customer", "handled_by"]

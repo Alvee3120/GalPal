@@ -20,8 +20,6 @@ from .models import (
     CustomerNote,
     CustomerTag,
     MessageStatus,
-    ReturnRequest,
-    ReturnStatus,
 )
 
 # Orders that never turned into a sale don't count towards "total spent".
@@ -150,53 +148,3 @@ def abandoned_checkouts(now=None):
     minutes = getattr(settings, "CHECKOUT_ABANDON_MINUTES", 30)
     cutoff = (now or timezone.now()) - timedelta(minutes=minutes)
     return CheckoutLead.objects.filter(status=CheckoutLeadStatus.OPEN, updated_at__lte=cutoff).select_related("user")
-
-
-# --- return / refund requests ------------------------------------------------------------------------------------------
-
-RETURN_TRANSITIONS = {
-    ReturnStatus.REQUESTED: {ReturnStatus.APPROVED, ReturnStatus.REJECTED},
-    ReturnStatus.APPROVED: {ReturnStatus.RECEIVED, ReturnStatus.REFUNDED, ReturnStatus.REJECTED},
-    ReturnStatus.RECEIVED: {ReturnStatus.REFUNDED},
-    ReturnStatus.REJECTED: set(),
-    ReturnStatus.REFUNDED: set(),
-}
-
-
-def delivered_at(order):
-    entry = order.history.filter(to_status=OrderStatus.DELIVERED).order_by("-created_at").first()
-    return entry.created_at if entry else None
-
-
-def create_return_request(*, customer, order, reason, details, now=None):
-    """
-    A customer asks to return their own delivered order, within RETURN_REQUEST_WINDOW_HOURS of delivery (matches the
-    Return & Cancellation Policy page), and only one open request per order.
-    """
-    if order.customer_id != customer.pk:
-        raise field_error("order", "Order not found.", "not_found")
-    if order.status != OrderStatus.DELIVERED:
-        raise field_error("order", "A return can be requested once the order has been delivered.", "not_delivered")
-    window = timedelta(hours=getattr(settings, "RETURN_REQUEST_WINDOW_HOURS", 48))
-    delivered = delivered_at(order)
-    if delivered is not None and (now or timezone.now()) - delivered > window:
-        hours = int(window.total_seconds() // 3600)
-        raise field_error("order", f"Returns must be requested within {hours} hours of delivery. Please contact us.", "window_closed")
-    if any(r.is_open for r in order.return_requests.all()):
-        raise field_error("order", "You already have an open return request for this order.", "already_requested")
-    details = (details or "").strip()
-    if not details:
-        raise field_error("details", "Tell us what's wrong with the order.", "required")
-    return ReturnRequest.objects.create(order=order, customer=customer, reason=reason, details=details)
-
-
-def update_return_request(request_obj, *, status, admin_note="", user=None):
-    if status != request_obj.status and status not in RETURN_TRANSITIONS[request_obj.status]:
-        allowed = ", ".join(sorted(RETURN_TRANSITIONS[request_obj.status])) or "none (it is final)"
-        raise field_error("status", f"A {request_obj.status} request can't become {status}. Allowed: {allowed}.", "invalid_transition")
-    request_obj.status = status
-    if admin_note is not None:
-        request_obj.admin_note = admin_note.strip()
-    request_obj.handled_by = user
-    request_obj.save()
-    return request_obj

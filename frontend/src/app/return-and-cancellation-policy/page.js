@@ -1,12 +1,21 @@
 import LegalPage from "@/component/shared/LegalPage";
+import CmsPage, { cmsMetadata } from "@/component/content/CmsPage";
+import { getContentPage } from "@/lib/content";
 import { POLICY } from "@/lib/policies";
 
-export const metadata = {
+const FALLBACK_METADATA = {
   title: "Return & Cancellation Policy | GalPal",
   description: "How to cancel a GalPal order, which items can be returned, and how refunds work.",
 };
 
-export default function ReturnCancellationPolicyPage() {
+// Admin → Content Pages can replace this text with a "return-and-cancellation-policy" page; until then the built-in text below shows.
+export async function generateMetadata() {
+  return cmsMetadata(await getContentPage("return-and-cancellation-policy"), FALLBACK_METADATA);
+}
+
+export default async function ReturnCancellationPolicyPage() {
+  const page = await getContentPage("return-and-cancellation-policy");
+  if (page) return <CmsPage page={page} />;
   return (
     <LegalPage
       title="Return & Cancellation Policy"

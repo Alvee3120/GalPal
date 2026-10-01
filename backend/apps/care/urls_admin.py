@@ -10,14 +10,12 @@ from .views_admin import (
     CustomerProfileView,
     CustomerTagsView,
     CustomerTagViewSet,
-    ReturnRequestViewSet,
 )
 
 router = SimpleRouter()
 router.register("care/tags", CustomerTagViewSet, basename="care-tag")
 router.register("care/messages", ContactMessageViewSet, basename="care-message")
 router.register("care/abandoned-checkouts", AbandonedCheckoutViewSet, basename="care-abandoned-checkout")
-router.register("care/returns", ReturnRequestViewSet, basename="care-return")
 
 urlpatterns = [
     path("care/customers/<int:pk>/", CustomerProfileView.as_view(), name="care-customer"),

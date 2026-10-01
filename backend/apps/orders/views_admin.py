@@ -2,6 +2,8 @@
 Admin/CCE order endpoints: the ONLY admin area a CCE can reach. Everything is Admin + CCE except the
 two actions that stay Admin-only: deleting an order and overriding its shipping charge.
 """
+from datetime import date
+
 from django.db.models import Q
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, extend_schema, extend_schema_view
@@ -348,7 +350,10 @@ class AdminDashboardView(APIView):
             "Everything the CCE overview returns, plus a comparison of revenue / orders / products sold / new customers "
             "with the preceding period of the same length, best sellers, sales by primary category, recent orders, "
             "out-of-stock products, low-stock count and customer figures — all for `date_from`..`date_to` (inclusive, "
-            "site time zone; default the last 30 days). Admin only. See apps.orders.analytics.admin_dashboard."
+            "site time zone; default the last 30 days). `reports` adds the report breakdowns: shipping/discount totals, "
+            "orders and revenue by source, manual orders per staff member, orders and shipping revenue per delivery zone, "
+            "coupon performance, review counts, accounts created at checkout and the low-stock list "
+            "(apps.reports.services.breakdowns). Admin only. See apps.orders.analytics.admin_dashboard."
         ),
         parameters=[OpenApiParameter("date_from", OpenApiTypes.DATE), OpenApiParameter("date_to", OpenApiTypes.DATE)],
         responses={200: OpenApiResponse(description="Dashboard numbers"), 400: ERR},
@@ -359,6 +364,9 @@ class AdminDashboardView(APIView):
         data = analytics.admin_dashboard(
             query.validated_data.get("date_from"), query.validated_data.get("date_to"), absolute=request.build_absolute_uri,
         )
+        from apps.reports.services import breakdowns  # lazy: reports imports orders
+
+        data["reports"] = breakdowns(date.fromisoformat(data["date_from"]), date.fromisoformat(data["date_to"]))
         return Response(data)
 
 

@@ -63,15 +63,20 @@ INSTALLED_APPS = [
     "apps.marketing",
     "apps.care",
     "apps.content",
+    "apps.notifications",
+    "apps.reports",
+    "apps.audit",
 ]
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "apps.core.middleware.SecurityHeadersMiddleware",  # Module 18: CSP / Permissions-Policy / no-store
     "corsheaders.middleware.CorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "apps.audit.middleware.AuditMiddleware",  # Module 18: admin/CCE write trail
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
@@ -164,6 +169,7 @@ else:
 # cache can't be invalidated in the *other* worker processes, so without Redis keep it short.
 # Shipping (Module 9): the zone/method index is cached and invalidated on every change; the ceiling
 # is a sanity check on an Admin-typed charge (a stray extra zero should be an error, not an order).
+CATALOG_CACHE_TTL = env.int("CATALOG_CACHE_TTL", default=3600 if REDIS_URL else 30)  # category rows (apps.catalog.services)
 SHIPPING_CACHE_TTL = env.int("SHIPPING_CACHE_TTL", default=3600 if REDIS_URL else 30)
 SHIPPING_MAX_CHARGE = env("SHIPPING_MAX_CHARGE", default="5000.00")
 
@@ -185,9 +191,19 @@ STOCK_NOTIFICATION_THROTTLE_RATE = env("STOCK_NOTIFICATION_THROTTLE_RATE", defau
 CONTACT_THROTTLE_RATE = env("CONTACT_THROTTLE_RATE", default="10/hour")  # public contact form, per client IP
 CHECKOUT_LEAD_THROTTLE_RATE = env("CHECKOUT_LEAD_THROTTLE_RATE", default="60/hour")  # checkout capture, per client IP
 NEWSLETTER_THROTTLE_RATE = env("NEWSLETTER_THROTTLE_RATE", default="10/hour")  # newsletter sign-up/opt-out, per client IP
+# Module 18: auth / coupon / account-creation limits. Per IP is generous (mobile carriers share IPs); per identifier
+# (hashed phone/email) is the real brute-force and SMS/email-bombing defence.
+LOGIN_THROTTLE_RATE = env("LOGIN_THROTTLE_RATE", default="60/hour")
+LOGIN_IDENTIFIER_THROTTLE_RATE = env("LOGIN_IDENTIFIER_THROTTLE_RATE", default="10/hour")
+REGISTER_THROTTLE_RATE = env("REGISTER_THROTTLE_RATE", default="10/hour")
+OTP_REQUEST_THROTTLE_RATE = env("OTP_REQUEST_THROTTLE_RATE", default="10/hour")
+OTP_REQUEST_IDENTIFIER_THROTTLE_RATE = env("OTP_REQUEST_IDENTIFIER_THROTTLE_RATE", default="5/hour")
+OTP_VERIFY_THROTTLE_RATE = env("OTP_VERIFY_THROTTLE_RATE", default="30/hour")
+OTP_VERIFY_IDENTIFIER_THROTTLE_RATE = env("OTP_VERIFY_IDENTIFIER_THROTTLE_RATE", default="10/hour")
+COUPON_APPLY_THROTTLE_RATE = env("COUPON_APPLY_THROTTLE_RATE", default="30/hour")
+GUEST_ACCOUNT_THROTTLE_RATE = env("GUEST_ACCOUNT_THROTTLE_RATE", default="5/hour")
 SEARCH_THROTTLE_RATE = env("SEARCH_THROTTLE_RATE", default="120/minute")  # global search, per client IP
 CHECKOUT_ABANDON_MINUTES = env.int("CHECKOUT_ABANDON_MINUTES", default=30)  # a captured checkout counts as abandoned after this
-RETURN_REQUEST_WINDOW_HOURS = env.int("RETURN_REQUEST_WINDOW_HOURS", default=48)  # matches the Return & Cancellation Policy
 # Payment methods a customer may choose today; Module 11 adds "online" once a gateway exists.
 ENABLED_PAYMENT_METHODS = ("cod",)
 # Payment methods Admin/CCE may record on a manual (phone/social) order: also "online" — e.g. the customer already
@@ -223,6 +239,8 @@ EMAIL_USE_TLS = env.bool("EMAIL_USE_TLS", default=True)
 DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="GalPal <no-reply@galpal.local>")
 # Safe default: messages are dropped (never logged) until a real provider is configured.
 SMS_BACKEND = env("SMS_BACKEND", default="apps.core.messaging.NullSMSBackend")
+NOTIFICATION_MAX_ATTEMPTS = env.int("NOTIFICATION_MAX_ATTEMPTS", default=3)  # per email/SMS (apps.notifications)
+NOTIFICATION_RETRY_SECONDS = env.int("NOTIFICATION_RETRY_SECONDS", default=60)  # first retry delay; doubles each time
 
 # --- i18n -------------------------------------------------------------------
 
@@ -328,6 +346,10 @@ SPECTACULAR_SETTINGS = {
     "VERSION": APP_VERSION,
     "SERVE_INCLUDE_SCHEMA": False,
     "SCHEMA_PATH_PREFIX": r"/api/v1",
+    "POSTPROCESSING_HOOKS": [
+        "drf_spectacular.hooks.postprocess_schema_enums",
+        "apps.core.schema.retag_untagged",
+    ],
     "COMPONENT_SPLIT_REQUEST": True,  # separate request schemas (needed for file uploads)
     "SORT_OPERATIONS": False,
     # Serve Swagger UI / ReDoc assets locally instead of from a public CDN.
@@ -347,6 +369,8 @@ SPECTACULAR_SETTINGS = {
         "ReviewStatusEnum": "apps.reviews.models.ReviewStatus",
         "TrackingEventNameEnum": "apps.marketing.models.TrackingEventName",
         "TrackingDestinationEnum": "apps.marketing.models.TrackingDestination",
+        "StockMovementReasonEnum": "apps.catalog.models.StockMovement.Reason",
+        "SupportMessageStatusEnum": "apps.care.models.MessageStatus",
     },
     "TAGS": [
         {"name": "System", "description": "Health and operational endpoints."},
@@ -377,6 +401,13 @@ SPECTACULAR_SETTINGS = {
         {"name": "Admin – Reviews", "description": "Admin only: full review CRUD, moderation (approve/reject/reply), and manual/testimonial reviews."},
         {"name": "Tracking", "description": "Public: report a browser event for server-side delivery to Meta."},
         {"name": "Admin – Marketing", "description": "Admin only: read-only visibility into every Meta CAPI / GA4 send, for debugging."},
+        {"name": "Customer Care", "description": "Public contact form, checkout capture, and customers' return requests."},
+        {"name": "Admin – Customer Care", "description": "Admin only: customer profiles, notes and tags, support inbox, abandoned checkouts, returns."},
+        {"name": "Content", "description": "Public CMS pages, FAQs, announcement bar, newsletter sign-up and global search."},
+        {"name": "Admin – Content", "description": "Admin only: content pages, FAQs, announcements, newsletter subscribers."},
+        {"name": "Admin – Notifications", "description": "Admin only: the email/SMS log (secrets masked) and message templates."},
+        {"name": "Admin – Reports", "description": "Admin only: sales report breakdowns and CSV exports (orders, products, customers)."},
+        {"name": "Admin – Audit Log", "description": "Admin only: who did what (before/after, IP) for every Admin/CCE write."},
         {"name": "Admin – Shipping", "description": "Admin only: delivery zones (charges, coverage, thresholds), charge history and delivery methods."},
     ],
 }

@@ -1,6 +1,6 @@
 """
 Customer care tools (Module 14, Admin only): care notes and tags on customers, the support inbox fed by the public
-contact form, abandoned checkouts captured at checkout, and customer return/refund requests.
+contact form, and abandoned checkouts captured at checkout.
 """
 
 from django.conf import settings
@@ -93,38 +93,3 @@ class CheckoutLead(TimeStampedModel):
 
     class Meta:
         ordering = ["-updated_at"]
-
-
-class ReturnReason(models.TextChoices):
-    DAMAGED = "damaged", "Damaged"
-    WRONG_ITEM = "wrong_item", "Wrong item"
-    DEFECTIVE = "defective", "Defective / not working"
-    EXPIRED = "expired", "Expired"
-    OTHER = "other", "Other"
-
-
-class ReturnStatus(models.TextChoices):
-    REQUESTED = "requested", "Requested"
-    APPROVED = "approved", "Approved"
-    REJECTED = "rejected", "Rejected"
-    RECEIVED = "received", "Item received"
-    REFUNDED = "refunded", "Refunded / replaced"
-
-
-class ReturnRequest(TimeStampedModel):
-    """A customer's return/refund request on one of their delivered orders; Admin moves it through its status."""
-
-    order = models.ForeignKey("orders.Order", on_delete=models.CASCADE, related_name="return_requests")
-    customer = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="return_requests")
-    reason = models.CharField(max_length=12, choices=ReturnReason.choices)
-    details = models.TextField(max_length=2000)
-    status = models.CharField(max_length=10, choices=ReturnStatus.choices, default=ReturnStatus.REQUESTED, db_index=True)
-    admin_note = models.TextField(max_length=2000, blank=True, help_text="Shown to the customer with the status")
-    handled_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
-
-    class Meta:
-        ordering = ["-created_at"]
-
-    @property
-    def is_open(self):
-        return self.status in (ReturnStatus.REQUESTED, ReturnStatus.APPROVED, ReturnStatus.RECEIVED)

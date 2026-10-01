@@ -424,6 +424,89 @@ endpoint must declare `permission_classes = [AllowAny]` explicitly.
 - A transient network failure re-raises (so Celery retries, backoff + jitter, up to 3 times); a
   rejection from Meta/GA4 itself (bad token, bad payload) is logged as failed but never retried.
 
+## Customer care (Module 14 — Admin only; no return requests, by request)
+
+- **Customer profile** (`/admin/care/customers/<id>/`): order count, total spent (excludes cancelled/failed/returned),
+  last order, internal **notes** and reusable **tags** (VIP, Risky…). Customers never see either.
+- **Support inbox**: the public `POST /contact/` form (needs a phone or email; throttled `CONTACT_THROTTLE_RATE`) lands
+  in `/admin/care/messages/` with statuses New → In progress → Resolved and working notes.
+- **Abandoned checkouts**: the checkout page reports name + phone (`POST /checkout/lead/`); if no order follows within
+  `CHECKOUT_ABANDON_MINUTES` (30) it shows up for follow-up; placing an order marks it converted automatically.
+
+## Content & storefront extras (Module 15)
+
+- **Pages** (`/pages/<slug>/`): About, Privacy, Terms, Return & Cancellation and Shipping policy, plus any custom slug.
+  Content is a small Markdown subset rendered by the storefront as plain elements (never raw HTML).
+- **FAQs** (`/faqs/`), **announcement bar** (`/announcements/`, optional time window; links must be a site path or
+  http(s)), **newsletter** (`POST /newsletter/subscribe/` email or phone, same reply for new/existing;
+  `POST /newsletter/unsubscribe/` with the subscriber's link token; Admin CSV export).
+- **Global search** `GET /search/?q=` — products, categories, brands and autocomplete `suggestions` (2+ characters).
+- Admin CRUD under `/admin/content/…`.
+
+## Notifications (Module 16)
+
+- `apps.notifications.services.notify(event, email=…, phone=…)` renders the event's template per channel, writes a
+  `NotificationLog` row and sends it. Normal messages go through Celery (`deliver_notification`, retries with
+  back-off, `NOTIFICATION_MAX_ATTEMPTS` / `NOTIFICATION_RETRY_SECONDS`); messages carrying a **secret** (password reset
+  code, generated password) are sent inline and logged with the secret **masked** — never stored or queued.
+- Events: order placed, order status changed (every source, via `OrderStatusHistory`), password reset code, new account
+  details, low stock (to admins), review reply, back in stock. No email/phone → that channel is skipped.
+- Admin edits each event × channel's text (`/admin/notifications/templates/`), switches it off or resets it; the log is
+  `/admin/notifications/logs/` (failed non-secret messages can be re-sent).
+- Email = Django `EMAIL_BACKEND`; SMS = `SMS_BACKEND` (subclass `apps.core.messaging.SMSBackend` for a provider).
+
+## Dashboard & reports (Module 17 — Admin only)
+
+- Everything is on the Admin dashboard: `GET /admin/dashboard/?date_from=&date_to=` returns the overview (revenue,
+  orders, trend, statuses, top products/categories, customers) plus `reports`: shipping/discount totals, orders and
+  revenue by **source**, manual orders by **staff member**, by **delivery zone** with shipping revenue, coupon
+  performance, reviews, accounts **created at checkout**, and the low-stock list. A sale = confirmed, processing,
+  shipped or delivered order.
+- CSV: `/admin/reports/export/orders/` (range, optional `status`/`source`; includes source, staff, zone and charge),
+  `/admin/reports/export/products/`, `/admin/reports/export/customers/`. Cells starting with `= + - @` are prefixed
+  with `'` so a spreadsheet never runs them as formulas.
+
+## Audit log & hardening (Module 18)
+
+- **Audit log** (`GET /admin/audit-logs/`, Admin only, read-only): every Admin/CCE write under `/api/v1/admin/` is
+  recorded by `apps.audit.middleware.AuditMiddleware` (who, role, method, path, response code, IP, user agent, request
+  body with passwords/tokens/secrets **redacted**), plus business events with before/after: manual order created (with
+  the source), status changed, note added, order edited, **shipping override**, **delivery-zone charge change**.
+- **Throttling** (per IP, and per hashed phone/email where it matters): login, register, password-reset request and
+  verify, coupon apply, checkout, account creation at checkout, contact form, newsletter, search, Notify Me. All rates
+  are settings (`*_THROTTLE_RATE`) read at request time.
+- **Security headers**: API responses get `Content-Security-Policy: default-src 'none'`, `Permissions-Policy`, and
+  `Cache-Control: no-store` on admin/account/auth/order endpoints (`apps.core.middleware`); the Next.js app sends
+  frame/plugin/form CSP, nosniff, referrer and permissions policies (`frontend/next.config.mjs`).
+  `python manage.py check --deploy` is clean with `config.settings.prod`.
+- **Caching** (Redis in production): site settings, hero slider config, delivery zones and categories, each invalidated
+  on save.
+- **Demo data**: `python manage.py seed_demo` (zones ৳70 / ৳120, catalog with variants, reviews, coupons, banners,
+  FAQs; idempotent; `--flush` removes only demo rows).
+- **Postman**: `python manage.py export_postman` → `docs/postman_collection.json` (generated from the OpenAPI schema;
+  set the `base_url` and `access_token` collection variables).
+
+## Deployment
+
+1. **Services**: PostgreSQL, Redis, S3-compatible storage (R2), an SMTP provider, optionally an SMS provider.
+2. **Environment** (see `.env.example`): `DJANGO_SETTINGS_MODULE=config.settings.prod`, a long random `SECRET_KEY`,
+   `ALLOWED_HOSTS`, `DATABASE_URL`, `REDIS_URL`, `CORS_ALLOWED_ORIGINS` / `CSRF_TRUSTED_ORIGINS` (the storefront's
+   origin), `USE_S3=True` + the R2 keys, the email settings, `NUM_PROXIES=1` (and `TRUST_X_FORWARDED_FOR=True`) when
+   behind one reverse proxy that sets `X-Forwarded-For`.
+3. **Release steps**:
+   ```bash
+   pip install -r requirements.txt
+   python manage.py check --deploy
+   python manage.py migrate
+   python manage.py collectstatic --noinput
+   python manage.py seed_shipping          # default zones + districts (once)
+   ```
+4. **Processes**: `gunicorn config.wsgi:application --workers 3 --bind 0.0.0.0:8000` and a Celery worker
+   `celery -A config worker -l info` (emails/SMS, Meta/GA4 events, restock alerts).
+5. **Frontend**: `cd frontend && npm ci && npm run build && npm start`, with `API_BASE_URL` pointing at
+   `https://<api host>/api/v1`.
+6. TLS is terminated by the proxy; Django redirects HTTP → HTTPS and sends HSTS (`SECURE_HSTS_SECONDS`).
+
 ## Shared cloud setup (team development)
 
 So everyone works against the same data and images instead of re-seeding locally. **Cloudflare has

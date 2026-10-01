@@ -15,11 +15,10 @@ from apps.core.serializers import ErrorResponseSerializer
 from apps.orders.models import Order
 
 from . import services
-from .models import CheckoutLead, CheckoutLeadStatus, ContactMessage, CustomerNote, CustomerTag, ReturnRequest
+from .models import CheckoutLead, CheckoutLeadStatus, ContactMessage, CustomerNote, CustomerTag
 from .serializers import (
     AdminCheckoutLeadSerializer,
     AdminContactMessageSerializer,
-    AdminReturnRequestSerializer,
     CustomerNoteSerializer,
     CustomerProfileSerializer,
     CustomerTagSerializer,
@@ -139,27 +138,3 @@ class AbandonedCheckoutViewSet(mixins.ListModelMixin, mixins.UpdateModelMixin, v
         if self.request.query_params.get("status") == CheckoutLeadStatus.DISMISSED:
             return CheckoutLead.objects.filter(status=CheckoutLeadStatus.DISMISSED).select_related("user")
         return services.abandoned_checkouts()
-
-
-@extend_schema_view(
-    list=extend_schema(tags=TAG, summary="Return / refund requests", description="Filter `status`; `search` order number/phone/name."),
-    retrieve=extend_schema(tags=TAG, summary="Return request"),
-    partial_update=extend_schema(tags=TAG, summary="Update a return request", description="`status` (validated transitions) "
-                                 "and `admin_note` (shown to the customer)."),
-)
-class ReturnRequestViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins.UpdateModelMixin, viewsets.GenericViewSet):
-    permission_classes = [IsAdmin]
-    serializer_class = AdminReturnRequestSerializer
-    http_method_names = ["get", "patch", "head", "options"]
-    queryset = ReturnRequest.objects.select_related("order", "customer", "handled_by")
-    filter_backends = [DjangoFilterBackend, filters.SearchFilter]
-    filterset_fields = ["status"]
-    search_fields = ["order__number", "customer__phone", "customer__full_name"]
-
-    def perform_update(self, serializer):
-        services.update_return_request(
-            serializer.instance,
-            status=serializer.validated_data.get("status", serializer.instance.status),
-            admin_note=serializer.validated_data.get("admin_note", serializer.instance.admin_note),
-            user=self.request.user,
-        )

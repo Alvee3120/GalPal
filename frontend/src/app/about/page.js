@@ -2,9 +2,12 @@ import Image from "next/image";
 import Link from "next/link";
 import { FiArrowRight, FiFileText, FiHeadphones, FiShield, FiStar, FiTruck } from "react-icons/fi";
 import PageHero from "@/component/shared/PageHero";
+import RichText from "@/component/content/RichText";
+import { cmsMetadata } from "@/component/content/CmsPage";
+import { getContentPage } from "@/lib/content";
 import storyImage from "../../../public/assets/banner/banner1.jpeg";
 
-export const metadata = {
+const FALLBACK_METADATA = {
   title: "About Us | GalPal",
   description: "GalPal brings carefully chosen skincare, makeup and beauty accessories to customers across Bangladesh.",
 };
@@ -24,7 +27,13 @@ const REASONS = [
   { icon: FiHeadphones, title: "Friendly support", text: "Help with orders, returns and product questions whenever you need it." },
 ];
 
-export default function AboutPage() {
+export async function generateMetadata() {
+  return cmsMetadata(await getContentPage("about"), FALLBACK_METADATA);
+}
+
+// The Our Story text comes from Admin → Content Pages ("about") when that page is active; the rest of the design stays.
+export default async function AboutPage() {
+  const page = await getContentPage("about");
   return (
     <main>
       <PageHero title="About Us" />
@@ -33,16 +42,24 @@ export default function AboutPage() {
         <section className="grid items-center gap-10 lg:grid-cols-2 lg:gap-14">
           <div>
             <p className="about-eyebrow text-xs font-semibold uppercase tracking-[0.2em]">Our Story</p>
-            <h2 className="custom-font mt-3 text-3xl leading-tight sm:text-4xl">Skincare that works, and an honest way to shop for it.</h2>
-            <p className="about-text mt-5">
-              We started GalPal because shopping for skincare shouldn&apos;t feel like guesswork. Our focus is
-              high-performance skincare built around barrier repair, gentle and safe formulas, and visible results,
-              alongside makeup and accessories that complete your routine.
-            </p>
-            <p className="about-text mt-4">
-              Every product in our shop is chosen with care, described clearly and priced upfront, so you know exactly what
-              you&apos;re getting before it reaches your door.
-            </p>
+            {page ? (
+              <div className="about-rich about-text mt-3">
+                <RichText text={page.content} />
+              </div>
+            ) : (
+              <>
+                <h2 className="custom-font mt-3 text-3xl leading-tight sm:text-4xl">Skincare that works, and an honest way to shop for it.</h2>
+                <p className="about-text mt-5">
+                  We started GalPal because shopping for skincare shouldn&apos;t feel like guesswork. Our focus is
+                  high-performance skincare built around barrier repair, gentle and safe formulas, and visible results,
+                  alongside makeup and accessories that complete your routine.
+                </p>
+                <p className="about-text mt-4">
+                  Every product in our shop is chosen with care, described clearly and priced upfront, so you know exactly what
+                  you&apos;re getting before it reaches your door.
+                </p>
+              </>
+            )}
             <div className="mt-7 flex flex-wrap gap-3">
               <Link href="/shop" className="auth-btn auth-btn--primary inline-flex items-center gap-2 rounded-full px-6 py-3 text-sm font-medium">
                 Shop Now

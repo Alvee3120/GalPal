@@ -1,13 +1,22 @@
 import Link from "next/link";
 import LegalPage from "@/component/shared/LegalPage";
+import CmsPage, { cmsMetadata } from "@/component/content/CmsPage";
+import { getContentPage } from "@/lib/content";
 import { POLICY } from "@/lib/policies";
 
-export const metadata = {
+const FALLBACK_METADATA = {
   title: "Terms of Service | GalPal",
   description: "The terms that apply when you browse, create an account and shop on the GalPal website.",
 };
 
-export default function TermsPage() {
+// Admin → Content Pages can replace this text with a "terms" page; until then the built-in text below shows.
+export async function generateMetadata() {
+  return cmsMetadata(await getContentPage("terms"), FALLBACK_METADATA);
+}
+
+export default async function TermsPage() {
+  const page = await getContentPage("terms");
+  if (page) return <CmsPage page={page} />;
   return (
     <LegalPage
       title="Terms of Service"

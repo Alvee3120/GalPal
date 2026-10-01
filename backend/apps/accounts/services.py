@@ -7,14 +7,12 @@ from datetime import timedelta
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
-from django.core.mail import send_mail
 from django.db import IntegrityError, transaction
 from django.utils import timezone
 from django.utils.crypto import constant_time_compare, salted_hmac
 from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken, OutstandingToken
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from apps.core.messaging import send_sms
 from apps.core.validators import normalize_bd_phone
 
 from .exceptions import AccountAlreadyExists, AccountDisabled, InvalidCredentials, InvalidOTP
@@ -114,17 +112,10 @@ def request_password_reset(identifier):
             expires_at=now + timedelta(minutes=settings.PASSWORD_RESET_OTP_TTL_MINUTES),
         )
 
-    message = (
-        f"Your GalPal password reset code is {code}. "
-        f"It expires in {settings.PASSWORD_RESET_OTP_TTL_MINUTES} minutes. Do not share it."
-    )
-    try:
-        if "@" in identifier:
-            send_mail("Your GalPal password reset code", message, None, [user.email])
-        else:
-            send_sms(user.phone, message)
-    except Exception:  # noqa: BLE001 - delivery problems must not change the response
-        logger.exception("Could not deliver password reset code to user %s", user.pk)
+    # Module 16: sent inline (never queued), logged with the code masked; failures are recorded, never raised.
+    from apps.notifications import services as notifications
+
+    notifications.password_reset_code(user, code, by_email="@" in identifier)
 
 
 def reset_password(identifier, code, new_password):

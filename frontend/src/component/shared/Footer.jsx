@@ -3,15 +3,18 @@ import Link from "next/link";
 import { getContactDetails } from "@/lib/siteSettings";
 import FooterWordmark from "./FooterWordmark";
 import { SOCIALS, SocialIcon } from "./socialLinks";
+import NewsletterForm from "@/component/content/NewsletterForm";
 
 const navigation = [
   { href: "/shop", label: "Shop" },
   { href: "/about", label: "About" },
+  { href: "/faq", label: "FAQ" },
   { href: "/contact", label: "Contact" },
 ];
 
 const company = [
   { href: "/return-and-cancellation-policy", label: "Return & Cancellation Policy" },
+  { href: "/shipping-policy", label: "Shipping Policy" },
   { href: "/privacy-policy", label: "Privacy Policy" },
   { href: "/terms", label: "Terms of Service" },
 ];
@@ -57,6 +60,7 @@ export default async function Footer() {
               High-performance skincare focused on barrier repair, clinical
               safety, and visible results.
             </p>
+            <NewsletterForm />
             {socialLinks.length > 0 && (
               <ul className="mt-6 flex items-center gap-2">
                 {socialLinks.map((s) => (

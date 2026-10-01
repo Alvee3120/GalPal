@@ -1,6 +1,6 @@
 import { BiHome } from "react-icons/bi";
 import { FaMapLocationDot } from "react-icons/fa6";
-import { FiAward, FiBell, FiClipboard, FiGrid, FiInbox, FiLayers, FiPackage, FiPlusCircle, FiImage, FiRotateCcw, FiUserX, FiPrinter, FiSettings, FiShoppingBag, FiShoppingCart, FiStar, FiTag, FiTruck, FiUser, FiUsers, FiVideo } from "react-icons/fi";
+import { FiAward, FiBell, FiFileText, FiHelpCircle, FiMail, FiMessageSquare, FiSend, FiVolume2, FiClipboard, FiGrid, FiInbox, FiLayers, FiPackage, FiPlusCircle, FiImage, FiUserX, FiPrinter, FiSettings, FiShield, FiShoppingBag, FiShoppingCart, FiStar, FiTag, FiTruck, FiUser, FiUsers, FiVideo } from "react-icons/fi";
 
 // Role -> sidebar links, from the authenticated user's real `role` (apps.accounts.models.User.Role: "customer",
 // "admin", "cce" — see lib/currentUser.js). ONLY routes that actually exist are listed here. Admin shares
@@ -29,14 +29,20 @@ export const DASHBOARD_NAV = {
     { label: "Reviews", href: "/dashboard/admin/reviews", icon: FiStar },
     { label: "Video Cards", href: "/dashboard/admin/video-cards", icon: FiVideo },
     { label: "Hero Banners", href: "/dashboard/admin/banners", icon: FiImage },
+    { label: "Content Pages", href: "/dashboard/admin/content/pages", icon: FiFileText },
+    { label: "FAQs", href: "/dashboard/admin/content/faqs", icon: FiHelpCircle },
+    { label: "Announcements", href: "/dashboard/admin/content/announcements", icon: FiVolume2 },
+    { label: "Newsletter", href: "/dashboard/admin/content/newsletter", icon: FiMail },
+    { label: "Notifications", href: "/dashboard/admin/notifications", icon: FiSend },
+    { label: "Message Templates", href: "/dashboard/admin/notifications/templates", icon: FiMessageSquare },
     { label: "Users", href: "/dashboard/admin/users", icon: FiUsers },
     { label: "Support Inbox", href: "/dashboard/admin/support", icon: FiInbox },
     { label: "Abandoned Checkouts", href: "/dashboard/admin/abandoned-checkouts", icon: FiUserX },
-    { label: "Return Requests", href: "/dashboard/admin/returns", icon: FiRotateCcw },
     { label: "Coupons", href: "/dashboard/admin/coupons", icon: FiTag },
     { label: "Delivery Charges", href: "/dashboard/admin/delivery-charges", icon: FiTruck },
     { label: "Invoice Settings", href: "/dashboard/admin/invoice-settings", icon: FiPrinter },
     { label: "Site Settings", href: "/dashboard/admin/site-settings", icon: FiSettings },
+    { label: "Audit Log", href: "/dashboard/admin/audit-log", icon: FiShield },
     { label: "My Account", href: "/dashboard/admin/account", icon: FiUser },
   ],
   cce: [

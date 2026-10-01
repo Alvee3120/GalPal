@@ -41,7 +41,7 @@ export default function ContactForm() {
 
   const input = "checkout-input w-full rounded-lg px-3 py-2.5 text-sm";
   return (
-    <section className="contact-card mt-12 rounded-2xl p-6 sm:p-8" aria-labelledby="contact-form-title">
+    <section className="contact-card min-w-0 rounded-2xl p-6 sm:p-8" aria-labelledby="contact-form-title">
       <h2 id="contact-form-title" className="custom-font text-2xl">
         Send Us a Message
       </h2>

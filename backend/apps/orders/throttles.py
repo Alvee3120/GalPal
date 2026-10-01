@@ -1,4 +1,4 @@
-"""Per-IP throttles for the two anonymous order endpoints (Module 18 will review throttling globally)."""
+"""Per-IP throttles for the anonymous order endpoints: checkout, order tracking, and account creation at checkout."""
 from django.conf import settings
 from rest_framework.throttling import SimpleRateThrottle
 
@@ -21,3 +21,22 @@ class CheckoutThrottle(_IPThrottle):
 class TrackOrderThrottle(_IPThrottle):
     scope = "order-track"
     setting_name = "ORDER_TRACK_THROTTLE_RATE"
+
+
+class GuestAccountThrottle(_IPThrottle):
+    """
+    Checkout with `save_details=true` creates an account and emails its password, so it's limited much more tightly
+    than checkout itself (spam accounts, email bombing). Only those requests count.
+    """
+
+    scope = "guest-account"
+    setting_name = "GUEST_ACCOUNT_THROTTLE_RATE"
+
+    def allow_request(self, request, view):
+        try:
+            wants_account = str(request.data.get("save_details", "")).lower() in ("true", "1", "on", "yes")
+        except Exception:  # noqa: BLE001
+            wants_account = False
+        if not wants_account or (request.user and request.user.is_authenticated):
+            return True
+        return super().allow_request(request, view)

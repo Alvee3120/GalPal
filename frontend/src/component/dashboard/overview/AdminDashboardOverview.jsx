@@ -25,6 +25,7 @@ import OrderDateRangePicker from "../OrderDateRangePicker";
 import TimeSeriesChart from "./TimeSeriesChart";
 import StatusDonut from "./StatusDonut";
 import OldCartsCard from "../oldCarts/OldCartsCard";
+import DashboardReports from "./DashboardReports";
 
 const STATUS_ORDER = ["pending", "confirmed", "processing", "shipped", "delivered", "cancelled", "returned", "failed"];
 
@@ -498,6 +499,8 @@ export default function AdminDashboardOverview({ user, initialRange, initialData
               <p className="chart-empty rounded-xl px-4 py-8 text-center text-sm">No orders for this period.</p>
             )}
           </Panel>
+
+          <DashboardReports reports={data?.reports} range={range} currencySymbol={currencySymbol} />
 
           {data?.previous_period && (
             <p className="showcase-muted text-center text-xs">

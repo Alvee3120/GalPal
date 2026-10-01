@@ -36,6 +36,8 @@ const monthsBack = (iso, n) => {
 export const RANGE_PRESETS = [
   { key: "today", label: "Today", range: (t) => ({ start: t, end: t }) },
   { key: "yesterday", label: "Yesterday", range: (t) => ({ start: shift(t, -1), end: shift(t, -1) }) },
+  { key: "last_7_days", label: "Last 7 Days", range: (t) => ({ start: shift(t, -6), end: t }) },
+  { key: "last_30_days", label: "Last 30 Days", range: (t) => ({ start: shift(t, -29), end: t }) },
   { key: "this_week", label: "This Week", range: (t) => ({ start: startOfWeek(t), end: t }) },
   { key: "last_week", label: "Last Week", range: (t) => ({ start: shift(startOfWeek(t), -7), end: shift(startOfWeek(t), -1) }) },
   { key: "this_month", label: "This Month", range: (t) => ({ start: `${t.slice(0, 8)}01`, end: t }) },

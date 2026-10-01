@@ -9,24 +9,21 @@ import { messageFor } from "@/lib/apiError";
 import formatPrice from "@/lib/formatPrice";
 import ProductImage from "@/component/shared/ProductImage";
 import ConfirmDialog from "@/component/shared/ConfirmDialog";
-import ReturnRequestPanel from "./ReturnRequestPanel";
 import {
-  ORDER_STATUS_FLOW,
   PAYMENT_METHOD_LABEL,
   PAYMENT_STATUS_LABEL,
   STATUS_LABEL,
-  TERMINAL_OFF_FLOW,
   formatOrderDate,
   formatOrderDateTime,
+  orderSteps,
 } from "@/lib/orderStatus";
 
-// The status timeline (Part 3): the normal flow with a check on every step already reached, or — for
-// cancelled/failed/returned, which fall off that flow entirely — just "Order Placed" then the terminal status,
+// The status timeline (Part 3): the normal flow with a check on every step already reached; a return shows the steps up to
+// Shipped then Returned; cancelled/failed fall off the flow entirely — just "Order Placed" then the terminal status,
 // exactly like the brief's own "Order Placed -> Cancelled" example. Built from the order's real `history` (each
 // entry already the backend's own status + timestamp), not guessed from the current status alone.
 function StatusTimeline({ order }) {
-  const offFlow = TERMINAL_OFF_FLOW.includes(order.status);
-  const steps = offFlow ? ["pending", order.status] : ORDER_STATUS_FLOW;
+  const steps = orderSteps(order.status);
   const reached = new Set(order.history.map((h) => h.status));
   const currentIndex = steps.indexOf(order.status);
   const timeFor = (status) => order.history.find((h) => h.status === status)?.created_at;
@@ -165,7 +162,6 @@ export default function OrderDetail({ initialOrder, currencySymbol }) {
             </div>
           </section>
 
-          <ReturnRequestPanel order={order} />
         </div>
 
         <aside className="order-summary flex flex-col gap-4 rounded-2xl p-5 sm:p-6 lg:sticky lg:top-24">

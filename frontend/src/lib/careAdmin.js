@@ -20,26 +20,3 @@ export const MESSAGE_STATUS = [
   { value: "resolved", label: "Resolved" },
 ];
 export const MESSAGE_STATUS_LABEL = Object.fromEntries(MESSAGE_STATUS.map((s) => [s.value, s.label]));
-
-export const RETURN_STATUS_LABEL = {
-  requested: "Requested",
-  approved: "Approved",
-  rejected: "Rejected",
-  received: "Item received",
-  refunded: "Refunded / replaced",
-};
-// Mirrors apps.care.services.RETURN_TRANSITIONS (the backend enforces it).
-export const RETURN_NEXT = {
-  requested: ["approved", "rejected"],
-  approved: ["received", "refunded", "rejected"],
-  received: ["refunded"],
-  rejected: [],
-  refunded: [],
-};
-export const RETURN_REASON_LABEL = {
-  damaged: "Damaged",
-  wrong_item: "Wrong item",
-  defective: "Defective / not working",
-  expired: "Expired",
-  other: "Other",
-};

@@ -118,11 +118,31 @@ function SearchForm({
   );
 }
 
+// Matching categories and brands as quick links above the products (from the global search, GET /search/).
+function SearchGroups({ groups, onNavigate }) {
+  const links = [
+    ...(groups?.categories ?? []).map((c) => ({ key: `c${c.id}`, href: `/shop?category=${encodeURIComponent(c.slug)}`, label: c.name, kind: "Category" })),
+    ...(groups?.brands ?? []).map((b) => ({ key: `b${b.id}`, href: `/shop?search=${encodeURIComponent(b.name)}`, label: b.name, kind: "Brand" })),
+  ].slice(0, 6);
+  if (links.length === 0) return null;
+  return (
+    <ul className="search-dropdown__groups flex flex-wrap gap-1.5 px-4 pb-1 pt-3" aria-label="Categories and brands">
+      {links.map((l) => (
+        <li key={l.key}>
+          <Link href={l.href} onClick={onNavigate} className="product-card__chip inline-flex rounded-full px-3 py-1 text-xs font-medium" title={l.kind}>
+            {l.label}
+          </Link>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 // Up to SEARCH_RESULT_LIMIT live results below the search input, reused for both the desktop (floating, absolute)
-// and mobile (in-flow, inside the sliding search panel) instances — `floating` picks which. Backed by the
-// EXISTING public product list (GET /products/?search=, via the /api/products proxy — no new search endpoint),
-// so a result is exactly what the Shop page/Product Details already know about: same id, slug, price fields.
-function SearchResults({ results, loading, fresh, count, query, currencySymbol, onNavigate, floating = true }) {
+// and mobile (in-flow, inside the sliding search panel) instances — `floating` picks which. Backed by the global
+// search (GET /search/ via /api/search — apps.content): the same public product fields the Shop page uses, plus
+// matching categories and brands.
+function SearchResults({ results, groups, loading, fresh, count, query, currencySymbol, onNavigate, floating = true }) {
   const shown = results.slice(0, SEARCH_RESULT_LIMIT);
   const showViewAll = count > SEARCH_RESULT_LIMIT;
   const showLoading = loading || !fresh;
@@ -133,6 +153,7 @@ function SearchResults({ results, loading, fresh, count, query, currencySymbol, 
       aria-label="Search results"
       className={`search-dropdown flex flex-col overflow-hidden rounded-2xl ${floating ? "absolute inset-x-0 top-full z-50 mt-2" : "mt-3"}`}
     >
+      {!showLoading && <SearchGroups groups={groups} onNavigate={onNavigate} />}
       {showLoading ? (
         <p className="showcase-muted px-4 py-6 text-center text-sm">Searching...</p>
       ) : shown.length === 0 ? (
@@ -171,7 +192,8 @@ function SearchResults({ results, loading, fresh, count, query, currencySymbol, 
   );
 }
 
-export default function Navbar() {
+// `announcement`: the server-rendered AnnouncementBar, shown inside the header so it stays with the (fixed/sticky) navbar.
+export default function Navbar({ announcement = null }) {
   const pathname = usePathname();
   const router = useRouter();
   const isHome = pathname === "/";
@@ -211,6 +233,7 @@ export default function Navbar() {
   // Live search dropdown (desktop always-visible box + the mobile slide-down panel share this state).
   const [searchResults, setSearchResults] = useState([]);
   const [searchCount, setSearchCount] = useState(0);
+  const [searchGroups, setSearchGroups] = useState(null); // matching { categories, brands }
   const [searchLoading, setSearchLoading] = useState(false);
   const [resultsQuery, setResultsQuery] = useState(""); // the query `searchResults` actually answers
   const [desktopDropdownClosed, setDesktopDropdownClosed] = useState(false);
@@ -240,16 +263,18 @@ export default function Navbar() {
     const timer = setTimeout(async () => {
       setSearchLoading(true);
       try {
-        const res = await fetch(`/api/products?search=${encodeURIComponent(q)}&page_size=${SEARCH_RESULT_LIMIT}`, { cache: "no-store" });
+        const res = await fetch(`/api/search?q=${encodeURIComponent(q)}&limit=${SEARCH_RESULT_LIMIT}`, { cache: "no-store" });
         const data = await res.json().catch(() => null);
         if (id !== searchRequestId.current) return;
-        setSearchResults(res.ok && Array.isArray(data?.results) ? data.results : []);
-        setSearchCount(res.ok ? (data?.count ?? 0) : 0);
+        setSearchResults(res.ok && Array.isArray(data?.products) ? data.products : []);
+        setSearchCount(res.ok ? (data?.product_count ?? 0) : 0);
+        setSearchGroups(res.ok ? { categories: data?.categories ?? [], brands: data?.brands ?? [] } : null);
         setResultsQuery(q);
       } catch {
         if (id === searchRequestId.current) {
           setSearchResults([]);
           setSearchCount(0);
+          setSearchGroups(null);
           setResultsQuery(q);
         }
       } finally {
@@ -358,6 +383,12 @@ export default function Navbar() {
     <header
       className={`navbar ${position} z-50 transition-[background-color,color,box-shadow,backdrop-filter] duration-300 ease-out motion-reduce:transition-none ${surface}`}
     >
+      {/* Collapses once the page is scrolled, so only the navbar stays pinned; back at the top it slides open again. */}
+      {announcement && (
+        <div className="announcement-collapse" data-hidden={scrolled} inert={scrolled}>
+          <div className="min-h-0 overflow-hidden">{announcement}</div>
+        </div>
+      )}
       <nav
         aria-label="Main"
         className="mx-auto flex h-16 w-full max-w-7xl items-center px-4 sm:px-6 lg:px-8"
@@ -400,6 +431,7 @@ export default function Navbar() {
             {showDesktopDropdown && (
               <SearchResults
                 results={searchResults}
+                groups={searchGroups}
                 loading={searchLoading}
                 fresh={resultsQuery === query.trim()}
                 count={searchCount}
@@ -504,6 +536,7 @@ export default function Navbar() {
             <div className="mx-auto w-full max-w-7xl px-4 pb-3 sm:px-6">
               <SearchResults
                 results={searchResults}
+                groups={searchGroups}
                 loading={searchLoading}
                 fresh={resultsQuery === query.trim()}
                 count={searchCount}

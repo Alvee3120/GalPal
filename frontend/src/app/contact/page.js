@@ -4,6 +4,8 @@ import PageHero from "@/component/shared/PageHero";
 import { SOCIALS, SocialIcon } from "@/component/shared/socialLinks";
 import { getContactDetails } from "@/lib/siteSettings";
 import ContactForm from "@/component/contact/ContactForm";
+import RichText from "@/component/content/RichText";
+import { getFaqs } from "@/lib/content";
 
 export const metadata = {
   title: "Contact Us | GalPal",
@@ -11,10 +13,13 @@ export const metadata = {
 };
 
 // Contact: every channel comes from Site Settings (Admin → Site Settings); a card only shows when its detail is set,
-// and each one is a direct action (call, email, WhatsApp chat, map). Below them, the contact form sends a message to
-// Admin -> Support Inbox (apps.care).
+// and each one is a direct action (call, email, WhatsApp chat, map). Below them: the contact form (to Admin -> Support
+// Inbox, apps.care) on the left and common questions (Admin -> FAQs) on the right; stacked on small screens.
+const FAQ_LIMIT = 6; // the rest are on /faq
+
 export default async function ContactPage() {
-  const contact = await getContactDetails();
+  const [contact, faqs] = await Promise.all([getContactDetails(), getFaqs()]);
+  const topFaqs = faqs.slice(0, FAQ_LIMIT);
   const socials = SOCIALS.filter((s) => contact.socials[s.key]);
 
   const cards = [
@@ -94,7 +99,33 @@ export default async function ContactPage() {
           <p className="showcase-muted mt-10 text-center text-sm">Our contact details will appear here soon.</p>
         )}
 
-        <ContactForm />
+        <div className={`mt-12 grid grid-cols-1 items-start gap-6 ${topFaqs.length ? "lg:grid-cols-2 lg:gap-8" : ""}`}>
+          <ContactForm />
+
+          {topFaqs.length > 0 && (
+            <section className="contact-card min-w-0 rounded-2xl p-6 sm:p-8" aria-labelledby="contact-faq-title">
+              <h2 id="contact-faq-title" className="custom-font text-2xl">
+                Frequently Asked Questions
+              </h2>
+              <p className="showcase-muted mt-1 text-sm">Your answer might already be here.</p>
+              <div className="mt-5 flex flex-col gap-3">
+                {topFaqs.map((faq) => (
+                  <details key={faq.id} className="faq-item contact-faq rounded-xl px-4 py-3">
+                    <summary className="cursor-pointer text-sm font-semibold">{faq.question}</summary>
+                    <div className="legal-page mt-2 text-sm">
+                      <RichText text={faq.answer} />
+                    </div>
+                  </details>
+                ))}
+              </div>
+              {faqs.length > FAQ_LIMIT && (
+                <Link href="/faq" className="contact-card__link mt-5 inline-block text-sm font-semibold">
+                  View all questions →
+                </Link>
+              )}
+            </section>
+          )}
+        </div>
 
         {socials.length > 0 && (
           <section className="mt-12 text-center" aria-labelledby="contact-follow">

@@ -1,4 +1,4 @@
-"""Module 14 — customer care tools: profile/notes/tags, support inbox, abandoned checkouts, return requests."""
+"""Module 14 — customer care tools: profile/notes/tags, support inbox, abandoned checkouts."""
 
 from datetime import timedelta
 from decimal import Decimal
@@ -6,10 +6,9 @@ from decimal import Decimal
 import pytest
 from django.utils import timezone
 
-from apps.accounts.tests.factories import UserFactory
 from apps.care import services
-from apps.care.models import CheckoutLead, ContactMessage, ReturnRequest
-from apps.orders.models import Order, OrderStatusHistory
+from apps.care.models import CheckoutLead, ContactMessage
+from apps.orders.models import Order
 from apps.orders.tests.helpers import new_order
 
 pytestmark = pytest.mark.django_db
@@ -28,18 +27,10 @@ def owned(order, customer):
     return order
 
 
-def delivered(order, hours_ago=1):
-    Order.objects.filter(pk=order.pk).update(status="delivered")
-    entry = OrderStatusHistory.objects.create(order=order, from_status="shipped", to_status="delivered")
-    OrderStatusHistory.objects.filter(pk=entry.pk).update(created_at=timezone.now() - timedelta(hours=hours_ago))
-    order.refresh_from_db()
-    return order
-
-
 # --- access ---------------------------------------------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("path", ["customers/1/", "tags/", "messages/", "abandoned-checkouts/", "returns/"])
+@pytest.mark.parametrize("path", ["customers/1/", "tags/", "messages/", "abandoned-checkouts/"])
 def test_care_admin_is_admin_only(api_client, auth_client, cce_user, customer, path):
     assert api_client.get(A + path).status_code == 401
     assert auth_client(cce_user).get(A + path).status_code == 403
@@ -116,34 +107,3 @@ def test_a_lead_can_be_dismissed(admin_client):
     assert admin_client.patch(f"{A}abandoned-checkouts/{lead.pk}/", {"status": "dismissed"}, format="json").status_code == 200
     assert admin_client.get(f"{A}abandoned-checkouts/").json()["count"] == 0
     assert admin_client.get(f"{A}abandoned-checkouts/?status=dismissed").json()["count"] == 1
-
-
-# --- return requests ----------------------------------------------------------------------------------------------------
-
-
-def url(order):
-    return f"/api/v1/orders/{order.number}/return-request/"
-
-
-def test_return_only_for_own_delivered_order_within_the_window(auth_client, admin_user, customer):
-    client = auth_client(customer)
-    body = {"reason": "damaged", "details": "The bottle arrived cracked."}
-    order = owned(new_order(admin_user), customer)
-    assert client.post(url(order), body, format="json").status_code == 400  # not delivered yet
-    delivered(order, hours_ago=1)
-    r = client.post(url(order), body, format="json")
-    assert r.status_code == 201 and r.json()["status"] == "requested"
-    assert client.post(url(order), body, format="json").status_code == 400  # one open request
-    late = delivered(owned(new_order(admin_user), customer), hours_ago=72)
-    assert client.post(url(late), body, format="json").status_code == 400  # past 48h
-    someone_elses = delivered(owned(new_order(admin_user), UserFactory()))
-    assert client.post(url(someone_elses), body, format="json").status_code == 404
-
-
-def test_admin_moves_a_return_through_valid_statuses(admin_client, admin_user, customer):
-    order = delivered(owned(new_order(admin_user), customer))
-    req = ReturnRequest.objects.create(order=order, customer=customer, reason="damaged", details="Cracked")
-    assert admin_client.patch(f"{A}returns/{req.pk}/", {"status": "refunded"}, format="json").status_code == 400
-    r = admin_client.patch(f"{A}returns/{req.pk}/", {"status": "approved", "admin_note": "We'll pick it up tomorrow."}, format="json")
-    assert r.status_code == 200 and r.json()["status"] == "approved" and r.json()["handled_by"]["id"] == admin_user.pk
-    assert admin_client.patch(f"{A}returns/{req.pk}/", {"status": "refunded"}, format="json").json()["status"] == "refunded"

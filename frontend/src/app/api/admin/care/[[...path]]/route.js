@@ -18,10 +18,6 @@ const isPath = (p, method) => {
     if (p.length === 3 && ID.test(id) && sub === "notes") return method === "POST";
   }
   if (area === "abandoned-checkouts") return p.length === 1 ? method === "GET" : p.length === 2 && ID.test(id) && method === "PATCH";
-  if (area === "returns") {
-    if (p.length === 1) return method === "GET";
-    if (p.length === 2 && ID.test(id)) return method === "GET" || method === "PATCH";
-  }
   return false;
 };
 

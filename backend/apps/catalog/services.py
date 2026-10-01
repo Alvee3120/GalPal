@@ -3,6 +3,8 @@
 
 import logging
 
+from django.conf import settings
+from django.core.cache import cache
 from django.core.exceptions import ValidationError
 from django.core.files.base import ContentFile
 from django.db import transaction
@@ -91,6 +93,31 @@ def assert_valid_parent(category, new_parent, *, lock=False):
 # --- public visibility ------------------------------------------------------------------
 
 
+CATEGORY_CACHE_KEY = "catalog:category_rows:v1"
+
+
+def invalidate_category_cache():
+    try:
+        cache.delete(CATEGORY_CACHE_KEY)
+    except Exception:  # noqa: BLE001 - a cache outage must never break a save
+        logger.warning("Could not invalidate the category cache", exc_info=True)
+
+
+def _category_rows():
+    """The small, hot category table as plain rows, cached (Redis in production); dropped on every category change."""
+    try:
+        rows = cache.get(CATEGORY_CACHE_KEY)
+    except Exception:  # noqa: BLE001 - cache down: read the database
+        rows = None
+    if rows is None:
+        rows = list(Category.objects.order_by("sort_order", "name").values("id", "parent_id", "is_active", "name", "slug"))
+        try:
+            cache.set(CATEGORY_CACHE_KEY, rows, getattr(settings, "CATALOG_CACHE_TTL", 30))
+        except Exception:  # noqa: BLE001
+            logger.warning("Could not cache categories", exc_info=True)
+    return rows
+
+
 class CategoryIndex:
     """
     One light query over the whole (small) category table, answering the questions the public
@@ -101,8 +128,7 @@ class CategoryIndex:
     """
 
     def __init__(self):
-        rows = Category.objects.order_by("sort_order", "name").values("id", "parent_id", "is_active", "name", "slug")
-        self.rows = {row["id"]: row for row in rows}
+        self.rows = {row["id"]: row for row in _category_rows()}
         self._visible = None
 
     def visible_ids(self):
@@ -222,6 +248,7 @@ def _reparent_children(category, children, target):
             "move_children_to", f"The target already has a category named: {', '.join(clashes)}.", "name_clash"
         )
     Category.objects.filter(parent=category).update(parent=target, updated_at=timezone.now())
+    transaction.on_commit(invalidate_category_cache)  # a bulk update sends no post_save
 
 
 # --- products: SKU, categories, variant options -------------------------------------------
@@ -337,7 +364,17 @@ def adjust_stock(*, product, variant=None, quantity_change, reason, reference=""
     if old_balance <= 0 < new_balance:  # back in stock: text whoever asked, once the stock change has committed
         product_id = variant.product_id if variant else product.pk
         transaction.on_commit(lambda: _queue_restock_alerts(product_id, variant.pk if variant else None))
+    owner = variant.product if variant else locked
+    threshold = owner.effective_low_stock_threshold
+    if quantity_change < 0 and new_balance <= threshold < old_balance:  # just dropped to the alert level: tell the admins
+        transaction.on_commit(lambda: _alert_low_stock(owner, variant, new_balance, threshold))
     return locked, movement
+
+
+def _alert_low_stock(product, variant, stock, threshold):
+    from apps.notifications import services as notifications
+
+    notifications.low_stock(product, variant, stock, threshold)
 
 
 # --- products: bulk actions & duplication ---------------------------------------------------
@@ -490,8 +527,7 @@ def send_restock_alerts(product_id, variant_id=None):
     Text everyone waiting for this product/variant, if it really is buyable right now, and mark them notified.
     A variant coming back also answers requests made for the product as a whole. Returns how many were sent.
     """
-    from apps.core.messaging import send_sms
-    from apps.site_settings.services import get_site_settings
+    from apps.notifications import services as notifications
 
     from .models import StockNotification
 
@@ -509,14 +545,10 @@ def send_restock_alerts(product_id, variant_id=None):
 
     options = ", ".join(v.value for v in variant.attribute_values.all()) if variant else ""
     name = f"{product.name} ({options})" if options else product.name
-    message = f"Good news! {name} is back in stock at {get_site_settings().site_name}. Order soon, stock is limited."
     sent = 0
     for request in waiting:
-        try:
-            send_sms(request.phone, message)
-        except Exception:  # noqa: BLE001 - one failed number mustn't stop the rest; it stays pending for next time
-            logger.exception("Back-in-stock SMS failed for notification %s", request.pk)
-            continue
+        if not notifications.back_in_stock(request.phone, name):
+            continue  # failed (see the notification log): it stays pending for next time
         request.notified_at = timezone.now()
         request.save(update_fields=["notified_at", "updated_at"])
         sent += 1

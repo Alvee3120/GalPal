@@ -2550,6 +2550,128 @@ a.dashboard-card:hover {
   color: var(--color-muted);
 }
 
+/* Announcement bar above the navbar (component/content/AnnouncementBar.jsx) */
+.announcement-bar {
+  background-color: var(--color-brand);
+  color: var(--color-white);
+}
+
+.announcement-bar__link {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.announcement-bar__item {
+  animation: announcement-in 0.4s ease-out;
+}
+
+@keyframes announcement-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .announcement-bar__item {
+    animation: none;
+  }
+}
+
+/* Hidden while the page is scrolled (component/shared/Navbar.jsx): grid rows animate the height to 0 smoothly. */
+.announcement-collapse {
+  display: grid;
+  grid-template-rows: 1fr;
+  transition: grid-template-rows 0.3s ease;
+}
+
+.announcement-collapse[data-hidden="true"] {
+  grid-template-rows: 0fr;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .announcement-collapse {
+    transition: none;
+  }
+}
+
+/* FAQ page (app/faq) */
+.faq-item summary {
+  list-style: none;
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.faq-item summary::-webkit-details-marker {
+  display: none;
+}
+
+.faq-item summary::after {
+  content: "+";
+  color: var(--color-brand);
+  font-weight: 600;
+}
+
+.faq-item[open] summary::after {
+  content: "\2212";
+}
+
+.legal-page ol {
+  list-style: decimal;
+  padding-left: 1.25rem;
+}
+
+/* FAQs beside the contact form (app/contact) */
+.contact-faq {
+  border: 1px solid var(--color-border);
+}
+
+.contact-faq[open] {
+  border-color: var(--color-brand);
+}
+
+/* CMS text in the About page's story column (app/about) */
+.about-rich h2 {
+  font-family: var(--font-custom);
+  font-size: 1.875rem;
+  line-height: 1.2;
+  margin-bottom: 1rem;
+}
+
+.about-rich h3 {
+  font-weight: 600;
+  margin: 1rem 0 0.5rem;
+}
+
+.about-rich p + p,
+.about-rich ul,
+.about-rich ol {
+  margin-top: 1rem;
+}
+
+.about-rich ul {
+  list-style: disc;
+  padding-left: 1.25rem;
+}
+
+.about-rich ol {
+  list-style: decimal;
+  padding-left: 1.25rem;
+}
+
+/* Content Pages editor preview (component/dashboard/content/) */
+.content-preview {
+  border: 1px solid var(--color-border);
+  padding: 1.25rem;
+  max-height: 32rem;
+  overflow-y: auto;
+}
+
 /* Customer care lists (component/dashboard/care/): the selected support message */
 .care-row {
   border: 1px solid transparent;

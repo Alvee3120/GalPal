@@ -10,9 +10,6 @@ from .models import (
     CustomerNote,
     CustomerTag,
     MessageStatus,
-    ReturnReason,
-    ReturnRequest,
-    ReturnStatus,
 )
 
 
@@ -37,20 +34,6 @@ class CheckoutLeadInputSerializer(serializers.Serializer):
     phone = serializers.CharField(max_length=20)
     email = serializers.CharField(max_length=254, required=False, allow_blank=True)
     district = serializers.CharField(max_length=60, required=False, allow_blank=True)
-
-
-class ReturnRequestInputSerializer(serializers.Serializer):
-    reason = serializers.ChoiceField(choices=ReturnReason.choices)
-    details = serializers.CharField(max_length=2000)
-
-
-class CustomerReturnRequestSerializer(serializers.ModelSerializer):
-    """What the customer sees about their own request (no staff names)."""
-
-    class Meta:
-        model = ReturnRequest
-        fields = ["id", "reason", "details", "status", "admin_note", "created_at", "updated_at"]
-        read_only_fields = fields
 
 
 # --- admin -------------------------------------------------------------------------------------------------------------
@@ -135,23 +118,4 @@ class AdminCheckoutLeadSerializer(serializers.ModelSerializer):
     def validate_status(self, value):
         if value == CheckoutLeadStatus.CONVERTED:
             raise serializers.ValidationError("A checkout is marked Ordered automatically when its order is placed.")
-        return value
-
-
-class AdminReturnRequestSerializer(serializers.ModelSerializer):
-    order = CareOrderSerializer(read_only=True)
-    customer = serializers.SerializerMethodField()
-    handled_by = CareStaffRefSerializer(read_only=True, allow_null=True)
-
-    class Meta:
-        model = ReturnRequest
-        fields = ["id", "order", "customer", "reason", "details", "status", "admin_note", "handled_by", "created_at", "updated_at"]
-        read_only_fields = ["id", "order", "customer", "reason", "details", "handled_by", "created_at", "updated_at"]
-
-    def get_customer(self, obj) -> dict:
-        return {"id": obj.customer_id, "full_name": obj.customer.full_name, "phone": obj.customer.phone}
-
-    def validate_status(self, value):
-        if value not in ReturnStatus.values:
-            raise serializers.ValidationError("Unknown status.")
         return value

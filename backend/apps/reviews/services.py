@@ -116,10 +116,15 @@ def reply(review, *, user, text):
     text = (text or "").strip()
     if not text:
         raise field_error("text", "A reply cannot be empty.", "reply_required")
+    changed = text != review.admin_reply
     review.admin_reply = text
     review.admin_reply_at = timezone.now()
     review.replied_by = user if user and user.pk else None
     review.save(update_fields=["admin_reply", "admin_reply_at", "replied_by", "updated_at"])
+    if changed:
+        from apps.notifications import services as notifications
+
+        transaction.on_commit(lambda: notifications.review_reply(review))
     return review
 
 

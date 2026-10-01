@@ -1,11 +1,20 @@
 import LegalPage from "@/component/shared/LegalPage";
+import CmsPage, { cmsMetadata } from "@/component/content/CmsPage";
+import { getContentPage } from "@/lib/content";
 
-export const metadata = {
+const FALLBACK_METADATA = {
   title: "Privacy Policy | GalPal",
   description: "What personal information GalPal collects, how it's used and protected, and the choices you have.",
 };
 
-export default function PrivacyPolicyPage() {
+// Admin → Content Pages can replace this text with a "privacy-policy" page; until then the built-in text below shows.
+export async function generateMetadata() {
+  return cmsMetadata(await getContentPage("privacy-policy"), FALLBACK_METADATA);
+}
+
+export default async function PrivacyPolicyPage() {
+  const page = await getContentPage("privacy-policy");
+  if (page) return <CmsPage page={page} />;
   return (
     <LegalPage
       title="Privacy Policy"
