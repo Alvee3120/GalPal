@@ -1,4 +1,5 @@
-"""Customer care admin endpoints (Module 14), mounted at /api/v1/admin/. Admin only (CCE gets 403)."""
+"""Customer care admin endpoints (Module 14), mounted at /api/v1/admin/. Admin only, except messages/ and
+abandoned-checkouts/, which CCE can use too."""
 from django.urls import path
 from rest_framework.routers import SimpleRouter
 

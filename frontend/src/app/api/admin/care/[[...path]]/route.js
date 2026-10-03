@@ -1,6 +1,7 @@
 import { backendFetch } from "@/lib/backendAuth";
 
-// Proxy to the Customer Care admin API (apps.care.views_admin — IsAdmin: CCE and customers get 403 there).
+// Proxy to the Customer Care admin API (apps.care.views_admin — IsAdmin, except messages and abandoned checkouts which
+// are IsAdminOrCCE; the backend decides, customers always get 403).
 // Narrowed to the routes the dashboard uses.
 const ID = /^\d+$/;
 const isPath = (p, method) => {

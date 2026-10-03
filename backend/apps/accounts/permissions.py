@@ -37,9 +37,14 @@ ORDER_STAFF_ROLES = frozenset({User.Role.ADMIN, User.Role.CCE})
 # Roles allowed into product management (the per-action subset of the catalog admin API above).
 CATALOG_STAFF_ROLES = frozenset({User.Role.ADMIN, User.Role.CCE})
 
-# URL prefix (under /api/v1/admin/) that CCE may reach in full; the route-sweep test enforces it, plus the
-# individual product-management endpoints it lists in `route_sweep.CCE_CATALOG_ENDPOINTS`.
-CCE_ALLOWED_ADMIN_PREFIXES = ("/api/v1/admin/orders/",)
+# URL prefixes (under /api/v1/admin/) that CCE may reach in full; the route-sweep test enforces it, plus the
+# individual product-management endpoints it lists in `route_sweep.CCE_CATALOG_ENDPOINTS`. The support inbox and
+# abandoned checkouts (apps.care) are shared with CCE; the rest of customer care stays Admin only.
+CCE_ALLOWED_ADMIN_PREFIXES = (
+    "/api/v1/admin/orders/",
+    "/api/v1/admin/care/messages/",
+    "/api/v1/admin/care/abandoned-checkouts/",
+)
 
 
 def _has_role(request, roles):

@@ -4,12 +4,14 @@ import { useState } from "react";
 import { notify } from "@/lib/notify";
 import { messageFor } from "@/lib/apiError";
 import ChangePasswordForm from "./ChangePasswordForm";
+import AddressesPageContent from "./AddressesPageContent";
 
 // "My Account": the editable fields from the EXISTING profile API (full_name, email — phone/role are backend
 // read-only, see ProfileSerializer.read_only_fields, so they're shown but not editable here), via the existing
-// /api/account proxy (PATCH /account/profile/). Saved addresses are listed read-only; adding/editing addresses
-// already happens at checkout (lib/checkoutAccount.js) — a dedicated address manager here is a further step.
-export default function AccountForm({ initialProfile, addresses }) {
+// /api/account proxy (PATCH /account/profile/). Saved addresses: with `manageAddresses` (the CCE / Admin account page)
+// the full address book — add, edit, delete, set default (AddressesPageContent); otherwise a read-only list, since
+// customers manage theirs on their own Address page.
+export default function AccountForm({ initialProfile, addresses, manageAddresses = false }) {
   const [profile, setProfile] = useState(initialProfile);
   const [values, setValues] = useState({ full_name: initialProfile.full_name, email: initialProfile.email ?? "" });
   const [saving, setSaving] = useState(false);
@@ -90,29 +92,33 @@ export default function AccountForm({ initialProfile, addresses }) {
         <ChangePasswordForm />
       </div>
 
-      <div>
-        <h2 className="custom-font text-xl">Saved Addresses</h2>
-        {addresses.length === 0 ? (
-          <p className="showcase-muted mt-3 text-sm">No saved addresses yet — one is added automatically the next time you check out.</p>
-        ) : (
-          <ul className="mt-4 grid gap-3 sm:grid-cols-2">
-            {addresses.map((address) => (
-              <li key={address.id} className="dashboard-card rounded-2xl p-4 text-sm">
-                <div className="flex items-center justify-between gap-2">
-                  <p className="font-semibold">{address.label || "Address"}</p>
-                  {address.is_default && <span className="product-card__chip rounded-full px-2 py-0.5 text-xs font-medium">Default</span>}
-                </div>
-                <p className="mt-1">{address.full_name}</p>
-                <p className="showcase-muted">{address.phone}</p>
-                <p className="showcase-muted mt-1">
-                  {address.address_line}, {address.area ? `${address.area}, ` : ""}
-                  {address.district}
-                </p>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
+      {manageAddresses ? (
+        <AddressesPageContent initialAddresses={addresses} embedded />
+      ) : (
+        <div>
+          <h2 className="custom-font text-xl">Saved Addresses</h2>
+          {addresses.length === 0 ? (
+            <p className="showcase-muted mt-3 text-sm">No saved addresses yet — one is added automatically the next time you check out.</p>
+          ) : (
+            <ul className="mt-4 grid gap-3 sm:grid-cols-2">
+              {addresses.map((address) => (
+                <li key={address.id} className="dashboard-card rounded-2xl p-4 text-sm">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="font-semibold">{address.label || "Address"}</p>
+                    {address.is_default && <span className="product-card__chip rounded-full px-2 py-0.5 text-xs font-medium">Default</span>}
+                  </div>
+                  <p className="mt-1">{address.full_name}</p>
+                  <p className="showcase-muted">{address.phone}</p>
+                  <p className="showcase-muted mt-1">
+                    {address.address_line}, {address.area ? `${address.area}, ` : ""}
+                    {address.district}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
     </div>
   );
 }

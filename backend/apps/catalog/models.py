@@ -212,7 +212,8 @@ class Product(TimeStampedModel, SoftDeleteModel, SlugModel):
         return self.name
 
     @property
-    def on_sale(self):
+    def own_sale_active(self):
+        """The product's own sale price (`discount_price`) is inside its sale window right now."""
         if self.discount_price is None:
             return False
         now = timezone.now()
@@ -222,15 +223,32 @@ class Product(TimeStampedModel, SoftDeleteModel, SlugModel):
             return False
         return True
 
+    def _resolved_price(self):
+        # One reduction only: the lower of the own sale price and the best live Admin discount (apps.discounts).
+        from apps.discounts import services as discounts
+
+        return discounts.resolve(self.pk, self.regular_price, self.discount_price if self.own_sale_active else None)
+
     @property
     def effective_price(self):
-        return self.discount_price if self.on_sale else self.regular_price
+        return self._resolved_price()[0]
+
+    @property
+    def on_sale(self):
+        return self.effective_price < self.regular_price
 
     @property
     def discount_percentage(self):
-        if not self.on_sale or not self.regular_price:
+        price = self.effective_price
+        if not self.regular_price or price >= self.regular_price:
             return 0
-        return int(round((self.regular_price - self.discount_price) / self.regular_price * 100))
+        return int(round((self.regular_price - price) / self.regular_price * 100))
+
+    @property
+    def applied_discount(self):
+        """The Admin discount behind the current price ({id, name, type, value}), or None (regular / own sale price)."""
+        rule = self._resolved_price()[1]
+        return rule.as_dict() if rule else None
 
     @property
     def in_stock(self):
@@ -365,13 +383,33 @@ class ProductVariant(TimeStampedModel):
             self.product.discount_price if self.regular_price is None else None
         )
 
-    @property
-    def on_sale(self):
-        return self.discount_price_effective is not None and self.product.on_sale
+    def _resolved_price(self):
+        # Same rule as Product: the variant's own sale price (or the product's) vs the best live Admin discount, which
+        # is worked out on the variant's regular price.
+        from apps.discounts import services as discounts
+
+        own = self.discount_price_effective if self.discount_price_effective is not None and self.product.own_sale_active else None
+        return discounts.resolve(self.product_id, self.regular_price_effective, own)
 
     @property
     def effective_price(self):
-        return self.discount_price_effective if self.on_sale else self.regular_price_effective
+        return self._resolved_price()[0]
+
+    @property
+    def on_sale(self):
+        return self.effective_price < self.regular_price_effective
+
+    @property
+    def discount_percentage(self):
+        regular, price = self.regular_price_effective, self.effective_price
+        if not regular or price >= regular:
+            return 0
+        return int(round((regular - price) / regular * 100))
+
+    @property
+    def applied_discount(self):
+        rule = self._resolved_price()[1]
+        return rule.as_dict() if rule else None
 
     @property
     def in_stock(self):

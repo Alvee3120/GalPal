@@ -9,6 +9,7 @@ import NotifyMeButton from "@/component/shared/NotifyMeButton";
 import ProductAccordion from "./ProductAccordion";
 import SaleCountdown from "./SaleCountdown";
 import formatPrice from "@/lib/formatPrice";
+import { discountOff } from "@/lib/discountLabel";
 import { notify } from "@/lib/notify";
 import { getStockCap, quantityInCart, remainingToAdd } from "@/lib/stockLimit";
 import { buildAttributeGroups } from "@/lib/productVariants";
@@ -44,6 +45,7 @@ export default function ProductDetailContent({ product, currencySymbol }) {
   const displayImage = selectedVariant?.image || activeImage || product.feature_image;
   const priceSource = selectedVariant ?? product;
   const discounted = priceSource.on_sale && priceSource.regular_price !== priceSource.effective_price;
+  const off = discountOff(priceSource, currencySymbol);
 
   let actionState; // "add" | "choose" | "unavailable" | "notify"
   if (!product.has_variants) {
@@ -133,13 +135,11 @@ export default function ProductDetailContent({ product, currencySymbol }) {
         <p className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-1">
           <span className="text-lg font-semibold">{formatPrice(priceSource.effective_price, currencySymbol)}</span>
           {discounted && <span className="showcase-muted text-sm line-through">{formatPrice(priceSource.regular_price, currencySymbol)}</span>}
-          {discounted && priceSource.discount_percentage > 0 && (
-            <span className="product-card__chip rounded-full px-2 py-0.5 text-xs font-medium">{priceSource.discount_percentage}%</span>
-          )}
+          {discounted && off && <span className="product-card__chip rounded-full px-2 py-0.5 text-xs font-medium">{off.text}</span>}
         </p>
 
         {/* Only for a product that really has a sale price AND both sale dates; the component itself hides for invalid dates or once the sale is over. */}
-        {priceSource.discount_price != null && product.sale_start_at && product.sale_end_at && (
+        {priceSource.discount_price != null && !priceSource.applied_discount && product.sale_start_at && product.sale_end_at && (
           <SaleCountdown saleStartAt={product.sale_start_at} saleEndAt={product.sale_end_at} className="mt-4" />
         )}
 

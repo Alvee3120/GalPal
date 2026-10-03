@@ -61,6 +61,7 @@ function toCardProduct(summary, full) {
     effective_price: full?.effective_price ?? summary.price,
     regular_price: full?.regular_price ?? summary.price,
     discount_percentage: full?.discount_percentage ?? 0,
+    applied_discount: full?.applied_discount ?? null,
     on_sale: full?.on_sale ?? false,
     in_stock: full?.in_stock ?? true,
     brand: full?.brand ?? null,

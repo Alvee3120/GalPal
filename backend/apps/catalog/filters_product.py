@@ -2,6 +2,7 @@
 
 import django_filters
 from django.db.models import Case, DecimalField, Exists, F, OuterRef, Q, Value, When
+from django.db.models.functions import Coalesce, Least
 from django.utils import timezone
 
 from . import services
@@ -24,20 +25,28 @@ def annotate_availability(queryset):
 
 
 def annotate_effective_price(queryset):
-    """Add `effective_price_db`: the discount price while on sale, else the regular price."""
+    """
+    Add `effective_price_db`: the price the product sells for now — the lower of its own sale price (inside the sale
+    window) and the best live Admin discount (apps.discounts.services.annotate_admin_price), else the regular price.
+    The same rule as Product.effective_price, so sorting and price filters match what the customer is charged.
+    """
+    from apps.discounts.services import annotate_admin_price
+
+    money = DecimalField(max_digits=12, decimal_places=2)
     now = timezone.now()
-    on_sale = (
+    own_sale = (
         Q(discount_price__isnull=False)
         & (Q(sale_start_at__isnull=True) | Q(sale_start_at__lte=now))
         & (Q(sale_end_at__isnull=True) | Q(sale_end_at__gte=now))
     )
+    queryset = annotate_admin_price(queryset, now).annotate(
+        own_sale_price_db=Case(When(own_sale, then=F("discount_price")), default=Value(None, output_field=money), output_field=money),
+    )
     return queryset.annotate(
-        effective_price_db=Case(
-            When(on_sale, then=F("discount_price")),
-            default=F("regular_price"),
-            output_field=DecimalField(max_digits=12, decimal_places=2),
-        ),
-        on_sale_db=Case(When(on_sale, then=Value(True)), default=Value(False)),
+        # PostgreSQL's LEAST ignores NULLs; both NULL → the regular price.
+        effective_price_db=Coalesce(Least(F("own_sale_price_db"), F("admin_price_db"), output_field=money), F("regular_price"), output_field=money),
+    ).annotate(
+        on_sale_db=Case(When(effective_price_db__lt=F("regular_price"), then=Value(True)), default=Value(False)),
         # Best-effort "popularity" until Orders (sales count) land: bestsellers first, then reviews.
         popularity_db=Case(When(is_bestseller=True, then=Value(1_000_000)), default=Value(0)) + F("review_count"),
     )

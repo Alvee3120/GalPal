@@ -1,5 +1,6 @@
 import Link from "next/link";
 import formatPrice from "@/lib/formatPrice";
+import { discountOff } from "@/lib/discountLabel";
 import ProductImage from "./ProductImage";
 import ProductCardAction from "./ProductCardAction";
 
@@ -8,9 +9,10 @@ import ProductCardAction from "./ProductCardAction";
 //   variant="compact"  a slim horizontal card (thumbnail | name + price | Add), used under shoppable videos.
 //                      Same data, same link, same image handling, same cart button as the default tile.
 export default function ProductCard({ product, currencySymbol = "", variant = "default", className = "" }) {
-  const { name, slug, feature_image: image, effective_price, regular_price, on_sale, discount_percentage, in_stock, brand, primary_category } = product;
+  const { name, slug, feature_image: image, effective_price, regular_price, on_sale, in_stock, brand, primary_category } = product;
   const info = brand?.name ?? primary_category?.name;
   const discounted = on_sale && regular_price !== effective_price;
+  const off = discountOff(product, currencySymbol); // "20% OFF" or, for an Admin fixed discount, "৳300 OFF"
 
   if (variant === "compact") {
     return (
@@ -24,7 +26,7 @@ export default function ProductCard({ product, currencySymbol = "", variant = "d
             <p className="mt-0.5 flex flex-wrap items-baseline gap-x-1.5 text-sm">
               <span className="product-card__price font-semibold">{formatPrice(effective_price, currencySymbol)}</span>
               {discounted && <span className="showcase-muted text-xs line-through">{formatPrice(regular_price, currencySymbol)}</span>}
-              {discounted && discount_percentage > 0 && <span className="product-card__chip rounded-full px-1.5 py-0.5 text-[0.625rem] font-medium">-{discount_percentage}%</span>}
+              {discounted && off && <span className="product-card__chip rounded-full px-1.5 py-0.5 text-[0.625rem] font-medium">{off.short}</span>}
             </p>
           </div>
         </Link>
@@ -38,9 +40,9 @@ export default function ProductCard({ product, currencySymbol = "", variant = "d
       <Link href={`/products/${slug}`} className="product-card__link block rounded-[inherit]">
         <div className="product-card__media product-card__media--bleed relative aspect-square overflow-hidden">
           <ProductImage src={image} alt={name} bleed />
-          {on_sale && discount_percentage > 0 && (
-            <span className="product-card__badge absolute left-2 top-2 rounded-full px-3 py-1 text-xs font-medium sm:left-3 sm:top-3">
-              {discount_percentage}% OFF
+          {off && (
+            <span className="product-card__badge product-card__badge--sale absolute left-2 top-2 rounded-full px-3 py-1 text-xs font-medium sm:left-3 sm:top-3">
+              {off.text}
             </span>
           )}
           {in_stock === false && (
