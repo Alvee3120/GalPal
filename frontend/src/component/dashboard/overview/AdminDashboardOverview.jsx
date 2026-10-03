@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
   FiAlertCircle,
+  FiArrowRight,
   FiArrowDownRight,
   FiArrowUpRight,
   FiCalendar,
@@ -12,6 +13,7 @@ import {
   FiPackage,
   FiRefreshCw,
   FiShoppingBag,
+  FiShoppingCart,
   FiUserPlus,
 } from "react-icons/fi";
 import { TbCurrencyTaka } from "react-icons/tb";
@@ -24,7 +26,6 @@ import ProductImage from "@/component/shared/ProductImage";
 import OrderDateRangePicker from "../OrderDateRangePicker";
 import TimeSeriesChart from "./TimeSeriesChart";
 import StatusDonut from "./StatusDonut";
-import OldCartsCard from "../oldCarts/OldCartsCard";
 import DashboardReports from "./DashboardReports";
 
 const STATUS_ORDER = ["pending", "confirmed", "processing", "shipped", "delivered", "cancelled", "returned", "failed"];
@@ -239,6 +240,7 @@ export default function AdminDashboardOverview({ user, initialRange, initialData
     load(next);
   }
 
+  const showOldCarts = oldCartCount !== null && oldCartCount !== undefined;
   const head = data?.headline;
   const inv = data?.inventory;
   const series = data?.series ?? [];
@@ -263,9 +265,6 @@ export default function AdminDashboardOverview({ user, initialRange, initialData
         <RangeFilter range={range} onChange={changeRange} disabled={loading} />
       </header>
 
-      {/* Not tied to the date range above: cart age is measured from when items were added. */}
-      <OldCartsCard count={oldCartCount} href="/dashboard/admin/old-carts" />
-
       {failed ? (
         <div className="dashboard-card flex flex-col items-center gap-3 rounded-2xl px-6 py-14 text-center">
           <FiAlertCircle className="showcase-muted h-8 w-8" aria-hidden="true" />
@@ -277,7 +276,10 @@ export default function AdminDashboardOverview({ user, initialRange, initialData
         </div>
       ) : (
         <div className={`flex flex-col gap-6 transition-opacity ${loading ? "opacity-70" : ""}`} aria-busy={loading}>
-          <section aria-label="Key figures" className="grid grid-cols-1 gap-4 min-[520px]:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5">
+          <section
+            aria-label="Key figures"
+            className={`grid grid-cols-1 gap-4 min-[520px]:grid-cols-2 lg:grid-cols-3 ${showOldCarts ? "2xl:grid-cols-6" : "2xl:grid-cols-5"}`}
+          >
             <StatCard
               label="Total Revenue"
               value={short(head?.revenue.value)}
@@ -296,6 +298,20 @@ export default function AdminDashboardOverview({ user, initialRange, initialData
               icon={TbCurrencyTaka}
               footer={<span className="showcase-muted text-xs">Current stock × today&apos;s price</span>}
             />
+            {/* Not tied to the date range: cart age is measured from when items were added (more than 6 hours). */}
+            {showOldCarts && (
+              <StatCard
+                label="Customers with Old Carts"
+                value={compactNumber(oldCartCount)}
+                icon={FiShoppingCart}
+                footer={
+                  <Link href="/dashboard/admin/old-carts" className="inline-flex items-center gap-1 text-xs font-semibold hover:underline">
+                    View Old Carts
+                    <FiArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+                  </Link>
+                }
+              />
+            )}
           </section>
 
           <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
