@@ -41,7 +41,7 @@ export default function ProductCard({ product, currencySymbol = "", variant = "d
         <div className="product-card__media product-card__media--bleed relative aspect-square overflow-hidden">
           <ProductImage src={image} alt={name} bleed />
           {off && (
-            <span className="product-card__badge absolute left-2 top-2 rounded-full px-3 py-1 text-xs font-medium sm:left-3 sm:top-3">
+            <span className="product-card__badge product-card__badge--sale absolute left-2 top-2 rounded-full px-3 py-1 text-xs font-medium sm:left-3 sm:top-3">
               {off.text}
             </span>
           )}

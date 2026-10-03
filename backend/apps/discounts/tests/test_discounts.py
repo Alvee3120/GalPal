@@ -29,14 +29,16 @@ def window(start_hours=-1, end_hours=48):
     return {"starts_at": (now + timedelta(hours=start_hours)).isoformat(), "ends_at": (now + timedelta(hours=end_hours)).isoformat()}
 
 
-def make(kind="percentage", value="20", target="products", products=(), category=None, start_hours=-1, end_hours=48, active=True):
+def make(kind="percentage", value="20", target="products", products=(), categories=(), start_hours=-1, end_hours=48, active=True):
     now = timezone.now()
     d = Discount.objects.create(
-        name=f"{kind} {value}", kind=kind, value=Decimal(value), target_type=target, category=category, is_active=active,
+        name=f"{kind} {value}", kind=kind, value=Decimal(value), target_type=target, is_active=active,
         starts_at=now + timedelta(hours=start_hours), ends_at=now + timedelta(hours=end_hours),
     )
     if products:
         d.products.set(products)
+    if categories:
+        d.categories.set(categories)
     services.invalidate()
     return d
 
@@ -79,7 +81,7 @@ def test_end_must_be_after_start_and_category_must_be_given(auth_client, admin_u
     w = window()
     client = auth_client(admin_user)
     assert client.post(A, {"name": "x", "kind": "percentage", "value": "10", "target_type": "category",
-                           "starts_at": w["ends_at"], "ends_at": w["starts_at"], "category_id": Category.objects.create(name="C", slug="c").pk},
+                           "starts_at": w["ends_at"], "ends_at": w["starts_at"], "category_ids": [Category.objects.create(name="C", slug="c").pk]},
                        format="json").status_code == 400
     assert client.post(A, {"name": "x", "kind": "percentage", "value": "10", "target_type": "category", **w}, format="json").status_code == 400
 
@@ -117,7 +119,7 @@ def test_category_discount_includes_sub_categories_only():
     child = Category.objects.create(name="Serums", slug="serums", parent=parent)
     inside, outside = product("1000.00"), product("1000.00")
     ProductCategory.objects.create(product=inside, category=child, is_primary=True)
-    make(target="category", category=parent, value="10")
+    make(target="category", categories=[parent], value="10")
     assert fresh(inside).effective_price == Decimal("900.00")
     assert fresh(outside).effective_price == Decimal("1000.00")
 
@@ -126,7 +128,7 @@ def test_product_discount_beats_category_and_own_sale_competes_without_stacking(
     cat = Category.objects.create(name="Lips", slug="lips")
     p = product("1000.00")
     ProductCategory.objects.create(product=p, category=cat, is_primary=True)
-    make(target="category", category=cat, value="50")  # 500
+    make(target="category", categories=[cat], value="50")  # 500
     make(products=[p], value="10")  # 900 — product-specific wins even though the category one is cheaper
     assert fresh(p).effective_price == Decimal("900.00") and fresh(p).applied_discount["value"] == Decimal("10.00")
     Product.objects.filter(pk=p.pk).update(discount_price=Decimal("850.00"))
@@ -157,3 +159,18 @@ def test_status_filters(auth_client, admin_user):
     for status in ("active", "scheduled", "expired", "inactive"):
         body = client.get(f"{A}?status={status}").json()
         assert body["count"] == 1 and body["results"][0]["status"] == status
+
+
+def test_a_discount_can_cover_several_categories():
+    face, lips, other = (Category.objects.create(name=n, slug=n.lower()) for n in ("Face", "Lips", "Hair"))
+    a, b, c = product("1000.00"), product("1000.00"), product("1000.00")
+    for prod, cat in ((a, face), (b, lips), (c, other)):
+        ProductCategory.objects.create(product=prod, category=cat, is_primary=True)
+    make(target="category", categories=[face, lips], value="10")
+    assert fresh(a).effective_price == fresh(b).effective_price == Decimal("900.00")
+    assert fresh(c).effective_price == Decimal("1000.00")
+
+
+def test_category_discount_needs_at_least_one_category(auth_client, admin_user):
+    body = {"name": "x", "kind": "percentage", "value": "10", "target_type": "category", "category_ids": [], **window()}
+    assert auth_client(admin_user).post(A, body, format="json").status_code == 400

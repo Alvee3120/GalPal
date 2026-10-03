@@ -17,3 +17,4 @@ for _sender in (Discount, ProductCategory, Category):
     post_save.connect(_refresh, sender=_sender, dispatch_uid=f"discount_index_save_{_sender.__name__}")
     post_delete.connect(_refresh, sender=_sender, dispatch_uid=f"discount_index_delete_{_sender.__name__}")
 m2m_changed.connect(_refresh, sender=Discount.products.through, dispatch_uid="discount_index_products")
+m2m_changed.connect(_refresh, sender=Discount.categories.through, dispatch_uid="discount_index_categories")

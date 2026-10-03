@@ -100,23 +100,26 @@ def invalidate():
         logger.warning("Could not publish the discount index version", exc_info=True)
 
 
-def category_product_ids(category_id):
-    """Every product linked to this category or any category below it (the shop's category-filter rule)."""
+def category_product_ids(category_ids):
+    """Every product linked to any of these categories or a category below them (the shop's category-filter rule)."""
     from apps.catalog import services as catalog_services
     from apps.catalog.models import ProductCategory
 
-    if not category_id:
+    category_ids = {int(c) for c in category_ids or () if c}
+    if not category_ids:
         return set()
-    ids = catalog_services.descendant_ids(category_id, catalog_services.parent_map())
-    ids.add(category_id)
+    parents = catalog_services.parent_map()
+    ids = set(category_ids)
+    for category_id in category_ids:
+        ids |= catalog_services.descendant_ids(category_id, parents)
     return set(ProductCategory.objects.filter(category_id__in=ids).values_list("product_id", flat=True))
 
 
 def target_product_ids(discount):
-    """Product ids a discount covers now: its chosen products, or its category's products (none if it was deleted)."""
+    """Product ids a discount covers now: its chosen products, or the products of its categories."""
     if discount.target_type == DiscountTarget.PRODUCTS:
         return set(discount.products.values_list("id", flat=True))
-    return category_product_ids(discount.category_id)
+    return category_product_ids(discount.categories.values_list("id", flat=True))
 
 
 def _build():

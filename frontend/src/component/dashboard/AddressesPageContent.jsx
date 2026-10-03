@@ -49,7 +49,9 @@ function AddressCard({ address, onEdit, onDelete, onSetDefault, settingDefault }
 // backend AddressViewSet), following the same add/edit-modal + delete-confirm + optimistic-refresh pattern used
 // elsewhere in this dashboard. Ownership is enforced entirely server-side (AddressViewSet's queryset is scoped to
 // request.user, and IsOwner double-checks on update/delete) — this page never sends or trusts a customer id.
-export default function AddressesPageContent({ initialAddresses }) {
+// The address book (GET/POST/PATCH/DELETE /account/addresses/ via lib/addresses.js): the customer's own Address page,
+// and — `embedded` — the Saved Addresses section of the CCE / Admin "My Account" page.
+export default function AddressesPageContent({ initialAddresses, embedded = false }) {
   const [addresses, setAddresses] = useState(initialAddresses);
   const [formState, setFormState] = useState({ open: false, address: null });
   // Bumped on every open, so AddressForm gets a fresh `key` and remounts with clean initial values each time —
@@ -120,14 +122,14 @@ export default function AddressesPageContent({ initialAddresses }) {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="custom-font text-2xl sm:text-3xl">My Addresses</h1>
+        {embedded ? <h2 className="custom-font text-xl">Saved Addresses</h2> : <h1 className="custom-font text-2xl sm:text-3xl">My Addresses</h1>}
         <button type="button" onClick={openAdd} className="auth-btn auth-btn--primary rounded-full px-5 py-2 text-sm font-medium">
-          + Add New Address
+          + Add {embedded ? "Address" : "New Address"}
         </button>
       </div>
 
       {addresses.length === 0 ? (
-        <div className="dashboard-card flex flex-col items-center gap-3 rounded-2xl px-6 py-14 text-center">
+        <div className={`dashboard-card flex flex-col items-center gap-3 rounded-2xl px-6 text-center ${embedded ? "py-10" : "py-14"}`}>
           <p className="custom-font text-xl">No saved addresses yet</p>
           <button type="button" onClick={openAdd} className="auth-btn auth-btn--primary rounded-full px-6 py-2.5 text-sm font-medium">
             Add your first address

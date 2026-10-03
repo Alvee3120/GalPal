@@ -41,6 +41,8 @@
   --color-border: #e5e5e5;
   --color-brand: #6b0127;
   --color-heading: var(--color-brand);
+  --color-sale-badge-bg: var(--color-brand); /* "20% OFF" tag on product cards */
+  --color-sale-badge-text: var(--color-white);
   --color-focus: var(--color-foreground);
   --color-danger: #dc2626;
   --color-success: #1b5e3b; /* dark green */
@@ -766,6 +768,12 @@ body:has([data-standalone-page]) .footer {
 .product-card__badge {
   background-color: var(--color-background);
   color: var(--color-foreground);
+}
+
+/* The discount tag ("20% OFF" / "৳300 OFF"); "Out of Stock" keeps the plain badge above. */
+.product-card__badge--sale {
+  background-color: var(--color-sale-badge-bg);
+  color: var(--color-sale-badge-text);
 }
 
 .product-card__img {

@@ -23,10 +23,12 @@ const PAGE_SIZE = 10;
 const SEARCH_DELAY_MS = 350;
 
 const valueText = (d, symbol) => (d.kind === "percentage" ? `${Number(d.value)}%` : `${formatPrice(d.value, symbol)} OFF`);
-const targetText = (d) =>
-  d.target_type === "category"
-    ? d.category?.name ?? "Deleted category"
-    : `${d.product_count} product${d.product_count === 1 ? "" : "s"}`;
+const targetText = (d) => {
+  if (d.target_type !== "category") return `${d.product_count} product${d.product_count === 1 ? "" : "s"}`;
+  const names = (d.categories ?? []).map((c) => c.name);
+  if (names.length === 0) return "No categories";
+  return names.length <= 2 ? names.join(", ") : `${names.slice(0, 2).join(", ")} +${names.length - 2} more`;
+};
 
 function StatusBadge({ status }) {
   // Same four states and colours as coupons (.coupon-status in globals.css).

@@ -1,5 +1,6 @@
 """
-Admin discounts: automatic, time-boxed price reductions on a category (with its sub-categories) or on chosen products.
+Admin discounts: automatic, time-boxed price reductions on one or more categories (with their sub-categories) or on
+chosen products.
 
 A discount never writes a price anywhere. Product / variant `effective_price` (apps.catalog.models) asks
 `apps.discounts.services` for the best live discount and compares it with the product's own sale price, so the regular
@@ -40,8 +41,8 @@ class Discount(TimeStampedModel):
     value = models.DecimalField(max_digits=12, decimal_places=2, validators=[MinValueValidator(Decimal("0.01"))],
                                 help_text="Percent (0–100] or taka off, depending on `kind`.")
     target_type = models.CharField(max_length=10, choices=DiscountTarget.choices)
-    category = models.ForeignKey("catalog.Category", null=True, blank=True, on_delete=models.SET_NULL, related_name="discounts",
-                                 help_text="Category target: this category and every sub-category below it.")
+    categories = models.ManyToManyField("catalog.Category", blank=True, related_name="discounts",
+                                        help_text="Category target: these categories and every sub-category below them.")
     products = models.ManyToManyField("catalog.Product", blank=True, related_name="discounts")
     starts_at = models.DateTimeField(db_index=True)
     ends_at = models.DateTimeField(db_index=True)

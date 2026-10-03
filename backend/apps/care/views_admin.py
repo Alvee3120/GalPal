@@ -1,4 +1,5 @@
-"""Admin endpoints for Module 14, mounted at /api/v1/admin/care/. Admin only (IsAdmin): CCE and customers get 403."""
+"""Admin endpoints for Module 14, mounted at /api/v1/admin/care/. Admin only (IsAdmin), except the support inbox and
+abandoned checkouts, which Customer Care (CCE) works too (IsAdminOrCCE). Customers get 403 everywhere."""
 
 from django.db.models import Count
 from django_filters.rest_framework import DjangoFilterBackend
@@ -10,7 +11,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.accounts.models import User
-from apps.accounts.permissions import IsAdmin
+from apps.accounts.permissions import IsAdmin, IsAdminOrCCE
 from apps.core.serializers import ErrorResponseSerializer
 from apps.orders.models import Order
 
@@ -102,7 +103,7 @@ class CustomerTagViewSet(mixins.ListModelMixin, mixins.CreateModelMixin, mixins.
     partial_update=extend_schema(tags=TAG, summary="Change a message's status"),
 )
 class ContactMessageViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins.UpdateModelMixin, viewsets.GenericViewSet):
-    permission_classes = [IsAdmin]
+    permission_classes = [IsAdminOrCCE]  # shared with Customer Care
     serializer_class = AdminContactMessageSerializer
     http_method_names = ["get", "patch", "post", "head", "options"]
     queryset = ContactMessage.objects.select_related("user").prefetch_related("notes__author")
@@ -126,7 +127,7 @@ class ContactMessageViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, mi
     partial_update=extend_schema(tags=TAG, summary="Dismiss / reopen an abandoned checkout"),
 )
 class AbandonedCheckoutViewSet(mixins.ListModelMixin, mixins.UpdateModelMixin, viewsets.GenericViewSet):
-    permission_classes = [IsAdmin]
+    permission_classes = [IsAdminOrCCE]  # shared with Customer Care
     serializer_class = AdminCheckoutLeadSerializer
     http_method_names = ["get", "patch", "head", "options"]
     filter_backends = [filters.SearchFilter]

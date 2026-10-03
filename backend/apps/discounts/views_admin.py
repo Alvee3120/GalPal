@@ -24,7 +24,7 @@ TAG = ["Admin – Discounts"]
         ],
     ),
     retrieve=extend_schema(tags=TAG, summary="One discount"),
-    create=extend_schema(tags=TAG, summary="Create a discount", description="Category target: `category_id` (its "
+    create=extend_schema(tags=TAG, summary="Create a discount", description="Category target: `category_ids` (their "
                          "sub-categories are included). Products target: `product_ids`. Dates are ISO datetimes."),
     partial_update=extend_schema(tags=TAG, summary="Edit / activate / deactivate a discount"),
     destroy=extend_schema(tags=TAG, summary="Delete a discount", description="Orders already placed keep their prices; "
@@ -38,7 +38,7 @@ class DiscountViewSet(viewsets.ModelViewSet):
     search_fields = ["name"]
 
     def get_queryset(self):
-        queryset = Discount.objects.select_related("category", "created_by").prefetch_related("products")
+        queryset = Discount.objects.select_related("created_by").prefetch_related("products", "categories")
         params = self.request.query_params
         if params.get("status") in DiscountStatus.values:
             queryset = queryset.filter(services.status_q(params["status"]))

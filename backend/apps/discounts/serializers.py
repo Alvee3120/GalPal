@@ -15,12 +15,12 @@ class DiscountProductSerializer(serializers.ModelSerializer):
 
 class AdminDiscountSerializer(serializers.ModelSerializer):
     """
-    Admin create / edit. The backend decides everything: value range per type, end after start, the category or the
+    Admin create / edit. The backend decides everything: value range per type, end after start, the categories or the
     products exist, and a fixed amount isn't larger than the price of any product (or active variant) it covers now.
     """
 
-    category_id = serializers.PrimaryKeyRelatedField(source="category", queryset=Category.objects.all(), allow_null=True, required=False)
-    category = serializers.SerializerMethodField()
+    category_ids = serializers.PrimaryKeyRelatedField(source="categories", queryset=Category.objects.all(), many=True, required=False)
+    categories = serializers.SerializerMethodField()
     product_ids = serializers.PrimaryKeyRelatedField(source="products", queryset=Product.objects.all(), many=True, required=False)
     products = DiscountProductSerializer(many=True, read_only=True)
     product_count = serializers.SerializerMethodField()
@@ -30,13 +30,13 @@ class AdminDiscountSerializer(serializers.ModelSerializer):
     class Meta:
         model = Discount
         fields = [
-            "id", "name", "kind", "value", "target_type", "category_id", "category", "product_ids", "products",
+            "id", "name", "kind", "value", "target_type", "category_ids", "categories", "product_ids", "products",
             "product_count", "starts_at", "ends_at", "is_active", "status", "created_by", "created_at", "updated_at",
         ]
-        read_only_fields = ["id", "category", "products", "product_count", "status", "created_by", "created_at", "updated_at"]
+        read_only_fields = ["id", "categories", "products", "product_count", "status", "created_by", "created_at", "updated_at"]
 
-    def get_category(self, obj) -> dict | None:
-        return {"id": obj.category.id, "name": obj.category.name, "slug": obj.category.slug} if obj.category else None
+    def get_categories(self, obj) -> list[dict]:
+        return [{"id": c.id, "name": c.name, "slug": c.slug} for c in obj.categories.all()]
 
     def get_product_count(self, obj) -> int:
         """Products this discount covers right now (a category counts its products, sub-categories included)."""
@@ -67,9 +67,11 @@ class AdminDiscountSerializer(serializers.ModelSerializer):
             errors["ends_at"] = "The end must be after the start."
 
         if target == DiscountTarget.CATEGORY:
-            category = attrs.get("category", self.instance.category if self.instance else None)
-            if category is None:
-                errors["category_id"] = "Choose a category."
+            categories = attrs.get("categories")
+            if categories is None and self.instance is not None:
+                categories = list(self.instance.categories.all())
+            if not categories:
+                errors["category_ids"] = "Choose at least one category."
             attrs["products"] = []  # a category discount has no product list
         elif target == DiscountTarget.PRODUCTS:
             products = attrs.get("products")
@@ -80,7 +82,7 @@ class AdminDiscountSerializer(serializers.ModelSerializer):
                 errors["product_ids"] = "Choose at least one product."
             elif "products" in attrs:
                 attrs["products"] = products
-            attrs["category"] = None
+            attrs["categories"] = []  # and a product discount no categories
 
         if errors:
             raise serializers.ValidationError(errors)
@@ -89,8 +91,10 @@ class AdminDiscountSerializer(serializers.ModelSerializer):
             if target == DiscountTarget.PRODUCTS:
                 ids = {p.pk for p in (attrs.get("products") or (self.instance.products.all() if self.instance else []))}
             else:
-                category = attrs.get("category", getattr(self.instance, "category", None))
-                ids = services.category_product_ids(category.pk if category else None)
+                categories = attrs.get("categories")
+                if categories is None and self.instance is not None:
+                    categories = list(self.instance.categories.all())
+                ids = services.category_product_ids(c.pk for c in categories or [])
             too_cheap = services.items_priced_below(ids, value)
             if too_cheap:
                 raise serializers.ValidationError({"value": (

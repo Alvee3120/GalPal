@@ -49,8 +49,10 @@ export const DASHBOARD_NAV = {
   cce: [
     { label: "Dashboard", href: "/dashboard", icon: FiGrid },
     { label: "Orders", href: "/dashboard/CCE/orders", icon: FiClipboard },
-    { label: "Old Carts", href: "/dashboard/CCE/old-carts", icon: FiShoppingCart },
     { label: "Add Order", href: "/dashboard/CCE/orders/new", icon: FiPlusCircle },
+    { label: "Old Carts", href: "/dashboard/CCE/old-carts", icon: FiShoppingCart },
+    { label: "Support Inbox", href: "/dashboard/CCE/support", icon: FiInbox },
+    { label: "Abandoned Checkouts", href: "/dashboard/CCE/abandoned-checkouts", icon: FiUserX },
     { label: "Products", href: "/dashboard/CCE/products", icon: FiPackage },
     { label: "Categories", href: "/dashboard/CCE/categories", icon: FiLayers },
     { label: "Brands", href: "/dashboard/CCE/brands", icon: FiAward },

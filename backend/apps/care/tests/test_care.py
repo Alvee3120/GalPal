@@ -30,10 +30,17 @@ def owned(order, customer):
 # --- access ---------------------------------------------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("path", ["customers/1/", "tags/", "messages/", "abandoned-checkouts/"])
+@pytest.mark.parametrize("path", ["customers/1/", "tags/"])
 def test_care_admin_is_admin_only(api_client, auth_client, cce_user, customer, path):
     assert api_client.get(A + path).status_code == 401
     assert auth_client(cce_user).get(A + path).status_code == 403
+    assert auth_client(customer).get(A + path).status_code == 403
+
+
+@pytest.mark.parametrize("path", ["messages/", "abandoned-checkouts/"])
+def test_inbox_and_abandoned_checkouts_are_shared_with_cce(api_client, auth_client, cce_user, customer, path):
+    assert api_client.get(A + path).status_code == 401
+    assert auth_client(cce_user).get(A + path).status_code == 200
     assert auth_client(customer).get(A + path).status_code == 403
 
 

@@ -9,7 +9,6 @@ import { catalogFetch, errorText, joinStoreDateTime, splitStoreDateTime } from "
 import { flattenCategoryTree } from "@/lib/categoryAdmin";
 import { DISCOUNT_KINDS, DISCOUNT_TARGETS, discountFetch } from "@/lib/discountAdmin";
 import DualListPicker from "../coupons/DualListPicker";
-import SearchPicker from "../SearchPicker";
 
 const INPUT = "checkout-input rounded-lg px-3 py-2.5 text-sm";
 const MONEY = /^\d+(\.\d{1,2})?$/;
@@ -86,7 +85,7 @@ export default function DiscountForm({ discount = null, currencySymbol }) {
   const router = useRouter();
   const isEdit = Boolean(discount);
   const [v, setV] = useState(() => initial(discount));
-  const [category, setCategory] = useState(() => (discount?.category ? { id: discount.category.id, label: discount.category.name } : null));
+  const [chosenCategories, setChosenCategories] = useState(() => (discount?.categories ?? []).map((c) => ({ id: c.id, label: c.name })));
   const [products, setProducts] = useState(() =>
     (discount?.products ?? []).map((p) => ({ id: p.id, label: p.name, hint: p.sku, image: p.feature_image })),
   );
@@ -107,14 +106,6 @@ export default function DiscountForm({ discount = null, currencySymbol }) {
       cancelled = true;
     };
   }, []);
-
-  const searchCategories = useCallback(
-    async (query) => {
-      const q = query.toLowerCase();
-      return (categories ?? []).filter((c) => !q || c.label.toLowerCase().includes(q)).slice(0, 50);
-    },
-    [categories],
-  );
 
   const searchProducts = useCallback(
     async (query) => {
@@ -141,7 +132,7 @@ export default function DiscountForm({ discount = null, currencySymbol }) {
     const start = joinStoreDateTime(v.start_date, v.start_time);
     const end = joinStoreDateTime(v.end_date, v.end_time);
     if (end <= start) return "The end must be after the start.";
-    if (v.target_type === "category" && !category) return "Choose a category.";
+    if (v.target_type === "category" && chosenCategories.length === 0) return "Choose at least one category.";
     if (v.target_type === "products" && products.length === 0) return "Choose at least one product.";
     return null;
   }
@@ -157,7 +148,7 @@ export default function DiscountForm({ discount = null, currencySymbol }) {
       kind: v.kind,
       value: v.value.trim(),
       target_type: v.target_type,
-      category_id: v.target_type === "category" ? category.id : null,
+      category_ids: v.target_type === "category" ? chosenCategories.map((c) => c.id) : [],
       product_ids: v.target_type === "products" ? products.map((p) => p.id) : [],
       starts_at: joinStoreDateTime(v.start_date, v.start_time),
       ends_at: joinStoreDateTime(v.end_date, v.end_time),
@@ -223,7 +214,7 @@ export default function DiscountForm({ discount = null, currencySymbol }) {
         title="Applies To"
         description={
           v.target_type === "category"
-            ? "Every product in the category, including its sub-categories — products added to it later too."
+            ? "Every product in the chosen categories, including their sub-categories — products added to them later too."
             : "Only the products you choose. A product discount takes priority over a category discount."
         }
       >
@@ -244,18 +235,14 @@ export default function DiscountForm({ discount = null, currencySymbol }) {
           </div>
 
           {v.target_type === "category" ? (
-            <div className="max-w-xl">
-              <SearchPicker
-                id="df-category"
-                label="Target category"
-                placeholder={categories === null ? "Loading categories..." : "Search categories..."}
-                search={searchCategories}
-                value={category}
-                onChange={setCategory}
-                required
-                disabled={categories === null}
-              />
-            </div>
+            <DualListPicker
+              id="df-categories"
+              label="Categories"
+              options={categories ?? []}
+              chosen={chosenCategories}
+              onChange={setChosenCategories}
+              allText={categories === null ? "Loading categories..." : "No categories chosen yet."}
+            />
           ) : (
             <DualListPicker id="df-products" label="Products" onSearch={searchProducts} chosen={products} onChange={setProducts} showImages allText="No products chosen yet." />
           )}
