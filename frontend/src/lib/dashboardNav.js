@@ -1,6 +1,6 @@
 import { BiHome } from "react-icons/bi";
 import { FaMapLocationDot } from "react-icons/fa6";
-import { FiAward, FiBell, FiFileText, FiHelpCircle, FiMail, FiMessageSquare, FiSend, FiVolume2, FiClipboard, FiGrid, FiInbox, FiLayers, FiPackage, FiPlusCircle, FiImage, FiUserX, FiPrinter, FiSettings, FiShield, FiShoppingBag, FiShoppingCart, FiStar, FiTag, FiTruck, FiUser, FiUsers, FiVideo } from "react-icons/fi";
+import { FiAward, FiBell, FiFileText, FiHelpCircle, FiMail, FiMessageSquare, FiSend, FiVolume2, FiClipboard, FiGrid, FiInbox, FiLayers, FiPackage, FiPercent, FiPlusCircle, FiImage, FiUserX, FiPrinter, FiSettings, FiShield, FiShoppingBag, FiShoppingCart, FiStar, FiTag, FiTruck, FiUser, FiUsers, FiVideo } from "react-icons/fi";
 
 // Role -> sidebar links, from the authenticated user's real `role` (apps.accounts.models.User.Role: "customer",
 // "admin", "cce" — see lib/currentUser.js). ONLY routes that actually exist are listed here. Admin shares
@@ -39,6 +39,7 @@ export const DASHBOARD_NAV = {
     { label: "Support Inbox", href: "/dashboard/admin/support", icon: FiInbox },
     { label: "Abandoned Checkouts", href: "/dashboard/admin/abandoned-checkouts", icon: FiUserX },
     { label: "Coupons", href: "/dashboard/admin/coupons", icon: FiTag },
+    { label: "Discounts", href: "/dashboard/admin/discounts", icon: FiPercent },
     { label: "Delivery Charges", href: "/dashboard/admin/delivery-charges", icon: FiTruck },
     { label: "Invoice Settings", href: "/dashboard/admin/invoice-settings", icon: FiPrinter },
     { label: "Site Settings", href: "/dashboard/admin/site-settings", icon: FiSettings },

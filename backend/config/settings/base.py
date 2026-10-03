@@ -66,6 +66,7 @@ INSTALLED_APPS = [
     "apps.notifications",
     "apps.reports",
     "apps.audit",
+    "apps.discounts",
 ]
 
 MIDDLEWARE = [
@@ -407,6 +408,7 @@ SPECTACULAR_SETTINGS = {
         {"name": "Admin – Content", "description": "Admin only: content pages, FAQs, announcements, newsletter subscribers."},
         {"name": "Admin – Notifications", "description": "Admin only: the email/SMS log (secrets masked) and message templates."},
         {"name": "Admin – Reports", "description": "Admin only: sales report breakdowns and CSV exports (orders, products, customers)."},
+        {"name": "Admin – Discounts", "description": "Admin only: automatic category / product discounts with start and end times."},
         {"name": "Admin – Audit Log", "description": "Admin only: who did what (before/after, IP) for every Admin/CCE write."},
         {"name": "Admin – Shipping", "description": "Admin only: delivery zones (charges, coverage, thresholds), charge history and delivery methods."},
     ],

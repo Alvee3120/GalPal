@@ -67,8 +67,17 @@ class ProductImageSerializer(serializers.ModelSerializer):
 # --- shared computed fields --------------------------------------------------------------
 
 
+class AppliedDiscountSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    name = serializers.CharField()
+    type = serializers.ChoiceField(choices=["percentage", "fixed"])
+    value = serializers.DecimalField(max_digits=12, decimal_places=2)
+
+
 class _ComputedProductFields(serializers.Serializer):
     effective_price = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
+    applied_discount = AppliedDiscountSerializer(read_only=True, allow_null=True, help_text="The Admin discount behind "
+                                                 "`effective_price` (null: regular or the product's own sale price).")
     discount_percentage = serializers.IntegerField(read_only=True)
     on_sale = serializers.BooleanField(read_only=True)
     in_stock = serializers.BooleanField(read_only=True)
@@ -83,7 +92,7 @@ class VariantSerializer(_ComputedProductFields, serializers.ModelSerializer):
         model = ProductVariant
         fields = [
             "id", "sku", "attribute_values", "regular_price", "discount_price",
-            "effective_price", "discount_percentage", "on_sale", "stock_quantity",
+            "effective_price", "discount_percentage", "on_sale", "applied_discount", "stock_quantity",
             "manage_stock", "in_stock", "image", "is_active",
         ]
         read_only_fields = fields
@@ -100,7 +109,7 @@ class PublicProductListSerializer(_ComputedProductFields, serializers.ModelSeria
         model = Product
         fields = [
             "id", "name", "slug", "feature_image", "brand", "primary_category",
-            "regular_price", "discount_price", "effective_price", "discount_percentage", "on_sale",
+            "regular_price", "discount_price", "effective_price", "discount_percentage", "on_sale", "applied_discount",
             "sku", "in_stock", "has_variants", "stock_quantity", "manage_stock", "is_featured", "is_new_arrival", "is_bestseller",
             "gender", "skin_type", "average_rating", "review_count",
         ]
@@ -279,6 +288,7 @@ class AdminProductSerializer(SlugSerializerMixin, serializers.ModelSerializer):
     on_sale = serializers.BooleanField(read_only=True)
     in_stock = serializers.BooleanField(read_only=True)
     is_low_stock = serializers.BooleanField(read_only=True)
+    applied_discount = AppliedDiscountSerializer(read_only=True, allow_null=True)
 
     class Meta:
         model = Product
@@ -287,7 +297,7 @@ class AdminProductSerializer(SlugSerializerMixin, serializers.ModelSerializer):
             "feature_image", "images",
             "category_ids", "primary_category_id", "categories", "tag_ids", "tags", "brand",
             "regular_price", "discount_price", "sale_start_at", "sale_end_at",
-            "effective_price", "discount_percentage", "on_sale",
+            "effective_price", "discount_percentage", "on_sale", "applied_discount",
             "sku", "barcode", "stock_quantity", "manage_stock", "low_stock_threshold", "stock_status",
             "in_stock", "is_low_stock", "has_variants", "variants",
             "skin_type", "key_ingredients", "ingredients", "size_value", "size_unit",
