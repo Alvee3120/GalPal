@@ -170,7 +170,9 @@ def merge_guest_cart_into_user(token, user):
             existing.quantity = combined
             existing.save(update_fields=["quantity", "updated_at"])
         else:
-            CartItem.objects.create(cart=user_cart, product=guest_item.product, variant=guest_item.variant, quantity=combined)
+            moved = CartItem.objects.create(cart=user_cart, product=guest_item.product, variant=guest_item.variant, quantity=combined)
+            # Keep when the customer actually added it (not the login time), so old-cart ages stay true.
+            CartItem.objects.filter(pk=moved.pk).update(created_at=guest_item.created_at)
     # Keep a coupon the guest applied, unless the account's cart already has its own. No need to
     # re-validate: `summarize` re-evaluates it live on every read anyway.
     if guest_cart.coupon_id is not None and user_cart.coupon_id is None:

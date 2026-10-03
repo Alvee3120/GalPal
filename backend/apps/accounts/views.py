@@ -13,6 +13,15 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 from apps.core.serializers import ErrorResponseSerializer
 
+from .throttles import (
+    LoginIdentifierThrottle,
+    LoginThrottle,
+    PasswordResetRequestIdentifierThrottle,
+    PasswordResetRequestThrottle,
+    PasswordResetVerifyIdentifierThrottle,
+    PasswordResetVerifyThrottle,
+    RegisterThrottle,
+)
 from . import services
 from .filters import CustomerFilter, StaffFilter, UserFilter
 from .models import Address, User
@@ -81,6 +90,8 @@ class _PublicAPIView(APIView):
 
 
 class RegisterView(_PublicAPIView):
+    throttle_classes = [RegisterThrottle]
+
     @extend_schema(
         tags=["Auth"], summary="Register a customer account",
         description="Creates a customer account and logs the user in (returns JWT tokens).",
@@ -96,6 +107,8 @@ class RegisterView(_PublicAPIView):
 
 
 class LoginView(_PublicAPIView):
+    throttle_classes = [LoginThrottle, LoginIdentifierThrottle]
+
     @extend_schema(
         tags=["Auth"], summary="Login with phone or email + password",
         description=(
@@ -147,6 +160,8 @@ class ChangePasswordView(APIView):
 
 
 class ForgotPasswordView(_PublicAPIView):
+    throttle_classes = [PasswordResetRequestThrottle, PasswordResetRequestIdentifierThrottle]
+
     @extend_schema(
         tags=["Auth"], summary="Request a password reset code",
         description=(
@@ -164,6 +179,8 @@ class ForgotPasswordView(_PublicAPIView):
 
 
 class ResetPasswordView(_PublicAPIView):
+    throttle_classes = [PasswordResetVerifyThrottle, PasswordResetVerifyIdentifierThrottle]
+
     @extend_schema(
         tags=["Auth"], summary="Reset password with the one-time code",
         request=ResetPasswordSerializer,

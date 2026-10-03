@@ -29,6 +29,17 @@ async function getAdminOverview(range) {
   }
 }
 
+// "Customers with Old Carts" (cart items kept > 6h) for the Admin and CCE dashboards — independent of any date
+// range. null when it can't be loaded, so the card simply doesn't show.
+async function getOldCartCount() {
+  try {
+    const res = await backendFetch("/admin/orders/old-carts/?page_size=1");
+    return res.ok ? ((await res.json()).customers_with_old_carts ?? 0) : null;
+  } catch {
+    return null;
+  }
+}
+
 async function getOverview() {
   try {
     const res = await backendFetch("/admin/orders/dashboard/");
@@ -51,11 +62,19 @@ export default async function DashboardHomePage({ searchParams }) {
     return <CustomerDashboardHome user={user} orderCount={orderCount} />;
   }
   if (user.role === "cce") {
-    const [overview, currencySymbol] = await Promise.all([getOverview(), getCurrencySymbol()]);
-    return <CceDashboardOverview initialData={overview} currencySymbol={currencySymbol} />;
+    const [overview, currencySymbol, oldCartCount] = await Promise.all([getOverview(), getCurrencySymbol(), getOldCartCount()]);
+    return <CceDashboardOverview initialData={overview} currencySymbol={currencySymbol} oldCartCount={oldCartCount} />;
   }
   // Admin: the ecommerce overview for the range in the URL (?range=…), fetched here for the first paint.
   const range = rangeFromParams(await searchParams);
-  const [adminOverview, currencySymbol] = await Promise.all([getAdminOverview(range), getCurrencySymbol()]);
-  return <AdminDashboardOverview user={user} initialRange={range} initialData={adminOverview} currencySymbol={currencySymbol} />;
+  const [adminOverview, currencySymbol, oldCartCount] = await Promise.all([getAdminOverview(range), getCurrencySymbol(), getOldCartCount()]);
+  return (
+    <AdminDashboardOverview
+      user={user}
+      initialRange={range}
+      initialData={adminOverview}
+      currencySymbol={currencySymbol}
+      oldCartCount={oldCartCount}
+    />
+  );
 }

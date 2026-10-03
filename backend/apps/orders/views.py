@@ -24,7 +24,7 @@ from .serializers import (
     TrackedOrderSerializer,
     TrackOrderSerializer,
 )
-from .throttles import CheckoutThrottle, TrackOrderThrottle
+from .throttles import CheckoutThrottle, GuestAccountThrottle, TrackOrderThrottle
 
 ERR = OpenApiResponse(ErrorResponseSerializer)
 TAG = ["Checkout & Orders"]
@@ -37,7 +37,7 @@ def _fresh(order_id):
 class CheckoutView(APIView):
     authentication_classes = [OptionalJWTAuthentication]  # a stale token means "guest", not a 401
     permission_classes = [AllowAny]
-    throttle_classes = [CheckoutThrottle]
+    throttle_classes = [CheckoutThrottle, GuestAccountThrottle]
 
     @extend_schema(
         tags=TAG, summary="Place an order from the cart",

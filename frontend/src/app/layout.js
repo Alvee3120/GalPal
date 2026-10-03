@@ -1,6 +1,7 @@
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Navbar from "@/component/shared/Navbar";
+import AnnouncementBar from "@/component/content/AnnouncementBar";
 import Footer from "@/component/shared/Footer";
 import FooterGate from "@/component/shared/FooterGate";
 import AppToaster from "@/component/shared/AppToaster";
@@ -32,7 +33,7 @@ export default async function RootLayout({ children }) {
     >
       <body className="min-h-full flex flex-col" suppressHydrationWarning>
         <CartProvider currencySymbol={currencySymbol}>
-          <Navbar />
+          <Navbar announcement={<AnnouncementBar />} />
           {children}
           <FooterGate>
             <Footer />

@@ -558,6 +558,8 @@ def update_order(order, *, user, data):
         raise Conflict("Only a pending order can be edited.", code="order_not_editable")
     new_phone = data.get("phone", order.phone)
     _lock_phone(order.phone, new_phone)
+    audited = (*CONTACT_FIELDS, *ADDRESS_FIELDS, "note", "subtotal", "discount_amount", "coupon_code", "shipping_charge", "grand_total")
+    before = {name: getattr(order, name) for name in audited}
 
     changes = []
     for name in (*CONTACT_FIELDS, *ADDRESS_FIELDS, "note"):
@@ -623,6 +625,10 @@ def update_order(order, *, user, data):
             order=order, from_status=order.status, to_status=order.status, changed_by=user,
             note="Order edited: " + ", ".join(changes),
         )
+        from apps.audit.services import diff, record  # lazy: audit imports orders
+
+        record("order.edited", target=order, actor=user, changes=diff(before, {name: getattr(order, name) for name in audited}),
+               metadata={"summary": changes})
     return order
 
 
@@ -700,6 +706,9 @@ def override_shipping(order, *, charge, reason, user):
         order=order, from_status=order.status, to_status=order.status, changed_by=user,
         note=f"Shipping charge overridden from {old} to {charge}: {reason}"[:500],
     )
+    from apps.audit.services import record  # lazy: audit imports orders
+
+    record("order.shipping_override", target=order, actor=user, changes={"shipping_charge": [old, charge]}, metadata={"reason": reason})
     return order
 
 

@@ -17,14 +17,11 @@ function ReviewCard({ review, hidden }) {
   const photo = review.images?.[0]?.image;
   return (
     <article aria-hidden={hidden || undefined} className="testimonial-card mx-2.5 flex h-60 w-72 flex-col gap-3 overflow-hidden rounded-(--radius-card) p-5 sm:w-80 sm:p-6">
-      <div className="flex items-start justify-between gap-3">
-        <span className="flex gap-0.5" role="img" aria-label={`${review.rating} out of 5 stars`}>
-          {[1, 2, 3, 4, 5].map((n) => (
-            <FaStar key={n} className={`h-3.5 w-3.5 ${n <= review.rating ? "detail-star--on" : "detail-star--off"}`} aria-hidden="true" />
-          ))}
-        </span>
-        {review.is_verified_purchase && <span className="review-verified shrink-0 rounded-full px-2 py-0.5 text-[0.6875rem] font-medium">Verified</span>}
-      </div>
+      <span className="flex gap-0.5" role="img" aria-label={`${review.rating} out of 5 stars`}>
+        {[1, 2, 3, 4, 5].map((n) => (
+          <FaStar key={n} className={`h-3.5 w-3.5 ${n <= review.rating ? "detail-star--on" : "detail-star--off"}`} aria-hidden="true" />
+        ))}
+      </span>
       <div className="flex min-h-0 flex-1 gap-3 overflow-hidden">
         <p className="testimonial-card__text line-clamp-4 self-start min-w-0 flex-1 text-sm leading-relaxed [overflow-wrap:anywhere]">
           {review.title && <span className="font-semibold">{review.title}. </span>}

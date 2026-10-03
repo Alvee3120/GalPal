@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
   FiAlertCircle,
+  FiArrowRight,
   FiArrowDownRight,
   FiArrowUpRight,
   FiCalendar,
@@ -12,6 +13,7 @@ import {
   FiPackage,
   FiRefreshCw,
   FiShoppingBag,
+  FiShoppingCart,
   FiUserPlus,
 } from "react-icons/fi";
 import { TbCurrencyTaka } from "react-icons/tb";
@@ -24,6 +26,7 @@ import ProductImage from "@/component/shared/ProductImage";
 import OrderDateRangePicker from "../OrderDateRangePicker";
 import TimeSeriesChart from "./TimeSeriesChart";
 import StatusDonut from "./StatusDonut";
+import DashboardReports from "./DashboardReports";
 
 const STATUS_ORDER = ["pending", "confirmed", "processing", "shipped", "delivered", "cancelled", "returned", "failed"];
 
@@ -201,7 +204,7 @@ function RangeFilter({ range, onChange, disabled }) {
 // (apps.orders.analytics.admin_dashboard — aggregated in the database; nothing is computed from lists in the browser).
 // Inventory figures are current stock (no history is stored); everything else follows the range, and the four headline
 // figures are compared with the preceding period of the same length. Order Management stays its own page.
-export default function AdminDashboardOverview({ user, initialRange, initialData, currencySymbol }) {
+export default function AdminDashboardOverview({ user, initialRange, initialData, currencySymbol, oldCartCount = null }) {
   const [range, setRange] = useState(initialRange);
   const [data, setData] = useState(initialData);
   const [loading, setLoading] = useState(false);
@@ -237,6 +240,7 @@ export default function AdminDashboardOverview({ user, initialRange, initialData
     load(next);
   }
 
+  const showOldCarts = oldCartCount !== null && oldCartCount !== undefined;
   const head = data?.headline;
   const inv = data?.inventory;
   const series = data?.series ?? [];
@@ -272,7 +276,10 @@ export default function AdminDashboardOverview({ user, initialRange, initialData
         </div>
       ) : (
         <div className={`flex flex-col gap-6 transition-opacity ${loading ? "opacity-70" : ""}`} aria-busy={loading}>
-          <section aria-label="Key figures" className="grid grid-cols-1 gap-4 min-[520px]:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5">
+          <section
+            aria-label="Key figures"
+            className={`grid grid-cols-1 gap-4 min-[520px]:grid-cols-2 lg:grid-cols-3 ${showOldCarts ? "2xl:grid-cols-6" : "2xl:grid-cols-5"}`}
+          >
             <StatCard
               label="Total Revenue"
               value={short(head?.revenue.value)}
@@ -291,6 +298,20 @@ export default function AdminDashboardOverview({ user, initialRange, initialData
               icon={TbCurrencyTaka}
               footer={<span className="showcase-muted text-xs">Current stock × today&apos;s price</span>}
             />
+            {/* Not tied to the date range: cart age is measured from when items were added (more than 6 hours). */}
+            {showOldCarts && (
+              <StatCard
+                label="Customers with Old Carts"
+                value={compactNumber(oldCartCount)}
+                icon={FiShoppingCart}
+                footer={
+                  <Link href="/dashboard/admin/old-carts" className="inline-flex items-center gap-1 text-xs font-semibold hover:underline">
+                    View Old Carts
+                    <FiArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+                  </Link>
+                }
+              />
+            )}
           </section>
 
           <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
@@ -494,6 +515,8 @@ export default function AdminDashboardOverview({ user, initialRange, initialData
               <p className="chart-empty rounded-xl px-4 py-8 text-center text-sm">No orders for this period.</p>
             )}
           </Panel>
+
+          <DashboardReports reports={data?.reports} range={range} currencySymbol={currencySymbol} />
 
           {data?.previous_period && (
             <p className="showcase-muted text-center text-xs">

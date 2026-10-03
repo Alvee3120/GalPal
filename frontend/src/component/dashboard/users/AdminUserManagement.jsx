@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { FiEdit2, FiPlus, FiSearch, FiTrash2 } from "react-icons/fi";
+import { FiEdit2, FiHeart, FiPlus, FiSearch, FiTrash2 } from "react-icons/fi";
 import { notify } from "@/lib/notify";
 import { errorText } from "@/lib/productAdmin";
 import { USER_ROLES, USER_ROLE_LABEL, userFetch } from "@/lib/userAdmin";
@@ -29,9 +29,25 @@ function RoleBadge({ role }) {
   );
 }
 
+// Customers only: their Customer Care profile (orders, total spent, tags, care notes — Module 14).
+function CareLink({ user }) {
+  if (user.role !== "customer") return null;
+  return (
+    <Link
+      href={`/dashboard/admin/customers/${user.id}`}
+      title="Customer care profile"
+      aria-label={`Customer care profile of ${user.full_name || user.phone}`}
+      className="icon-action flex h-9 w-9 items-center justify-center rounded-full"
+    >
+      <FiHeart className="h-4 w-4" aria-hidden="true" />
+    </Link>
+  );
+}
+
 function Actions({ user, isSelf, onDelete }) {
   return (
     <div className="flex items-center gap-1.5">
+      <CareLink user={user} />
       <Link
         href={`/dashboard/admin/users/${user.id}`}
         title="Edit user"
@@ -241,14 +257,17 @@ export default function AdminUserManagement({ initialUsers, initialCount, curren
                       </td>
                       <td className="px-4 py-3">{u.created_via_checkout ? "Yes" : "No"}</td>
                       <td className="px-4 py-3">
-                        <Link
-                          href={`/dashboard/admin/users/${u.id}`}
-                          title="Edit user"
-                          aria-label={`Edit user ${who(u)}`}
-                          className="icon-action flex h-9 w-9 items-center justify-center rounded-full"
-                        >
-                          <FiEdit2 className="h-4 w-4" aria-hidden="true" />
-                        </Link>
+                        <div className="flex items-center gap-1.5">
+                          <CareLink user={u} />
+                          <Link
+                            href={`/dashboard/admin/users/${u.id}`}
+                            title="Edit user"
+                            aria-label={`Edit user ${who(u)}`}
+                            className="icon-action flex h-9 w-9 items-center justify-center rounded-full"
+                          >
+                            <FiEdit2 className="h-4 w-4" aria-hidden="true" />
+                          </Link>
+                        </div>
                       </td>
                       <td className="px-4 py-3">
                         <button

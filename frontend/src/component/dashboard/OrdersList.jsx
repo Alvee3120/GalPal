@@ -7,7 +7,7 @@ import { FiShoppingBag } from "react-icons/fi";
 import { notify } from "@/lib/notify";
 import { messageFor } from "@/lib/apiError";
 import formatPrice from "@/lib/formatPrice";
-import { ORDER_STATUS_FLOW, PAYMENT_METHOD_LABEL, STATUS_LABEL, TERMINAL_OFF_FLOW, formatRelativeTime } from "@/lib/orderStatus";
+import { PAYMENT_METHOD_LABEL, STATUS_LABEL, formatRelativeTime, orderSteps } from "@/lib/orderStatus";
 import DashboardPagination from "./DashboardPagination";
 
 const PAGE_SIZE = 10;
@@ -16,8 +16,7 @@ const PAGE_SIZE = 10;
 // doesn't carry per-status timestamps — that's what the order detail page's own history-based timeline is for),
 // so it only ever marks steps up to and including the current one, never claims a time for them.
 function OrderCardSteps({ status }) {
-  const offFlow = TERMINAL_OFF_FLOW.includes(status);
-  const steps = offFlow ? ["pending", status] : ORDER_STATUS_FLOW;
+  const steps = orderSteps(status);
   const currentIndex = steps.indexOf(status);
 
   return (

@@ -229,6 +229,7 @@ export default function ProductDetailContent({ product, currencySymbol }) {
               className="auth-btn product-card__action--notify flex-1 rounded-full py-3 text-sm font-medium"
             />
           )}
+
         </div>
 
         {product.tags?.length > 0 && (

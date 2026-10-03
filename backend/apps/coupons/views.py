@@ -13,6 +13,7 @@ from apps.cart.views import CART_TOKEN_PARAM, _cart_response
 from apps.core.authentication import OptionalJWTAuthentication
 from apps.core.serializers import ErrorResponseSerializer
 
+from .throttles import CouponApplyThrottle
 from . import services
 from .serializers import ApplyCouponSerializer
 
@@ -26,6 +27,8 @@ class _CartCouponAPIView(APIView):
 
 class CartCouponView(_CartCouponAPIView):
     """One resource, two verbs: POST attaches a coupon to the cart, DELETE detaches it."""
+
+    throttle_classes = [CouponApplyThrottle]
 
     @extend_schema(
         tags=["Coupons"], summary="Apply a coupon to the cart",

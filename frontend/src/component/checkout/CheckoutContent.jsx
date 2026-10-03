@@ -11,7 +11,7 @@ import { notify } from "@/lib/notify";
 import { messageFor } from "@/lib/apiError";
 import formatPrice from "@/lib/formatPrice";
 import { variantLabel } from "@/lib/cartItem";
-import { normalizeBdPhone } from "@/lib/phone";
+import { isValidBdPhone, normalizeBdPhone } from "@/lib/phone";
 import { BD_CITIES } from "@/lib/bdLocations";
 import { canQuote, fetchDeliveryQuote, isDhaka, withCurrent } from "@/lib/delivery";
 import useDhakaZones from "@/lib/useDhakaZones";
@@ -106,6 +106,22 @@ function CheckoutForm({ account }) {
   const emailLocked = loggedIn && Boolean(account.profile.email); // the account's own email is not a new-account field
 
   const set = (name) => (e) => setValues((v) => ({ ...v, [name]: e.target.value }));
+
+  // Abandoned-checkout capture (Module 14): once a name and a valid phone are typed, tell the backend (debounced) so
+  // Admin can follow up if no order follows. Fire-and-forget; it never affects the checkout itself.
+  const lastLead = useRef("");
+  useEffect(() => {
+    const name = values.fullName.trim();
+    if (!name || !isValidBdPhone(values.phone)) return undefined;
+    const lead = { name, phone: normalizeBdPhone(values.phone), email: values.email.trim(), district: values.city };
+    const key = JSON.stringify(lead);
+    if (key === lastLead.current) return undefined;
+    const timer = setTimeout(() => {
+      lastLead.current = key;
+      fetch("/api/checkout/lead", { method: "POST", headers: { "Content-Type": "application/json" }, body: key }).catch(() => {});
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, [values.fullName, values.phone, values.email, values.city]);
 
   // Leaving Dhaka clears the zone (it is hidden and must not linger); entering Dhaka starts with no zone chosen.
   function changeCity(city) {

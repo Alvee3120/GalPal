@@ -5,6 +5,15 @@ export const ORDER_STATUS_FLOW = ["pending", "confirmed", "processing", "shipped
 // Statuses that fall off the normal flow entirely, shown as "Order Placed -> <status>" instead of a 5-step bar.
 export const TERMINAL_OFF_FLOW = ["cancelled", "failed", "returned"];
 
+// A return comes back after the order went out, so it keeps the steps up to Shipped, then Returned.
+export const RETURNED_FLOW = ["pending", "confirmed", "processing", "shipped", "returned"];
+
+// The steps a progress bar / timeline shows for an order in `status`.
+export function orderSteps(status) {
+  if (status === "returned") return RETURNED_FLOW;
+  return TERMINAL_OFF_FLOW.includes(status) ? ["pending", status] : ORDER_STATUS_FLOW;
+}
+
 export const STATUS_LABEL = {
   pending: "Pending",
   confirmed: "Confirmed",
