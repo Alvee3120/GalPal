@@ -34,3 +34,10 @@ export function formatUpdated(iso) {
   const d = iso ? new Date(iso) : null;
   return d && !Number.isNaN(d.getTime()) ? d.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "Asia/Dhaka" }) : "";
 }
+
+// The Admin's homepage category sections (Admin → Homepage Sections): active ones whose category is visible, already in
+// display order (before the video, then after; sort order within each). [] if the backend can't be reached.
+export async function getHomepageCategorySections() {
+  const data = await getJson("/homepage/category-sections/");
+  return Array.isArray(data) ? data : [];
+}

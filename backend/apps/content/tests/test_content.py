@@ -121,3 +121,31 @@ def test_search_short_query_is_empty(api_client):
 
 def test_page_model_str():
     assert str(Page(title="About Us")) == "About Us"
+
+
+# --- homepage category sections ----------------------------------------------------------------------------------------
+
+
+def test_homepage_sections_admin_crud_and_public_visibility(admin_client, api_client, auth_client, cce_user):
+    from apps.catalog.models import Category
+    from apps.catalog.services import invalidate_category_cache
+    from apps.content.models import HomepageCategorySection
+
+    makeup = Category.objects.create(name="Makeup", slug="makeup-x")
+    hair = Category.objects.create(name="Hair", slug="hair-x")
+    r = admin_client.post(A + "category-sections/", {"category_id": makeup.pk, "position": "before_video"}, format="json")
+    assert r.status_code == 201 and r.json()["product_limit"] == 8 and r.json()["rows"] == 1  # the defaults
+    admin_client.post(A + "category-sections/", {"category_id": hair.pk, "position": "after_video", "is_active": False}, format="json")
+    assert admin_client.post(A + "category-sections/", {"category_id": hair.pk, "rows": 9}, format="json").status_code == 400
+    assert auth_client(cce_user).get(A + "category-sections/").status_code == 403
+
+    public = api_client.get("/api/v1/homepage/category-sections/").json()
+    assert [(s["category"]["name"], s["position"]) for s in public] == [("Makeup", "before_video")]  # inactive one hidden
+
+    Category.objects.filter(pk=makeup.pk).update(name="Make-up", is_active=True)
+    invalidate_category_cache()
+    assert api_client.get("/api/v1/homepage/category-sections/").json()[0]["category"]["name"] == "Make-up"  # title follows the category
+    Category.objects.filter(pk=makeup.pk).update(is_active=False)
+    invalidate_category_cache()
+    assert api_client.get("/api/v1/homepage/category-sections/").json() == []  # a hidden category never breaks the page
+    assert HomepageCategorySection.objects.count() == 2

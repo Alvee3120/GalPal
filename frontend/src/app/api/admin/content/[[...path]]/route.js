@@ -9,6 +9,7 @@ const WRITES = {
   pages: ["POST", "PATCH", "DELETE"],
   faqs: ["POST", "PATCH", "DELETE"],
   announcements: ["POST", "PATCH", "DELETE"],
+  "category-sections": ["POST", "PATCH", "DELETE"],
   newsletter: ["PATCH", "DELETE"],
 };
 const isPath = (p, method) => {

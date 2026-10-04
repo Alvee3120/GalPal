@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Announcement, Faq, NewsletterSubscriber, Page
+from .models import Announcement, Faq, HomepageCategorySection, NewsletterSubscriber, Page
 
 
 @admin.register(Page)
@@ -29,3 +29,9 @@ class NewsletterSubscriberAdmin(admin.ModelAdmin):
 class AnnouncementAdmin(admin.ModelAdmin):
     list_display = ["text", "is_active", "starts_at", "ends_at", "sort_order"]
     list_filter = ["is_active"]
+
+
+@admin.register(HomepageCategorySection)
+class HomepageCategorySectionAdmin(admin.ModelAdmin):
+    list_display = ["category", "position", "sort_order", "product_limit", "rows", "is_active"]
+    list_filter = ["position", "is_active"]

@@ -1,10 +1,11 @@
 from rest_framework import serializers
 
+from apps.catalog.models import Category
 from apps.catalog.serializers import PublicBrandSerializer, PublicCategorySerializer
 from apps.catalog.serializers_product import PublicProductListSerializer
 
 from . import services
-from .models import Announcement, Faq, NewsletterSubscriber, Page
+from .models import Announcement, Faq, HomepageCategorySection, NewsletterSubscriber, Page
 
 # --- public --------------------------------------------------------------------------------------------------------------
 
@@ -114,3 +115,33 @@ class AdminAnnouncementSerializer(serializers.ModelSerializer):
         if starts and ends and ends <= starts:
             raise serializers.ValidationError({"ends_at": serializers.ErrorDetail("End must be after the start.", code="invalid")})
         return attrs
+
+
+class SectionCategorySerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    name = serializers.CharField()
+    slug = serializers.CharField()
+    is_active = serializers.BooleanField()
+
+
+class AdminHomepageCategorySectionSerializer(serializers.ModelSerializer):
+    """Admin: the section's settings; the title shown on the homepage is always the category's own name."""
+
+    category_id = serializers.PrimaryKeyRelatedField(source="category", queryset=Category.objects.all())
+    category = SectionCategorySerializer(read_only=True)
+    position_label = serializers.CharField(source="get_position_display", read_only=True)
+
+    class Meta:
+        model = HomepageCategorySection
+        fields = ["id", "category_id", "category", "position", "position_label", "sort_order", "product_limit", "rows",
+                  "is_active", "created_at", "updated_at"]
+        read_only_fields = ["id", "category", "position_label", "created_at", "updated_at"]
+
+
+class PublicHomepageCategorySectionSerializer(serializers.ModelSerializer):
+    category = SectionCategorySerializer(read_only=True)
+
+    class Meta:
+        model = HomepageCategorySection
+        fields = ["id", "category", "position", "sort_order", "product_limit", "rows"]
+        read_only_fields = fields

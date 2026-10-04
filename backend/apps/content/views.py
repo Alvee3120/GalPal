@@ -10,8 +10,9 @@ from rest_framework.views import APIView
 from apps.core.serializers import ErrorResponseSerializer
 
 from . import services
-from .models import Faq, Page
+from .models import Faq, HomepageCategorySection, Page
 from .serializers import (
+    PublicHomepageCategorySectionSerializer,
     PublicAnnouncementSerializer,
     PublicFaqSerializer,
     PublicPageSerializer,
@@ -101,3 +102,19 @@ class SearchView(_Public):
             limit = 6
         result = services.global_search(request.query_params.get("q", ""), limit=limit)
         return Response(SearchResultSerializer(result, context={"request": request}).data)
+
+
+class HomepageCategorySectionListView(_Public):
+    @extend_schema(
+        tags=TAG, summary="Homepage category sections",
+        description="Active sections whose category is visible on the storefront (active, with every parent active), in "
+                    "display order: `position` (before_video / after_video), then `sort_order`. Each one's products: "
+                    "GET /products/?category=<category.slug> (sub-categories included). Not paginated.",
+        responses={200: PublicHomepageCategorySectionSerializer(many=True)},
+    )
+    def get(self, request):
+        from apps.catalog.services import CategoryIndex
+
+        visible = CategoryIndex().visible_ids()
+        sections = HomepageCategorySection.objects.filter(is_active=True, category_id__in=visible).select_related("category")
+        return Response(PublicHomepageCategorySectionSerializer(sections, many=True).data)
