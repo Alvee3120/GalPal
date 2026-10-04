@@ -6,7 +6,8 @@ import { POLICY } from "@/lib/policies";
 // Shared layout for the About and policy pages: the site's PageHero, a readable column, the "Last updated" date
 // (lib/policies.js, or a CMS page's own save date via `updated`) and a contact block whose phone/email/address come from Site Settings (Admin → Site Settings),
 // so they're never hard-coded. Sections are plain <section><h2>… children styled by .legal-page in globals.css.
-export default async function LegalPage({ title, intro, showUpdated = true, updated, children }) {
+// `contactTitle` / `contactText` reword the closing contact section (e.g. the Terms' own numbered "13. Contact Us").
+export default async function LegalPage({ title, intro, showUpdated = true, updated, contactTitle = "Contact Us", contactText, children }) {
   const [contact, settings] = await Promise.all([getContactDetails(), getSiteSettings()]);
   const storeName = settings?.site_name || "GalPal";
 
@@ -19,8 +20,8 @@ export default async function LegalPage({ title, intro, showUpdated = true, upda
         {children}
 
         <section aria-labelledby="legal-contact">
-          <h2 id="legal-contact">Contact Us</h2>
-          <p>Questions about this page or an order? {storeName} is happy to help.</p>
+          <h2 id="legal-contact">{contactTitle}</h2>
+          <p>{contactText ?? `Questions about this page or an order? ${storeName} is happy to help.`}</p>
           {contact.phone || contact.email || contact.address ? (
             <ul className="legal-page__contact">
               {contact.phone && (

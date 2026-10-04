@@ -9,7 +9,7 @@ import storyImage from "../../../public/assets/banner/banner1.jpeg";
 
 const FALLBACK_METADATA = {
   title: "About Us | GalPal",
-  description: "GalPal brings carefully chosen skincare, makeup and beauty accessories to customers across Bangladesh.",
+  description: "Gal Pal brings you a carefully selected range of makeup, skincare, haircare and everyday beauty essentials directly from the UK.",
 };
 
 // Category slugs as the homepage uses them (CategoryProductShowcase), linking into the shop's category filter.
@@ -48,15 +48,18 @@ export default async function AboutPage() {
               </div>
             ) : (
               <>
-                <h2 className="custom-font mt-3 text-3xl leading-tight sm:text-4xl">Skincare that works, and an honest way to shop for it.</h2>
+                <h2 className="custom-font mt-3 text-3xl leading-tight sm:text-4xl">Welcome to Gal Pal!</h2>
                 <p className="about-text mt-5">
-                  We started GalPal because shopping for skincare shouldn&apos;t feel like guesswork. Our focus is
-                  high-performance skincare built around barrier repair, gentle and safe formulas, and visible results,
-                  alongside makeup and accessories that complete your routine.
+                  From makeup and skincare to haircare and everyday beauty essentials, Gal Pal brings you a carefully selected
+                  range of products directly from the UK. We look for products that are loved, requested, and worth bringing
+                  closer to you.
                 </p>
                 <p className="about-text mt-4">
-                  Every product in our shop is chosen with care, described clearly and priced upfront, so you know exactly what
-                  you&apos;re getting before it reaches your door.
+                  We want to keep your shopping experience simple, transparent, and enjoyable from the moment you place your
+                  order to the moment it reaches you.
+                </p>
+                <p className="about-text mt-4">
+                  At Gal Pal, we&apos;re constantly looking for new finds and listening to what our customers want.
                 </p>
               </>
             )}

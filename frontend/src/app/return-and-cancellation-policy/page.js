@@ -1,11 +1,10 @@
 import LegalPage from "@/component/shared/LegalPage";
 import CmsPage, { cmsMetadata } from "@/component/content/CmsPage";
 import { getContentPage } from "@/lib/content";
-import { POLICY } from "@/lib/policies";
 
 const FALLBACK_METADATA = {
   title: "Return & Cancellation Policy | GalPal",
-  description: "How to cancel a GalPal order, which items can be returned, and how refunds work.",
+  description: "When a Gal Pal order can be cancelled, which items can be returned or exchanged, and how refunds work.",
 };
 
 // Admin → Content Pages can replace this text with a "return-and-cancellation-policy" page; until then the built-in text below shows.
@@ -17,72 +16,83 @@ export default async function ReturnCancellationPolicyPage() {
   const page = await getContentPage("return-and-cancellation-policy");
   if (page) return <CmsPage page={page} />;
   return (
-    <LegalPage
-      title="Return & Cancellation Policy"
-      intro="We want you to be happy with every order. This policy explains when you can cancel an order, which items can be returned, and how refunds work."
-    >
+    <LegalPage title="Return & Cancellation Policy" intro="Please read the following policy carefully before placing an order." updated="4 October 2026">
       <section>
-        <h2>Cancelling an Order</h2>
-        <ul>
+        <h2>Order Cancellation</h2>
+        <ol>
+          <li>Orders may be cancelled before they are dispatched, subject to confirmation from our team.</li>
+          <li>Once an order has been dispatched, cancellation is no longer possible.</li>
+          <li>Once an advance has been paid, cancellation is no longer possible.</li>
           <li>
-            <strong>While your order is Pending</strong>, you can cancel it yourself from <em>My Orders</em> in your
-            account. Nothing is charged for a cancelled Cash on Delivery order.
+            For pre-order or specially requested products, cancellation terms may vary and will be communicated to the customer
+            at the time of ordering.
           </li>
-          <li>
-            <strong>Once it&apos;s Confirmed or being prepared</strong>, contact our support team as soon as possible.
-            We&apos;ll cancel it if it hasn&apos;t been handed to the courier yet.
-          </li>
-          <li>
-            <strong>After it has shipped</strong>, the order can&apos;t be cancelled. You can refuse the parcel on delivery or
-            follow the return steps below.
-          </li>
-        </ul>
+        </ol>
+      </section>
+
+      <section>
+        <h2>Returns &amp; Exchanges</h2>
         <p>
-          We may cancel an order if a product goes out of stock, the delivery details can&apos;t be confirmed, or the order
-          looks fraudulent. If you&apos;ve already paid, you&apos;ll receive a full refund.
+          Due to the nature of beauty, skincare, haircare, and cosmetic products, we may only accept returns or exchanges in
+          eligible circumstances.
+        </p>
+        <p>A return or replacement request may be considered if:</p>
+        <ol>
+          <li>You have received an incorrect product.</li>
+          <li>Your order contains a missing item.</li>
+          <li>The product arrives damaged or defective.</li>
+          <li>The product received does not match the confirmed order.</li>
+        </ol>
+        <p>Products that have been opened, used, swatched, or otherwise altered are not eligible for return or exchange.</p>
+        <p>Change-of-mind returns are not accepted for beauty, skincare, haircare, or cosmetic products.</p>
+      </section>
+
+      <section>
+        <h2>Damaged or Incorrect Orders</h2>
+        <p>
+          If your parcel arrives damaged or you receive an incorrect product, please contact us as soon as possible after
+          delivery.
+        </p>
+        <p>
+          Customers may be requested to provide clear photographs and/or an unboxing video of the parcel and product so that
+          we can assess the issue.
+        </p>
+        <p>Please keep the original packaging and product until the matter has been resolved.</p>
+      </section>
+
+      <section>
+        <h2>Refunds</h2>
+        <p>If a refund is approved, the applicable refund amount and method will be communicated by our team.</p>
+        <p>
+          Refund processing time may vary depending on the payment method and financial institution, usually 5-7 business
+          days.
         </p>
       </section>
 
       <section>
-        <h2>Returns</h2>
+        <h2>Return Shipping</h2>
         <p>
-          For hygiene and safety, beauty and skincare products can only be returned if they arrive{" "}
-          <strong>wrong, damaged, defective or expired</strong>. We&apos;re unable to accept returns for opened or used
-          products, or for a change of mind.
+          Where a return is approved due to an error on our part, the applicable return delivery arrangement will be
+          communicated by Gal Pal.
         </p>
-        <h3>How to request a return</h3>
-        <ul>
-          <li>
-            Contact us within <strong>{POLICY.returnWindowHours} hours of delivery</strong> with your order number.
-          </li>
-          <li>Share clear photos of the product, its packaging and the parcel label.</li>
-          <li>Keep the item unused, in its original packaging, with any free gifts that came with it.</li>
-        </ul>
-        <p>
-          Once we approve the return, we&apos;ll arrange a pickup or tell you how to send it back. If the mistake was ours,
-          we cover the return delivery cost.
-        </p>
+        <p>For other approved returns, return shipping arrangements may vary depending on the circumstances.</p>
       </section>
 
       <section>
-        <h2>Refunds &amp; Replacements</h2>
-        <ul>
-          <li>For an approved return, we&apos;ll send a replacement or refund the product&apos;s price, whichever you prefer.</li>
-          <li>
-            Refunds are issued within <strong>{POLICY.refundWorkingDays} working days</strong> after we receive and check
-            the returned item, by mobile banking (e.g. bKash/Nagad) or your original payment method.
-          </li>
-          <li>Delivery charges are refunded only when the return is because of our mistake.</li>
-          <li>Coupon discounts aren&apos;t refundable as cash; the refund is the amount you actually paid.</li>
-        </ul>
+        <h2>Non-Returnable Items</h2>
+        <p>
+          For hygiene and product-safety reasons, opened or used beauty and personal-care products may not be eligible for
+          return or exchange.
+        </p>
+        <p>Certain sale, promotional, pre-order, or specially requested items may also be subject to specific return conditions.</p>
       </section>
 
       <section>
-        <h2>Refusing a Delivery</h2>
+        <h2>Important</h2>
+        <p>Please contact Gal Pal before sending any product back. Returns sent without prior approval may not be accepted.</p>
         <p>
-          Please check your parcel when it arrives. If it&apos;s clearly damaged, you may refuse it, and let us know so we
-          can send a replacement. Repeatedly refusing Cash on Delivery orders without a reason may limit future Cash on
-          Delivery orders.
+          Gal Pal reserves the right to assess each return, exchange, replacement, or refund request individually and to
+          update this policy when necessary.
         </p>
       </section>
     </LegalPage>
