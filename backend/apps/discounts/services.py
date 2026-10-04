@@ -206,6 +206,43 @@ def resolve(product_id, regular_price, own_sale_price):
     return regular_price, None
 
 
+def priced_product_ids(rule):
+    """
+    Published products this live rule is pricing right now — the ones whose single effective reduction (`resolve`) IS
+    this discount. A product it covers but that sells cheaper through a product-specific discount or its own sale price
+    is left out, so a homepage section never shows a price that came from somewhere else.
+    """
+    from apps.catalog.models import Product, ProductStatus
+
+    ids = []
+    for p in Product.objects.filter(pk__in=rule.product_ids, status=ProductStatus.PUBLISHED).only(
+        "id", "regular_price", "discount_price", "sale_start_at", "sale_end_at"
+    ):
+        own = p.discount_price if p.own_sale_active else None
+        price, applied = resolve(p.pk, p.regular_price, own)
+        if applied is not None and applied.id == rule.id and price < p.regular_price:
+            ids.append(p.pk)
+    return ids
+
+
+def storefront_discounts(now=None):
+    """
+    Live discounts for the storefront (homepage sections), each with the ids of the products it is pricing; discounts
+    that price nothing right now are left out. Newest start first, like the admin list.
+    """
+    now = now or timezone.now()
+    shown = []
+    for rule in sorted(live_rules(now), key=lambda r: (r.starts_at, r.id), reverse=True):
+        ids = priced_product_ids(rule)
+        if ids:
+            shown.append((rule, ids))
+    return shown
+
+
+def live_rule(discount_id, now=None):
+    return next((r for r in live_rules(now) if r.id == discount_id), None)
+
+
 def annotate_admin_price(queryset, now=None):
     """
     `admin_price_db`: the same rule as `admin_price`, as SQL on the product's regular price (NULL when no live discount

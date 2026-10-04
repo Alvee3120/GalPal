@@ -29,7 +29,8 @@ function useSecondClock(stopAtMs) {
 // `sale_start_at` / `sale_end_at` (ISO date-times from the API, which carry their own UTC offset, so the count is right
 // in any browser timezone). It renders nothing unless both are valid and in order, and nothing once the sale has ended.
 // Whether the product actually has a discount is the caller's check (it uses the page's existing price logic).
-export default function SaleCountdown({ saleStartAt, saleEndAt, className = "" }) {
+// `showHeading={false}` drops the "Sale ends in" line (the homepage discount sections show just the boxes).
+export default function SaleCountdown({ saleStartAt, saleEndAt, className = "", showHeading = true }) {
   const startMs = saleStartAt ? Date.parse(saleStartAt) : NaN;
   const endMs = saleEndAt ? Date.parse(saleEndAt) : NaN;
   const valid = Number.isFinite(startMs) && Number.isFinite(endMs) && startMs < endMs;
@@ -49,8 +50,8 @@ export default function SaleCountdown({ saleStartAt, saleEndAt, className = "" }
 
   return (
     <div className={className} role="timer" aria-label={heading}>
-      <p className="sale-countdown__heading text-xs font-semibold uppercase tracking-widest">{heading}</p>
-      <ol className="mt-2 flex gap-1.5 sm:gap-2">
+      {showHeading && <p className="sale-countdown__heading text-xs font-semibold uppercase tracking-widest">{heading}</p>}
+      <ol className={`flex gap-1.5 sm:gap-2 ${showHeading ? "mt-2" : ""}`}>
         {parts.map(([label, value]) => (
           <li key={label} className="sale-countdown__box flex min-w-14 flex-col items-center rounded-lg px-2 py-2 sm:min-w-16 sm:px-3">
             <span className="text-xl font-bold leading-none tabular-nums sm:text-2xl">{pad(value)}</span>

@@ -1,4 +1,6 @@
+import { revalidateTag } from "next/cache";
 import { backendFetch } from "@/lib/backendAuth";
+import { DISCOUNTS_TAG } from "@/lib/discounts";
 
 // Proxy to Discount Management (apps.discounts.views_admin.DiscountViewSet — IsAdmin backend-side, the real
 // authorization): list/search/filter, create, retrieve, edit, delete.
@@ -22,6 +24,7 @@ async function handler(request, { params }) {
   } catch {
     return Response.json({ error: { message: "We couldn't reach the server." } }, { status: 502 });
   }
+  if (res.ok && method !== "GET") revalidateTag(DISCOUNTS_TAG, { expire: 0 }); // homepage discount sections refresh now
   if (res.status === 204) return new Response(null, { status: 204 });
   const data = await res.json().catch(() => null);
   return Response.json(data, { status: res.status, headers: { "Cache-Control": "no-store" } });

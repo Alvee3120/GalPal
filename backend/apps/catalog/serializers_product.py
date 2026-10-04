@@ -70,7 +70,7 @@ class ProductImageSerializer(serializers.ModelSerializer):
 class AppliedDiscountSerializer(serializers.Serializer):
     id = serializers.IntegerField()
     name = serializers.CharField()
-    type = serializers.ChoiceField(choices=["percentage", "fixed"])
+    type = serializers.ChoiceField(choices=[("percentage", "Percentage"), ("fixed", "Fixed amount")])  # apps.discounts DiscountKind
     value = serializers.DecimalField(max_digits=12, decimal_places=2)
 
 

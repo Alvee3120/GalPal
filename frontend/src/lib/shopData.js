@@ -46,6 +46,8 @@ function buildProductsUrl(searchParams) {
   if (searchParams.is_new_arrival === "true") params.set("is_new_arrival", "true");
   if (searchParams.is_bestseller === "true") params.set("is_bestseller", "true");
   if (searchParams.on_sale === "true") params.set("on_sale", "true");
+  // One live Admin discount: only the products it is pricing right now (none once it ends) — the backend's `discount` filter.
+  if (/^\d+$/.test(searchParams.discount ?? "")) params.set("discount", searchParams.discount);
   if (searchParams.in_stock === "true" || searchParams.in_stock === "false") params.set("in_stock", searchParams.in_stock);
   if (searchParams.ordering) params.set("ordering", searchParams.ordering);
   return { url: `${API_BASE_URL}/products/?${params}`, page };

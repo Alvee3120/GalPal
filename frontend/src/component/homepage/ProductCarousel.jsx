@@ -8,7 +8,7 @@ import useScrollEdges from "@/lib/useScrollEdges";
 // Editorial header (title | description | arrows) above a CSS scroll-snap grid.
 // `columns` is the desktop column count (tablet shows up to 3, mobile up to 2); `rows` stacks cards per page.
 // The arrows page through the products one full view at a time.
-export default function ProductCarousel({ products, currencySymbol, title, description, columns = 4, rows = 1 }) {
+export default function ProductCarousel({ products, currencySymbol, title, description, headerExtra = null, columns = 4, rows = 1 }) {
   const { ref, edges, update, scrollBy } = useScrollEdges();
   const showNav = !(edges.start && edges.end);
 
@@ -17,6 +17,7 @@ export default function ProductCarousel({ products, currencySymbol, title, descr
       <SectionHeader
         title={title}
         description={description}
+        besideTitle={headerExtra}
         actions={
           showNav && (
             <CarouselArrows

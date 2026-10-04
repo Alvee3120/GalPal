@@ -18,7 +18,7 @@ export const PROMOTIONS = [
 ];
 
 // Query keys for the actual *filters* (not sorting/paging) — drives the mobile filter-count badge.
-export const FILTER_KEYS = ["category", "price_min", "price_max", "is_new_arrival", "is_bestseller", "on_sale", "in_stock"];
+export const FILTER_KEYS = ["category", "price_min", "price_max", "is_new_arrival", "is_bestseller", "on_sale", "in_stock", "discount"];
 
 // The `category` query param holds one or more category slugs, comma-separated ("serums,lips"); a single slug is just
 // the one-item case, so existing links keep working.

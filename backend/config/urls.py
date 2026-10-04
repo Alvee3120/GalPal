@@ -44,6 +44,7 @@ urlpatterns = [
     path("api/v1/", include("apps.videos.urls")),
     path("api/v1/", include("apps.cart.urls")),
     path("api/v1/", include("apps.coupons.urls")),
+    path("api/v1/", include("apps.discounts.urls")),
     path("api/v1/", include("apps.shipping.urls")),
     path("api/v1/", include("apps.orders.urls")),
     path("api/v1/", include("apps.payments.urls")),
