@@ -7,6 +7,7 @@ plain React elements — never as raw HTML — so nothing an editor types can ru
 import secrets
 
 from django.conf import settings
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.db.models import Q
 
@@ -91,3 +92,29 @@ class Announcement(TimeStampedModel):
 
     def __str__(self):
         return self.text
+
+
+class SectionPosition(models.TextChoices):
+    BEFORE_VIDEO = "before_video", "Before the skincare video"
+    AFTER_VIDEO = "after_video", "After the skincare video"
+
+
+class HomepageCategorySection(TimeStampedModel):
+    """
+    One category product section on the homepage (the storefront's CategoryProductShowcase): which category, on which
+    side of the skincare video section, in what order, how many products and rows. The title is always the category's
+    own name, so renaming the category renames the section. A section whose category is gone, hidden or empty isn't shown.
+    """
+
+    category = models.ForeignKey("catalog.Category", on_delete=models.CASCADE, related_name="homepage_sections")
+    position = models.CharField(max_length=12, choices=SectionPosition.choices, default=SectionPosition.BEFORE_VIDEO)
+    sort_order = models.PositiveIntegerField(default=0, help_text="Lower first, within its position.")
+    product_limit = models.PositiveSmallIntegerField(default=8, validators=[MinValueValidator(1), MaxValueValidator(48)])
+    rows = models.PositiveSmallIntegerField(default=1, validators=[MinValueValidator(1), MaxValueValidator(4)])
+    is_active = models.BooleanField(default=True, db_index=True)
+
+    class Meta:
+        ordering = ["position", "sort_order", "id"]
+
+    def __str__(self):
+        return f"{self.category} ({self.get_position_display()})"

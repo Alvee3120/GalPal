@@ -13,8 +13,14 @@ from rest_framework.response import Response
 from apps.accounts.permissions import IsAdmin
 
 from . import services
-from .models import Announcement, Faq, NewsletterSubscriber, Page
-from .serializers import AdminAnnouncementSerializer, AdminFaqSerializer, AdminPageSerializer, AdminSubscriberSerializer
+from .models import Announcement, Faq, HomepageCategorySection, NewsletterSubscriber, Page
+from .serializers import (
+    AdminAnnouncementSerializer,
+    AdminFaqSerializer,
+    AdminHomepageCategorySectionSerializer,
+    AdminPageSerializer,
+    AdminSubscriberSerializer,
+)
 
 TAG = ["Admin – Content"]
 
@@ -109,5 +115,21 @@ class AnnouncementViewSet(mixins.ListModelMixin, mixins.CreateModelMixin, mixins
     permission_classes = [IsAdmin]
     serializer_class = AdminAnnouncementSerializer
     queryset = Announcement.objects.all()
+    http_method_names = ["get", "post", "patch", "delete", "head", "options"]
+    pagination_class = None
+
+
+@extend_schema_view(
+    list=extend_schema(tags=TAG, summary="Homepage category sections", description="Category product sections around the "
+                       "skincare video section, in display order. The homepage title is the category's name."),
+    create=extend_schema(tags=TAG, summary="Add a homepage category section"),
+    partial_update=extend_schema(tags=TAG, summary="Edit a homepage category section"),
+    destroy=extend_schema(tags=TAG, summary="Remove a homepage category section"),
+)
+class HomepageCategorySectionViewSet(mixins.ListModelMixin, mixins.CreateModelMixin, mixins.UpdateModelMixin, mixins.DestroyModelMixin,
+                                     viewsets.GenericViewSet):
+    permission_classes = [IsAdmin]
+    serializer_class = AdminHomepageCategorySectionSerializer
+    queryset = HomepageCategorySection.objects.select_related("category")
     http_method_names = ["get", "post", "patch", "delete", "head", "options"]
     pagination_class = None
