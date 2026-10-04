@@ -9,6 +9,7 @@ import CategoryProductShowcase, {
   ProductShowcaseSkeleton,
 } from "@/component/homepage/CategoryProductShowcase";
 import TrendingProducts from "@/component/homepage/TrendingProducts";
+import DiscountProductShowcases from "@/component/homepage/DiscountProductShowcase";
 import ShoppableVideoCarousel, {
   VideoCarouselSkeleton,
 } from "@/component/homepage/ShoppableVideoCarousel";
@@ -23,6 +24,11 @@ export default function Home() {
       <Marquee />
       <Suspense fallback={<CategoryShowcaseSkeleton />}>
         <CategoryShowcase />
+      </Suspense>
+
+      {/* One section per live Admin discount, titled with its name; none when no discount is running. */}
+      <Suspense fallback={null}>
+        <DiscountProductShowcases rows={1} />
       </Suspense>
 
       <Suspense fallback={<ProductShowcaseSkeleton />}>
@@ -53,6 +59,7 @@ export default function Home() {
           rows={1}
         />
       </Suspense>
+
 
       <Suspense fallback={<ProductShowcaseSkeleton />}>
         <TrendingProducts productLimit={8} />

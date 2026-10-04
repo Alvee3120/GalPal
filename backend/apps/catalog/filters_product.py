@@ -72,6 +72,8 @@ class PublicProductFilter(django_filters.FilterSet):
     price_max = django_filters.NumberFilter(field_name="effective_price_db", lookup_expr="lte")
     in_stock = django_filters.BooleanFilter(method="filter_in_stock")
     on_sale = django_filters.BooleanFilter(field_name="on_sale_db")
+    discount = django_filters.NumberFilter(method="filter_discount", help_text="A live Admin discount's id: the products "
+                                           "it is pricing right now (none once it ends or is switched off).")
     gender = django_filters.CharFilter(field_name="gender")
     is_featured = django_filters.BooleanFilter(field_name="is_featured")
     is_new_arrival = django_filters.BooleanFilter(field_name="is_new_arrival")
@@ -84,6 +86,12 @@ class PublicProductFilter(django_filters.FilterSet):
     def filter_category(self, queryset, name, value):
         ids = _category_and_descendants(value)
         return queryset.none() if ids is None else queryset.filter(category_links__category_id__in=ids).distinct()
+
+    def filter_discount(self, queryset, name, value):
+        from apps.discounts import services as discounts
+
+        rule = discounts.live_rule(int(value))
+        return queryset.none() if rule is None else queryset.filter(pk__in=discounts.priced_product_ids(rule))
 
     def filter_skin_type(self, queryset, name, value):
         return queryset.filter(skin_type__contains=[value])

@@ -9,11 +9,12 @@ import ShopPagination from "@/component/shop/ShopPagination";
 import NotifyOnMount from "@/component/shared/NotifyOnMount";
 import { getShopCategories, getShopPriceBounds, getShopProducts } from "@/lib/shopData";
 import { getCurrencySymbol } from "@/lib/siteSettings";
+import { getActiveDiscounts } from "@/lib/discounts";
 import { FILTER_KEYS, SHOP_PAGE_SIZE } from "@/lib/shopQuery";
 
 export const metadata = { title: "Shop | GalPal" };
 
-async function ShopResults({ searchParams, categories, priceBounds, currencySymbol }) {
+async function ShopResults({ searchParams, categories, priceBounds, currencySymbol, discounts }) {
   const { products, count, page, error } = await getShopProducts(searchParams);
   const totalPages = Math.max(1, Math.ceil(count / SHOP_PAGE_SIZE));
   const start = count === 0 ? 0 : (page - 1) * SHOP_PAGE_SIZE + 1;
@@ -29,7 +30,7 @@ async function ShopResults({ searchParams, categories, priceBounds, currencySymb
         </div>
       </div>
 
-      <ActiveFilters searchParams={searchParams} categories={categories} priceBounds={priceBounds} currencySymbol={currencySymbol} />
+      <ActiveFilters searchParams={searchParams} categories={categories} priceBounds={priceBounds} currencySymbol={currencySymbol} discounts={discounts} />
 
       {error ? (
         <>
@@ -48,12 +49,17 @@ async function ShopResults({ searchParams, categories, priceBounds, currencySymb
   );
 }
 
-// /shop?category=&price_min=&price_max=&is_new_arrival=&is_bestseller=&on_sale=&in_stock=&ordering=&page=
+// /shop?category=&price_min=&price_max=&is_new_arrival=&is_bestseller=&on_sale=&in_stock=&discount=&ordering=&page=
 export default async function ShopPage({ searchParams }) {
   const resolvedParams = await searchParams;
-  const [categories, priceBounds, currencySymbol] = await Promise.all([getShopCategories(), getShopPriceBounds(), getCurrencySymbol()]);
+  const [categories, priceBounds, currencySymbol, discounts] = await Promise.all([
+    getShopCategories(),
+    getShopPriceBounds(),
+    getCurrencySymbol(),
+    getActiveDiscounts(),
+  ]);
   const activeCount = FILTER_KEYS.filter((key) => resolvedParams[key]).length;
-  const filterProps = { categories, priceBounds, currencySymbol, searchParams: resolvedParams };
+  const filterProps = { categories, priceBounds, currencySymbol, discounts, searchParams: resolvedParams };
 
   return (
     <main>
@@ -72,7 +78,7 @@ export default async function ShopPage({ searchParams }) {
 
           <div className="min-w-0">
             <Suspense fallback={<ShopProductGridSkeleton />}>
-              <ShopResults searchParams={resolvedParams} categories={categories} priceBounds={priceBounds} currencySymbol={currencySymbol} />
+              <ShopResults searchParams={resolvedParams} categories={categories} priceBounds={priceBounds} currencySymbol={currencySymbol} discounts={discounts} />
             </Suspense>
           </div>
         </div>

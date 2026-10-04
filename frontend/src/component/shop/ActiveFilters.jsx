@@ -2,7 +2,7 @@ import Link from "next/link";
 import { buildShopHref, flattenCategories, parseCategories, PROMOTIONS, toggleCategoryParam } from "@/lib/shopQuery";
 
 // Plain links (no client JS needed): each tag removes just its own filter, "Clear All" drops them all.
-export default function ActiveFilters({ searchParams, categories, priceBounds, currencySymbol }) {
+export default function ActiveFilters({ searchParams, categories, priceBounds, currencySymbol, discounts = [] }) {
   const tags = [];
 
   if (searchParams.search) {
@@ -30,6 +30,12 @@ export default function ActiveFilters({ searchParams, categories, priceBounds, c
     if (searchParams[promo.param] === "true") {
       tags.push({ key: promo.param, label: promo.label, href: buildShopHref(searchParams, { [promo.param]: null }) });
     }
+  }
+
+  if (searchParams.discount) {
+    const discount = discounts.find((d) => String(d.id) === searchParams.discount);
+    // A discount that has since ended still gets a tag, so the (now empty) filter can be removed.
+    tags.push({ key: "discount", label: discount ? discount.name : "Discount", href: buildShopHref(searchParams, { discount: null }) });
   }
 
   if (searchParams.in_stock === "true") tags.push({ key: "in_stock", label: "In Stock", href: buildShopHref(searchParams, { in_stock: null }) });

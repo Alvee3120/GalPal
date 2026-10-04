@@ -174,3 +174,30 @@ def test_a_discount_can_cover_several_categories():
 def test_category_discount_needs_at_least_one_category(auth_client, admin_user):
     body = {"name": "x", "kind": "percentage", "value": "10", "target_type": "category", "category_ids": [], **window()}
     assert auth_client(admin_user).post(A, body, format="json").status_code == 400
+
+
+# --- storefront: homepage sections ---------------------------------------------------------------------------------------
+
+
+def test_active_discounts_endpoint_lists_only_live_discounts_that_price_something(api_client):
+    priced = product("1000.00")
+    live = make(products=[priced], value="20")
+    make(products=[priced], value="30", start_hours=3)  # scheduled
+    make(products=[priced], value="30", active=False)  # switched off
+    make(products=[priced], value="30", start_hours=-48, end_hours=-1)  # expired
+    body = api_client.get("/api/v1/discounts/active/").json()
+    assert [d["id"] for d in body] == [live.id] and body[0]["name"] == live.name and body[0]["product_count"] == 1
+
+
+def test_products_filter_by_discount_shows_only_the_products_it_prices(api_client):
+    cat = Category.objects.create(name="Glow", slug="glow")
+    a, b, outside = product("1000.00"), product("1000.00"), product("1000.00")
+    for p in (a, b):
+        ProductCategory.objects.create(product=p, category=cat, is_primary=True)
+    category_discount = make(target="category", categories=[cat], value="10")
+    make(products=[b], value="5")  # b is priced by its own product discount instead
+    names = [p["name"] for p in api_client.get(f"/api/v1/products/?discount={category_discount.id}").json()["results"]]
+    assert names == [a.name] and outside.name not in names
+    Discount.objects.filter(pk=category_discount.pk).update(is_active=False)
+    services.invalidate()
+    assert api_client.get(f"/api/v1/products/?discount={category_discount.id}").json()["count"] == 0

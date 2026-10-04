@@ -69,7 +69,7 @@ function CategoryTree({ nodes, selectedSlugs, collapsed, toggle, onSelect, depth
   );
 }
 
-export default function ShopFilters({ categories, priceBounds, currencySymbol, searchParams }) {
+export default function ShopFilters({ categories, priceBounds, currencySymbol, searchParams, discounts = [] }) {
   const router = useRouter();
   const go = (changes) => router.push(buildShopHref(searchParams, changes));
   const [collapsed, setCollapsed] = useState(() => new Set()); // every parent starts expanded
@@ -101,6 +101,24 @@ export default function ShopFilters({ categories, priceBounds, currencySymbol, s
           currencySymbol={currencySymbol}
         />
       </FilterGroup>
+
+      {/* Live Admin discounts (GET /discounts/active/): pick one to see just the products it is pricing. Hidden when none run. */}
+      {discounts.length > 0 && (
+        <FilterGroup title="Discounts">
+          {discounts.map((discount) => {
+            const selected = searchParams.discount === String(discount.id);
+            return (
+              <Checkbox
+                key={discount.id}
+                label={discount.name}
+                count={discount.product_count}
+                checked={selected}
+                onChange={() => go({ discount: selected ? null : String(discount.id) })}
+              />
+            );
+          })}
+        </FilterGroup>
+      )}
 
       <FilterGroup title="By Promotions">
         {PROMOTIONS.map((promo) => (

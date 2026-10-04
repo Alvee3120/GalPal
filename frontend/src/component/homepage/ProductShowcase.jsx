@@ -8,7 +8,7 @@ const REVALIDATE_SECONDS = 60;
 // One request against the backend's existing GET /products/ endpoint, narrowed by `filter`
 // (any of its query filters: { category: "makeup" } or { tag: "trending" } ...).
 // Pages are followed only if the backend caps page_size below `limit`.
-async function getProducts({ filter, limit, ordering }) {
+async function getProducts({ filter, limit, ordering, tags }) {
   const products = new Map(); // keyed by id: a product can never appear twice
   const params = new URLSearchParams({ ...filter, page_size: String(limit) });
   if (ordering) params.set("ordering", ordering);
@@ -16,7 +16,7 @@ async function getProducts({ filter, limit, ordering }) {
 
   try {
     while (url && products.size < limit) {
-      const res = await fetch(url, { next: { revalidate: REVALIDATE_SECONDS } });
+      const res = await fetch(url, { next: { revalidate: REVALIDATE_SECONDS, ...(tags?.length ? { tags } : {}) } });
       if (!res.ok) throw new Error(`Products API responded ${res.status}`);
       const data = await res.json();
       for (const product of data.results ?? []) products.set(product.id, product);
@@ -64,13 +64,15 @@ export function ProductShowcaseSkeleton({ columns = 4, rows = 1 }) {
   );
 }
 
-// Generic homepage product section. CategoryProductShowcase and TrendingProducts are thin wrappers that
+// Generic homepage product section. CategoryProductShowcase, TrendingProducts and DiscountProductShowcase are thin wrappers that
 // only decide the `filter`; the fetch, header, carousel, product cards, cart, skeleton and error handling are shared.
 //   filter        API query filters, e.g. { category: "makeup" } or { tag: "trending" }
 //   productLimit  total products fetched
 //   columns/rows  cards per row on desktop (tablet up to 3, mobile up to 2) / rows shown at once
 //   ordering      API ordering: price, -price, newest, popularity, rating
 //   hideWhenEmpty render nothing (instead of a "no products" note) when nothing matches
+//   cacheTags     extra cache tags for the product fetch, so an admin change can refresh this section at once
+//   headerExtra   optional element beside the section title (the discount sections' countdown)
 export default async function ProductShowcase({
   filter,
   title,
@@ -80,9 +82,11 @@ export default async function ProductShowcase({
   rows = 1,
   ordering = "popularity",
   hideWhenEmpty = false,
+  cacheTags,
+  headerExtra = null,
 }) {
   const [{ products, error }, currencySymbol] = await Promise.all([
-    getProducts({ filter, limit: productLimit, ordering }),
+    getProducts({ filter, limit: productLimit, ordering, tags: cacheTags }),
     getCurrencySymbol(),
   ]);
 
@@ -103,6 +107,7 @@ export default async function ProductShowcase({
         currencySymbol={currencySymbol}
         title={title}
         description={description}
+        headerExtra={headerExtra}
         columns={columns}
         rows={rows}
       />
