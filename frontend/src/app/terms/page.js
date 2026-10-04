@@ -2,11 +2,10 @@ import Link from "next/link";
 import LegalPage from "@/component/shared/LegalPage";
 import CmsPage, { cmsMetadata } from "@/component/content/CmsPage";
 import { getContentPage } from "@/lib/content";
-import { POLICY } from "@/lib/policies";
 
 const FALLBACK_METADATA = {
   title: "Terms of Service | GalPal",
-  description: "The terms that apply when you browse, create an account and shop on the GalPal website.",
+  description: "The terms that apply when you use the Gal Pal website and place an order: products, orders, pricing, payment, delivery and more.",
 };
 
 // Admin → Content Pages can replace this text with a "terms" page; until then the built-in text below shows.
@@ -20,113 +19,133 @@ export default async function TermsPage() {
   return (
     <LegalPage
       title="Terms of Service"
-      intro="These terms apply when you use the GalPal website and place an order. By using the site or placing an order, you agree to them."
+      intro="Welcome to Gal Pal. By accessing or using our website and placing an order through our services, you agree to the following Terms of Service."
+      updated="4 October 2026"
+      contactTitle="13. Contact Us"
+      contactText="If you have questions regarding these Terms of Service, an order, or any of our policies, please contact Gal Pal through the official contact information provided on our website."
     >
-      <section>
-        <h2>Using the Website</h2>
-        <ul>
-          <li>Please give accurate information when you place an order or create an account.</li>
-          <li>Keep your login details private; you&apos;re responsible for activity on your account.</li>
-          <li>
-            Don&apos;t misuse the website, for example by placing fake orders, interfering with its security or copying
-            its content.
-          </li>
-        </ul>
-        <p>We may suspend accounts or cancel orders that break these terms or look fraudulent.</p>
-      </section>
+      <p>Please read these terms carefully before making a purchase.</p>
 
       <section>
-        <h2>Products &amp; Prices</h2>
-        <ul>
-          <li>
-            We try to show every product, ingredient and price accurately. Colours and packaging may vary slightly from
-            the photos.
-          </li>
-          <li>
-            Prices are in Bangladeshi Taka (৳) and can change at any time. The price you pay is the one shown when you
-            place your order.
-          </li>
-          <li>
-            If a product was listed with a clear pricing or stock mistake, we&apos;ll contact you and may cancel that item
-            or order.
-          </li>
-          <li>Skincare results vary from person to person. Patch-test new products and follow the directions on the pack.</li>
-        </ul>
-      </section>
-
-      <section>
-        <h2>Orders</h2>
-        <ul>
-          <li>Your order is an offer to buy; it&apos;s accepted when we confirm it.</li>
-          <li>We may contact you by phone to confirm your order before it&apos;s dispatched.</li>
-          <li>Products are subject to availability. If something is out of stock after you order, we&apos;ll let you know.</li>
-          <li>Coupons must be used as described, can&apos;t be exchanged for cash, and may have conditions such as a minimum order.</li>
-        </ul>
-      </section>
-
-      <section>
-        <h2>Payment</h2>
+        <h2>1. Products and Product Information</h2>
         <p>
-          You can pay with <strong>Cash on Delivery</strong> when you order on the website. Please have the exact amount
-          ready for the delivery person. Where online payment is available, a payment counts as received only once it&apos;s
-          confirmed.
+          We make reasonable efforts to ensure that product names, descriptions, images, availability, and other information
+          displayed on our website are accurate.
         </p>
-      </section>
-
-      <section>
-        <h2>Delivery</h2>
-        <ul>
-          <li>We deliver across {POLICY.country}. The delivery charge depends on your area and is shown at checkout before you order.</li>
-          <li>Delivery times are estimates and may be affected by courier delays, weather, holidays or other events outside our control.</li>
-          <li>Please check your parcel when it arrives, and contact us straight away if anything is wrong.</li>
-        </ul>
-      </section>
-
-      <section>
-        <h2>Cancellations, Returns &amp; Refunds</h2>
         <p>
-          Cancellations, returns and refunds are covered by our{" "}
+          However, colours, packaging, labels, and other visual details may appear slightly different depending on the product
+          batch, manufacturer updates, photography, or your device display.
+        </p>
+        <p>Product availability may change without prior notice.</p>
+      </section>
+
+      <section>
+        <h2>2. Orders</h2>
+        <p>When you place an order through Gal Pal, you are submitting a request to purchase the selected product(s).</p>
+        <p>An order is considered confirmed once it has been reviewed and confirmed by Gal Pal.</p>
+        <p>We reserve the right to cancel or decline an order in circumstances including, but not limited to:</p>
+        <ul>
+          <li>Product unavailability</li>
+          <li>Incorrect product or pricing information</li>
+          <li>Suspected fraudulent activity</li>
+          <li>Inability to verify the order</li>
+          <li>Other circumstances that prevent us from fulfilling the order</li>
+        </ul>
+        <p>
+          If an order is cancelled after payment has been made, the applicable refund will be handled according to our{" "}
           <Link href="/return-and-cancellation-policy">Return &amp; Cancellation Policy</Link>.
         </p>
       </section>
 
       <section>
-        <h2>Reviews</h2>
+        <h2>3. Pricing</h2>
+        <p>All prices displayed on the website are subject to change without prior notice.</p>
         <p>
-          Reviews must be honest and about your own experience. We moderate reviews before they appear and may decline
-          ones that are offensive, misleading or unrelated to the product.
+          We make reasonable efforts to ensure that pricing information is accurate. In the event of an obvious pricing or
+          listing error, Gal Pal reserves the right to correct the error and, where necessary, cancel the affected order.
+        </p>
+        <p>Applicable delivery charges and other fees, if any, will be communicated during the ordering process.</p>
+      </section>
+
+      <section>
+        <h2>4. Payment</h2>
+        <p>Customers are responsible for providing accurate payment and order information.</p>
+        <p>Available payment methods may vary and will be displayed or communicated at the time of purchase.</p>
+        <p>An order may not be processed until the required payment or confirmation has been received.</p>
+      </section>
+
+      <section>
+        <h2>5. Delivery</h2>
+        <p>Gal Pal delivers orders through third-party courier or delivery services where applicable.</p>
+        <p>
+          Delivery times are estimates and may vary depending on location, courier operations, weather, public holidays,
+          unforeseen circumstances, and other factors beyond our control.
+        </p>
+        <p>Customers are responsible for providing an accurate and complete delivery address and contact information.</p>
+        <p>
+          Delays caused by incorrect customer information, failed delivery attempts, or circumstances beyond Gal Pal&apos;s
+          reasonable control may not be considered a failure by Gal Pal to fulfil the order.
         </p>
       </section>
 
       <section>
-        <h2>Intellectual Property</h2>
+        <h2>6. Pre-Orders and Special Requests</h2>
+        <p>Certain products may be available on a pre-order or special-request basis.</p>
         <p>
-          The GalPal name, logo, product photos and website content belong to GalPal or its partners. Please don&apos;t
-          copy or reuse them without permission.
+          Estimated arrival or delivery timelines for such products may vary. Customers will be informed of relevant conditions
+          before confirming their order.
+        </p>
+        <p>Pre-order and specially requested products may be subject to separate cancellation, return, or refund conditions.</p>
+      </section>
+
+      <section>
+        <h2>7. Returns, Exchanges and Refunds</h2>
+        <p>
+          Returns, exchanges, replacements, and refunds are subject to our{" "}
+          <Link href="/return-and-cancellation-policy">Return &amp; Cancellation Policy</Link>.
+        </p>
+        <p>Customers should review that policy before placing an order.</p>
+      </section>
+
+      <section>
+        <h2>8. Promotions and Discounts</h2>
+        <p>Promotional offers, discounts, campaigns, and special offers may be subject to specific terms and conditions.</p>
+        <p>Unless otherwise stated, promotional offers cannot be combined with other offers.</p>
+        <p>Gal Pal reserves the right to modify or end a promotion according to the terms of the applicable campaign.</p>
+      </section>
+
+      <section>
+        <h2>9. Website Content</h2>
+        <p>
+          All text, photographs, graphics, logos, designs, and other content published on the Gal Pal website are owned by or
+          used with permission by Gal Pal and/or the respective rights holders.
+        </p>
+        <p>Website content may not be copied, reproduced, modified, distributed, or used commercially without prior permission.</p>
+      </section>
+
+      <section>
+        <h2>10. Website Use</h2>
+        <p>
+          Customers agree not to use the website for unlawful purposes, to interfere with website functionality, attempt
+          unauthorized access, or engage in activities that may harm the website, Gal Pal, or other users.
         </p>
       </section>
 
       <section>
-        <h2>Limitation of Liability</h2>
+        <h2>11. Third-Party Services</h2>
         <p>
-          To the extent allowed by law, GalPal isn&apos;t responsible for indirect losses arising from use of the website
-          or products, including reactions from not following product directions. Nothing in these terms limits rights
-          you have under the consumer protection laws of {POLICY.country}.
+          Gal Pal may use third-party services such as payment gateways, courier services, analytics providers, hosting
+          providers, or other technology services.
         </p>
+        <p>The availability and operation of such services may be subject to the respective third party&apos;s terms and policies.</p>
       </section>
 
       <section>
-        <h2>Privacy</h2>
+        <h2>12. Changes to These Terms</h2>
+        <p>Gal Pal reserves the right to update or modify these Terms of Service from time to time.</p>
         <p>
-          How we handle your personal information is explained in our <Link href="/privacy-policy">Privacy Policy</Link>.
-        </p>
-      </section>
-
-      <section>
-        <h2>Changes &amp; Governing Law</h2>
-        <p>
-          We may update these terms from time to time; the &ldquo;Last updated&rdquo; date above shows the latest version.
-          These terms are governed by the laws of {POLICY.country}.
+          The updated version will be published on this page, and continued use of the website after an update may be subject
+          to the revised terms.
         </p>
       </section>
     </LegalPage>
