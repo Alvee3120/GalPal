@@ -2569,25 +2569,8 @@ a.dashboard-card:hover {
   text-underline-offset: 3px;
 }
 
-.announcement-bar__item {
-  animation: announcement-in 0.4s ease-out;
-}
-
-@keyframes announcement-in {
-  from {
-    opacity: 0;
-    transform: translateY(4px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .announcement-bar__item {
-    animation: none;
-  }
+.announcement-bar__dot {
+  opacity: 0.6;
 }
 
 /* Hidden while the page is scrolled (component/shared/Navbar.jsx): grid rows animate the height to 0 smoothly. */
