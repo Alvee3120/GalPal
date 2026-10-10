@@ -33,5 +33,5 @@ class AnnouncementAdmin(admin.ModelAdmin):
 
 @admin.register(HomepageCategorySection)
 class HomepageCategorySectionAdmin(admin.ModelAdmin):
-    list_display = ["category", "position", "sort_order", "product_limit", "rows", "is_active"]
-    list_filter = ["position", "is_active"]
+    list_display = ["__str__", "source", "position", "sort_order", "product_limit", "rows", "is_active"]
+    list_filter = ["source", "position", "is_active"]

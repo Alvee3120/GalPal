@@ -7,7 +7,6 @@ import CategoryShowcase, {
 import SkincareVideoSection from "@/component/homepage/SkincareVideoSection";
 import { ProductShowcaseSkeleton } from "@/component/homepage/CategoryProductShowcase";
 import HomepageCategorySections from "@/component/homepage/HomepageCategorySections";
-import TrendingProducts from "@/component/homepage/TrendingProducts";
 import DiscountProductShowcases from "@/component/homepage/DiscountProductShowcase";
 import ShoppableVideoCarousel, {
   VideoCarouselSkeleton,
@@ -30,7 +29,8 @@ export default function Home() {
         <DiscountProductShowcases rows={1} />
       </Suspense>
 
-      {/* Category sections the Admin placed before the skincare video (Admin → Homepage Sections). */}
+      {/* Product sections the Admin placed before the skincare video (Admin → Homepage Sections): categories and
+          Trending / New Arrivals / Bestsellers. */}
       <Suspense fallback={<ProductShowcaseSkeleton />}>
         <HomepageCategorySections position="before_video" />
       </Suspense>
@@ -40,10 +40,6 @@ export default function Home() {
       {/* …and the ones placed after it. */}
       <Suspense fallback={<ProductShowcaseSkeleton />}>
         <HomepageCategorySections position="after_video" />
-      </Suspense>
-
-      <Suspense fallback={<ProductShowcaseSkeleton />}>
-        <TrendingProducts productLimit={8} />
       </Suspense>
 
       <Suspense fallback={<VideoCarouselSkeleton />}>

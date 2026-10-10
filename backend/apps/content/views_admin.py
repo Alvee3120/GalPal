@@ -120,11 +120,12 @@ class AnnouncementViewSet(mixins.ListModelMixin, mixins.CreateModelMixin, mixins
 
 
 @extend_schema_view(
-    list=extend_schema(tags=TAG, summary="Homepage category sections", description="Category product sections around the "
-                       "skincare video section, in display order. The homepage title is the category's name."),
-    create=extend_schema(tags=TAG, summary="Add a homepage category section"),
-    partial_update=extend_schema(tags=TAG, summary="Edit a homepage category section"),
-    destroy=extend_schema(tags=TAG, summary="Remove a homepage category section"),
+    list=extend_schema(tags=TAG, summary="Homepage product sections", description="Product sections around the skincare "
+                       "video section: a category (titled with its name) or the Trending / New Arrivals / Bestsellers product "
+                       "flags (with an editable title)."),
+    create=extend_schema(tags=TAG, summary="Add a homepage product section"),
+    partial_update=extend_schema(tags=TAG, summary="Edit a homepage product section"),
+    destroy=extend_schema(tags=TAG, summary="Remove a homepage product section"),
 )
 class HomepageCategorySectionViewSet(mixins.ListModelMixin, mixins.CreateModelMixin, mixins.UpdateModelMixin, mixins.DestroyModelMixin,
                                      viewsets.GenericViewSet):

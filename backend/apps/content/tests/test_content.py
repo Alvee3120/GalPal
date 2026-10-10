@@ -149,3 +149,16 @@ def test_homepage_sections_admin_crud_and_public_visibility(admin_client, api_cl
     invalidate_category_cache()
     assert api_client.get("/api/v1/homepage/category-sections/").json() == []  # a hidden category never breaks the page
     assert HomepageCategorySection.objects.count() == 2
+
+
+def test_flag_sections_trending_new_arrivals_bestsellers(admin_client, api_client):
+    r = admin_client.post(A + "category-sections/", {"source": "featured", "position": "after_video"}, format="json")
+    assert r.status_code == 201 and r.json()["display_title"] == "Trending Products" and r.json()["category"] is None
+    assert (r.json()["product_limit"], r.json()["rows"]) == (8, 1)
+    sid = r.json()["id"]
+    admin_client.patch(f"{A}category-sections/{sid}/", {"title": "Hot Right Now"}, format="json")
+    admin_client.post(A + "category-sections/", {"source": "new_arrival", "is_active": False}, format="json")
+    assert admin_client.post(A + "category-sections/", {"source": "category"}, format="json").status_code == 400  # needs a category
+
+    public = api_client.get("/api/v1/homepage/category-sections/").json()
+    assert [(s["title"], s["filter"]) for s in public] == [("Hot Right Now", {"is_featured": "true"})]  # inactive one hidden

@@ -1,5 +1,6 @@
 """Public storefront endpoints for Module 15, mounted at /api/v1/. No login needed."""
 
+from django.db.models import Q
 from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, extend_schema
 from rest_framework import status
 from rest_framework.exceptions import NotFound
@@ -10,7 +11,7 @@ from rest_framework.views import APIView
 from apps.core.serializers import ErrorResponseSerializer
 
 from . import services
-from .models import Faq, HomepageCategorySection, Page
+from .models import Faq, HomepageCategorySection, Page, SectionSource
 from .serializers import (
     PublicHomepageCategorySectionSerializer,
     PublicAnnouncementSerializer,
@@ -106,15 +107,20 @@ class SearchView(_Public):
 
 class HomepageCategorySectionListView(_Public):
     @extend_schema(
-        tags=TAG, summary="Homepage category sections",
-        description="Active sections whose category is visible on the storefront (active, with every parent active), in "
-                    "display order: `position` (before_video / after_video), then `sort_order`. Each one's products: "
-                    "GET /products/?category=<category.slug> (sub-categories included). Not paginated.",
+        tags=TAG, summary="Homepage product sections",
+        description="Active homepage product sections in display order (`position` before_video / after_video, then "
+                    "`sort_order`): category sections whose category is visible on the storefront, and the Trending / New "
+                    "Arrivals / Bestsellers sections. `title` is what to show; `filter` is the GET /products/ query that "
+                    "gives the section's products (a category includes its sub-categories). Not paginated.",
         responses={200: PublicHomepageCategorySectionSerializer(many=True)},
     )
     def get(self, request):
         from apps.catalog.services import CategoryIndex
 
         visible = CategoryIndex().visible_ids()
-        sections = HomepageCategorySection.objects.filter(is_active=True, category_id__in=visible).select_related("category")
+        sections = (
+            HomepageCategorySection.objects.filter(is_active=True)
+            .filter(Q(source=SectionSource.CATEGORY, category_id__in=visible) | ~Q(source=SectionSource.CATEGORY))
+            .select_related("category")
+        )
         return Response(PublicHomepageCategorySectionSerializer(sections, many=True).data)
