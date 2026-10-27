@@ -93,7 +93,7 @@ export default function CheckoutContent() {
 // sent to the server is the form's city + zone, never an amount, and never a saved address the customer didn't pick.
 function CheckoutForm({ account }) {
   const router = useRouter();
-  const { items, itemCount, subtotal, discount, coupon, couponBusy, applyCoupon, removeCoupon, currencySymbol, refreshCart } = useCart();
+  const { items, itemCount, subtotal, discount, promotionDiscount, promotions, coupon, couponBusy, applyCoupon, removeCoupon, currencySymbol, refreshCart } = useCart();
   const loggedIn = account !== null;
   const [values, setValues] = useState(() => (loggedIn ? initialValuesFor(account.profile, account.addresses) : INITIAL));
   const options = loggedIn ? addressOptions(account.addresses) : [];
@@ -155,8 +155,9 @@ function CheckoutForm({ account }) {
   }, [quoteKey]);
   const quoteLoading = Boolean(quoteKey) && quote.key !== quoteKey; // a quote for this address hasn't come back yet
   const deliveryCharge = quoteKey && quote.key === quoteKey && quote.data ? Number(quote.data.charge) : null;
-  const orderTotal = Number(subtotal) - Number(discount) + (deliveryCharge ?? 0);
+  const orderTotal = Number(subtotal) - Number(promotionDiscount) - Number(discount) + (deliveryCharge ?? 0);
   const hasDiscount = Number(discount) > 0;
+  const hasPromotion = Number(promotionDiscount) > 0;
   const availableCount = items.filter((item) => item.is_available !== false).length;
   const hasUnavailable = availableCount < items.length;
   const dhaka = isDhaka(values.city);
@@ -304,6 +305,16 @@ function CheckoutForm({ account }) {
                       {item.quantity} × {formatPrice(item.unit_price, currencySymbol)}
                     </p>
                   )}
+                  {!unavailable && item.free_quantity > 0 && (
+                    <p className="mt-0.5 text-xs font-medium" style={{ color: "var(--color-success)" }}>
+                      {item.free_quantity} free
+                    </p>
+                  )}
+                  {!unavailable && Number(item.promotion_discount) > 0 && item.free_quantity === 0 && (
+                    <p className="mt-0.5 text-xs font-medium" style={{ color: "var(--color-success)" }}>
+                      -{formatPrice(item.promotion_discount, currencySymbol)} offer
+                    </p>
+                  )}
                 </div>
                 <p className="shrink-0 text-sm font-medium">{unavailable ? "—" : formatPrice(item.line_total, currencySymbol)}</p>
               </li>
@@ -326,6 +337,20 @@ function CheckoutForm({ account }) {
             <dt>Subtotal</dt>
             <dd className="font-medium">{formatPrice(subtotal, currencySymbol)}</dd>
           </div>
+          {hasPromotion &&
+            (promotions.length > 0 ? (
+              promotions.map((promo) => (
+                <div key={promo.id} className="flex items-center justify-between gap-3">
+                  <dt className="min-w-0 truncate" title={promo.label || promo.name}>{promo.label || promo.name}</dt>
+                  <dd className="shrink-0 font-medium">-{formatPrice(promo.discount, currencySymbol)}</dd>
+                </div>
+              ))
+            ) : (
+              <div className="flex items-center justify-between">
+                <dt>Promotion</dt>
+                <dd className="font-medium">-{formatPrice(promotionDiscount, currencySymbol)}</dd>
+              </div>
+            ))}
           {hasDiscount && (
             <div className="flex items-center justify-between">
               <dt>Discount</dt>

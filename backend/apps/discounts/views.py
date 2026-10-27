@@ -7,14 +7,15 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from . import services
-from .models import DiscountKind
+from .models import DiscountKind, promotion_label
 
 
 class ActiveDiscountSerializer(serializers.Serializer):
     id = serializers.IntegerField()
     name = serializers.CharField()
     type = serializers.ChoiceField(choices=DiscountKind.choices, source="kind")
-    value = serializers.DecimalField(max_digits=12, decimal_places=2)
+    label = serializers.CharField()
+    value = serializers.DecimalField(max_digits=12, decimal_places=2, allow_null=True)
     starts_at = serializers.DateTimeField()
     ends_at = serializers.DateTimeField()
     product_count = serializers.IntegerField()
@@ -33,8 +34,8 @@ class ActiveDiscountListView(APIView):
     )
     def get(self, request):
         rows = [
-            {"id": r.id, "name": r.name, "kind": r.kind, "value": r.value, "starts_at": r.starts_at, "ends_at": r.ends_at,
-             "product_count": len(ids)}
+            {"id": r.id, "name": r.name, "kind": r.kind, "label": promotion_label(r), "value": r.value,
+             "starts_at": r.starts_at, "ends_at": r.ends_at, "product_count": len(ids)}
             for r, ids in services.storefront_discounts()
         ]
         return Response(ActiveDiscountSerializer(rows, many=True).data)

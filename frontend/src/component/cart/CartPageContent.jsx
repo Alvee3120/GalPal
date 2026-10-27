@@ -52,6 +52,8 @@ export default function CartPageContent() {
     itemCount,
     subtotal,
     discount,
+    promotionDiscount,
+    promotions,
     coupon,
     couponBusy,
     currencySymbol,
@@ -97,6 +99,8 @@ export default function CartPageContent() {
       <OrderSummary
         subtotal={subtotal}
         discount={discount}
+        promotionDiscount={promotionDiscount}
+        promotions={promotions}
         coupon={coupon}
         couponBusy={couponBusy}
         currencySymbol={currencySymbol}

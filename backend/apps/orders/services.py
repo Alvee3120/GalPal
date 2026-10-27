@@ -41,6 +41,7 @@ from apps.catalog.exceptions import Conflict
 from apps.catalog.models import Product, ProductVariant, StockMovement
 from apps.coupons import services as coupon_services
 from apps.coupons.models import Coupon, CouponUsage
+from apps.discounts import promotions
 from apps.shipping import services as shipping_services
 from apps.site_settings.services import get_site_settings
 
@@ -193,18 +194,43 @@ def resolve_lines(entries):
     return resolved
 
 
-def _coupon_rows(lines):
-    """The row shape Module 8's coupon code evaluates, built from lines that aren't in any cart."""
+def _coupon_rows(lines, promo_by_line=None):
+    """The row shape Module 8's coupon code evaluates, built from lines that aren't in any cart. A line's promotion
+    discount is taken off its total first, so the coupon applies to what's left (promotions come before the coupon)."""
+    rows = []
+    for line in lines:
+        key = (line.product.id, line.variant.id if line.variant else None)
+        allocated = _promotion_share(promo_by_line, *key).get("promotion_discount", Decimal("0.00"))
+        rows.append({
+            "item": CartItem(product=line.product, variant=line.variant, quantity=line.quantity),
+            "unit_price": line.unit_price, "line_total": line.line_total - allocated,
+            "is_available": True, "available_quantity": None,
+        })
+    return rows
+
+
+def _promotion_lines(entries):
+    """
+    The engine's input, from `(product_id, variant_id, unit_price, quantity)` tuples. Each line keeps the effective
+    price it is charged at, so promotions are worked out on what the customer actually pays for the items.
+    """
+    from apps.discounts.promotions import LineIn  # lazy: keeps the discounts import out of this module's top level
+
     return [
-        {"item": CartItem(product=l.product, variant=l.variant, quantity=l.quantity), "unit_price": l.unit_price,
-         "line_total": l.line_total, "is_available": True, "available_quantity": None}
-        for l in lines
+        LineIn(key=(product_id, variant_id), product_id=product_id, unit_price=unit_price, quantity=quantity)
+        for product_id, variant_id, unit_price, quantity in entries
+        if product_id and quantity and unit_price and unit_price > 0
     ]
 
 
-def _tax(subtotal, discount):
+def _promotion_share(promo_by_line, product_id, variant_id):
+    """The engine's allocation for one line (`{promotion_discount, free_quantity, labels}`), or an empty dict."""
+    return (promo_by_line or {}).get((product_id, variant_id)) or {}
+
+
+def _tax(subtotal, discount, promotion=Decimal("0.00")):
     percent = get_site_settings().tax_percent or Decimal("0")
-    return percent, _money((subtotal - discount) * percent / Decimal("100"))
+    return percent, _money((subtotal - promotion - discount) * percent / Decimal("100"))
 
 
 def _apply_shipping(order, quote):
@@ -220,7 +246,9 @@ def _apply_shipping(order, quote):
 
 
 def _recalculate_total(order):
-    order.grand_total = order.subtotal - order.discount_amount + order.shipping_charge + order.tax_amount
+    order.grand_total = (
+        order.subtotal - order.promotion_discount - order.discount_amount + order.shipping_charge + order.tax_amount
+    )
 
 
 # --- stock ------------------------------------------------------------------------------------------------------
@@ -275,15 +303,18 @@ def _retake_stock(order, note, user):
     order.save(update_fields=["stock_released_at", "updated_at"])
 
 
-def _persist_items(order, lines):
-    OrderItem.objects.bulk_create([
-        OrderItem(
+def _persist_items(order, lines, promo_by_line=None):
+    items = []
+    for l in lines:
+        allocated = _promotion_share(promo_by_line, l.product.id, l.variant.id if l.variant else None)
+        items.append(OrderItem(
             order=order, product=l.product, variant=l.variant, product_name=l.product_name, sku=l.sku,
             variant_label=l.variant_label, image=l.image, regular_price=l.regular_price, unit_price=l.unit_price,
             quantity=l.quantity, line_total=l.line_total, stock_deducted=l.deduct,
-        )
-        for l in lines
-    ])
+            promotion_discount=allocated.get("promotion_discount", Decimal("0.00")),
+            free_quantity=allocated.get("free_quantity", 0),
+        ))
+    OrderItem.objects.bulk_create(items)
 
 
 # --- abuse guards ---------------------------------------------------------------------------------------------------
@@ -346,10 +377,16 @@ def _create_order(
     if min_order_amount and subtotal < min_order_amount:
         raise field_error("items", f"The minimum order amount is {_money(min_order_amount)}.", "min_order_amount")
 
+    # Automatic cart promotions, worked out on the live effective prices before the coupon. The customer is charged
+    # what this says — nothing promotion-related ever comes from the client.
+    promotion = promotions.apply_promotions(
+        _promotion_lines((l.product.id, l.variant.id if l.variant else None, l.unit_price, l.quantity) for l in resolved)
+    )
+
     discount = Decimal("0.00")
     if coupon is not None:
         valid, message, discount = coupon_services.evaluate(
-            coupon, subtotal=subtotal, rows=_coupon_rows(resolved), user=customer, phone=phone
+            coupon, subtotal=subtotal, rows=_coupon_rows(resolved, promotion.by_line), user=customer, phone=phone
         )
         if valid and coupon.first_order_only and _has_previous_orders(customer, phone):
             valid, message = False, "This coupon is only for a customer's first order."
@@ -359,19 +396,20 @@ def _create_order(
             coupon, discount = None, Decimal("0.00")  # a cart coupon that stopped applying is dropped, not an error
 
     quote = shipping_services.calculate_shipping(address, subtotal, coupon, delivery_method=delivery_method or None)
-    tax_percent, tax_amount = _tax(subtotal, discount)
+    tax_percent, tax_amount = _tax(subtotal, discount, promotion.total)
 
     order = Order(
         customer=customer, customer_name=contact["customer_name"], phone=phone, email=contact.get("email", ""),
         note=note, source=source, source_note=source_note, is_manual=is_manual, created_by=created_by,
-        payment_method=payment_method, subtotal=subtotal, discount_amount=discount, coupon=coupon,
+        payment_method=payment_method, subtotal=subtotal, promotion_discount=promotion.total,
+        applied_promotions=[applied.as_dict() for applied in promotion.applied], discount_amount=discount, coupon=coupon,
         coupon_code=coupon.code if coupon else "", tax_percent=tax_percent, tax_amount=tax_amount,
         fingerprint=fingerprint, ip_address=ip_address, **{name: address.get(name, "") for name in ADDRESS_FIELDS},
     )
     _apply_shipping(order, quote)
     _recalculate_total(order)
     _save_with_unique_number(order)
-    _persist_items(order, resolved)
+    _persist_items(order, resolved, promotion.by_line)
     OrderStatusHistory.objects.create(
         order=order, from_status="", to_status=S.PENDING, changed_by=created_by or customer,
         note="Order placed by staff" if is_manual else "Order placed",
@@ -558,7 +596,7 @@ def update_order(order, *, user, data):
         raise Conflict("Only a pending order can be edited.", code="order_not_editable")
     new_phone = data.get("phone", order.phone)
     _lock_phone(order.phone, new_phone)
-    audited = (*CONTACT_FIELDS, *ADDRESS_FIELDS, "note", "subtotal", "discount_amount", "coupon_code", "shipping_charge", "grand_total")
+    audited = (*CONTACT_FIELDS, *ADDRESS_FIELDS, "note", "subtotal", "promotion_discount", "discount_amount", "coupon_code", "shipping_charge", "grand_total")
     before = {name: getattr(order, name) for name in audited}
 
     changes = []
@@ -587,6 +625,20 @@ def update_order(order, *, user, data):
     kept = list(order.items.select_related("product", "variant"))
     order.subtotal = sum((i.line_total for i in kept), Decimal("0.00"))
 
+    # Promotions are re-worked out from the (possibly new) items, and their per-line allocation refreshed to match.
+    promotion = promotions.apply_promotions(
+        _promotion_lines((i.product_id, i.variant_id, i.unit_price, i.quantity) for i in kept if i.product_id)
+    )
+    order.promotion_discount = promotion.total
+    order.applied_promotions = [applied.as_dict() for applied in promotion.applied]
+    for item in kept:
+        allocated = _promotion_share(promotion.by_line, item.product_id, item.variant_id)
+        discount_share = allocated.get("promotion_discount", Decimal("0.00"))
+        free_share = allocated.get("free_quantity", 0)
+        if item.promotion_discount != discount_share or item.free_quantity != free_share:
+            item.promotion_discount, item.free_quantity = discount_share, free_share
+            item.save(update_fields=["promotion_discount", "free_quantity"])
+
     coupon = order.coupon
     if data.get("remove_coupon") and coupon is not None:
         CouponUsage.objects.filter(order_reference=order.number).delete()
@@ -595,7 +647,8 @@ def update_order(order, *, user, data):
     if coupon is not None:
         rows = [
             {"item": CartItem(product=i.product, variant=i.variant, quantity=i.quantity), "unit_price": i.unit_price,
-             "line_total": i.line_total, "is_available": True, "available_quantity": None}
+             "line_total": i.line_total - _promotion_share(promotion.by_line, i.product_id, i.variant_id).get("promotion_discount", Decimal("0.00")),
+             "is_available": True, "available_quantity": None}
             for i in kept if i.product is not None
         ]
         if order.subtotal < coupon.min_order_amount:
@@ -616,7 +669,7 @@ def update_order(order, *, user, data):
     if order.shipping_overridden:
         changes.append("shipping override cleared")
     _apply_shipping(order, quote)
-    order.tax_percent, order.tax_amount = _tax(order.subtotal, order.discount_amount)
+    order.tax_percent, order.tax_amount = _tax(order.subtotal, order.discount_amount, order.promotion_discount)
     _recalculate_total(order)
     order.save()
 

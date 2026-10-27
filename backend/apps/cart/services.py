@@ -201,17 +201,20 @@ def line_price(item):
 
 def summarize(cart):
     """
-    `{items, item_count, subtotal, discount, coupon, shipping, total}` for a cart (or `None` for
+    `{rows, item_count, subtotal, discount, coupon, shipping, total}` for a cart (or `None` for
     an empty/nonexistent guest cart). Unavailable lines (out of stock, deactivated, discontinued)
     are still listed, so the frontend can show them, but excluded from every total.
 
-    `discount` comes from the cart's applied coupon (Module 8), recomputed live like everything
-    else here — a coupon that's stopped applying (cart no longer meets its minimum, e.g.) reports
-    `discount=0` and `coupon.is_valid=False` without being detached, so it resumes automatically
-    if the cart changes again. `shipping` is a placeholder shape (`{"amount": null, "note": "..."}`)
-    until Module 9 (delivery zones) can compute a real one, except that a free-shipping coupon
-    already zeroes it out.
+    Money comes together in this order: the item's own effective price (already net of its sale price / Admin product
+    discount), then the automatic cart promotions (apps.discounts.promotions — `promotion_discount`, `promotions`, and a
+    `promotion_discount` / `free_quantity` / `promotion_labels` on each row), then the coupon (`discount`), which is
+    evaluated on what's left after the promotions. A coupon that's stopped applying (cart no longer meets its minimum,
+    e.g.) reports `discount=0` and `coupon.is_valid=False` without being detached, so it resumes if the cart changes
+    again. `shipping` is a placeholder shape (`{"amount": null, "note": "..."}`) until Module 9 (delivery zones) can
+    compute a real one, except that a free-shipping coupon already zeroes it out.
     """
+    from apps.discounts.promotions import LineIn, apply_promotions  # lazy: avoids a cart <-> discounts import cycle
+
     items = list(cart.items.select_related("product", "variant__product")) if cart else []
     subtotal = Decimal("0.00")
     rows = []
@@ -220,7 +223,21 @@ def summarize(cart):
         line_total = unit_price * item.quantity if is_available else Decimal("0.00")
         if is_available:
             subtotal += line_total
-        rows.append({"item": item, "unit_price": unit_price, "line_total": line_total, "is_available": is_available, "available_quantity": cap})
+        rows.append({"item": item, "unit_price": unit_price, "line_total": line_total, "is_available": is_available,
+                     "available_quantity": cap, "promotion_discount": Decimal("0.00"), "free_quantity": 0, "promotion_labels": []})
+
+    # Automatic cart promotions on the live effective prices; their per-line share is attached to each row.
+    promotion = apply_promotions([
+        LineIn(key=(r["item"].product_id, r["item"].variant_id), product_id=r["item"].product_id,
+               unit_price=r["unit_price"], quantity=r["item"].quantity)
+        for r in rows if r["is_available"]
+    ])
+    for row in rows:
+        allocated = promotion.by_line.get((row["item"].product_id, row["item"].variant_id))
+        if allocated:
+            row["promotion_discount"] = allocated["promotion_discount"]
+            row["free_quantity"] = allocated["free_quantity"]
+            row["promotion_labels"] = allocated["labels"]
 
     discount = Decimal("0.00")
     coupon_summary = None
@@ -228,7 +245,10 @@ def summarize(cart):
     if cart is not None and cart.coupon_id is not None:
         from apps.coupons import services as coupon_services  # lazy: avoids a cart <-> coupons import cycle
 
-        is_valid, message, discount = coupon_services.evaluate(cart.coupon, subtotal=subtotal, rows=rows, user=cart.user)
+        # The coupon is evaluated on what's left after promotions (promotions come first); its minimum-order check
+        # still uses the gross subtotal, so buying more never disqualifies it.
+        coupon_rows = [{**row, "line_total": row["line_total"] - row["promotion_discount"]} for row in rows]
+        is_valid, message, discount = coupon_services.evaluate(cart.coupon, subtotal=subtotal, rows=coupon_rows, user=cart.user)
         coupon_summary = {"code": cart.coupon.code, "is_valid": is_valid, "message": message}
         if is_valid and cart.coupon.free_shipping:
             shipping = {"amount": Decimal("0.00"), "note": "Free shipping (coupon applied)"}
@@ -238,7 +258,9 @@ def summarize(cart):
         "item_count": sum(item.quantity for item in items),
         "subtotal": subtotal,
         "discount": discount,
+        "promotion_discount": promotion.total,
+        "promotions": [applied.as_dict() for applied in promotion.applied],
         "coupon": coupon_summary,
         "shipping": shipping,
-        "total": subtotal - discount,
+        "total": subtotal - promotion.total - discount,
     }

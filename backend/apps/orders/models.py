@@ -89,6 +89,14 @@ class Order(TimeStampedModel, SoftDeleteModel):
 
     subtotal = models.DecimalField(max_digits=12, decimal_places=2, validators=[_min_zero])
     discount_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0, validators=[_min_zero])
+    promotion_discount = models.DecimalField(
+        max_digits=12, decimal_places=2, default=0, validators=[_min_zero],
+        help_text="Automatic cart-promotion discount (apps.discounts), separate from the coupon's `discount_amount`.",
+    )
+    applied_promotions = models.JSONField(
+        default=list, blank=True,
+        help_text="Snapshot of the cart promotions applied at order time, so later edits never rewrite history.",
+    )
     coupon = models.ForeignKey(Coupon, null=True, blank=True, on_delete=models.SET_NULL, related_name="orders")
     coupon_code = models.CharField(max_length=32, blank=True)
 
@@ -129,6 +137,10 @@ class Order(TimeStampedModel, SoftDeleteModel):
             models.CheckConstraint(condition=Q(subtotal__gte=0), name="order_subtotal_gte_0"),
             models.CheckConstraint(condition=Q(discount_amount__gte=0), name="order_discount_gte_0"),
             models.CheckConstraint(condition=Q(discount_amount__lte=models.F("subtotal")), name="order_discount_lte_subtotal"),
+            models.CheckConstraint(
+                condition=Q(subtotal__gte=models.F("discount_amount") + models.F("promotion_discount")),
+                name="order_discounts_lte_subtotal",
+            ),
             models.CheckConstraint(condition=Q(shipping_charge__gte=0), name="order_shipping_gte_0"),
             models.CheckConstraint(condition=Q(tax_amount__gte=0), name="order_tax_gte_0"),
             models.CheckConstraint(condition=Q(grand_total__gte=0), name="order_grand_total_gte_0"),
@@ -157,6 +169,11 @@ class OrderItem(models.Model):
     unit_price = models.DecimalField(max_digits=12, decimal_places=2, validators=[_min_zero])
     quantity = models.PositiveIntegerField(validators=[MinValueValidator(1)])
     line_total = models.DecimalField(max_digits=12, decimal_places=2, validators=[_min_zero])
+    promotion_discount = models.DecimalField(
+        max_digits=12, decimal_places=2, default=0, validators=[_min_zero],
+        help_text="Promotion discount allocated to this line (0 for none). Sums to the order's `promotion_discount`.",
+    )
+    free_quantity = models.PositiveIntegerField(default=0, help_text="Units of this line that were free under a promotion.")
     stock_deducted = models.PositiveIntegerField(default=0, help_text="Units actually taken from stock (0 if stock isn't managed).")
 
     class Meta:

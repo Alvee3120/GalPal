@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { notify } from "@/lib/notify";
 import { messageFor } from "@/lib/apiError";
 
-const EMPTY_CART = { items: [], item_count: 0, subtotal: "0.00", discount: "0.00", coupon: null, total: "0.00" };
+const EMPTY_CART = { items: [], item_count: 0, subtotal: "0.00", discount: "0.00", promotion_discount: "0.00", promotions: [], coupon: null, total: "0.00" };
 
 // Calls the /api/cart proxy. On failure throws an Error carrying `status` (0 = network) and the API's
 // field `details`; callers turn that into a friendly toast via messageFor(), never by showing err.message.
@@ -200,6 +200,8 @@ export function CartProvider({ children, currencySymbol = "" }) {
       itemCount: cart.item_count,
       subtotal: cart.subtotal,
       discount: cart.discount,
+      promotionDiscount: cart.promotion_discount ?? "0.00",
+      promotions: cart.promotions ?? [],
       coupon: cart.coupon,
       total: cart.total,
       couponBusy,

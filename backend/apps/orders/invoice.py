@@ -216,17 +216,18 @@ def build_invoice(order, request=None):
     product_discount = ZERO
     for item in order.items.all():
         regular = item.regular_price or item.unit_price
-        discount = max((regular - item.unit_price) * item.quantity, ZERO)
-        product_discount += discount
+        discount = max((regular - item.unit_price) * item.quantity, ZERO) + item.promotion_discount
+        product_discount += max((regular - item.unit_price) * item.quantity, ZERO)
         items.append({
             "name": item.product_name,
             "variant": item.variant_label,
             "sku": item.sku,
             "image": _url(item.image, request),
             "quantity": item.quantity,
+            "free_quantity": item.free_quantity,
             "unit_price": regular,  # the price before any sale, per unit
             "sale_price": item.unit_price,  # what was actually charged, per unit
-            "discount": discount,  # sale savings on this line
+            "discount": discount,  # sale savings + this line's promotion discount
             "total": item.line_total,
         })
     paid = _paid(order)
@@ -260,7 +261,9 @@ def build_invoice(order, request=None):
         },
         "items": items,
         "subtotal": order.subtotal,  # sum of line totals, at the prices charged
-        "product_discount": product_discount,  # already inside the line totals (shown for information)
+        "product_discount": product_discount,  # sale savings already inside the line totals (shown for information)
+        "promotion_discount": order.promotion_discount,  # automatic cart-promotion discount
+        "promotions": order.applied_promotions,  # snapshot of the promotions applied (names / labels)
         "coupon_code": order.coupon_code,
         "coupon_discount": order.discount_amount,
         "delivery_charge": order.shipping_charge,
@@ -449,7 +452,10 @@ def _invoice_story(invoice, width, layout, keep_together=True):
              Paragraph("<b>Discount</b>", right), Paragraph("<b>Total</b>", right)]]
     for item in invoice["items"]:
         name = esc(item["name"])
-        details = " · ".join(esc(x) for x in (item["variant"], item["sku"] and f"SKU {item['sku']}") if x)
+        parts = [item["variant"], item["sku"] and f"SKU {item['sku']}"]
+        if item.get("free_quantity"):
+            parts.append(f"{item['free_quantity']} free")
+        details = " · ".join(esc(x) for x in parts if x)
         rows.append([
             [Paragraph(name, base)] + ([Paragraph(details, detail)] if details else []),
             Paragraph(str(item["quantity"]), right),
@@ -469,6 +475,8 @@ def _invoice_story(invoice, width, layout, keep_together=True):
     totals = [["Subtotal", money(invoice["subtotal"])]]
     if Decimal(invoice["product_discount"]) > 0:
         totals.append(["Product discount (in prices)", f"- {money(invoice['product_discount'])}"])
+    if Decimal(invoice["promotion_discount"]) > 0:
+        totals.append(["Promotions", f"- {money(invoice['promotion_discount'])}"])
     if Decimal(invoice["coupon_discount"]) > 0:
         label = f"Coupon discount ({invoice['coupon_code']})" if invoice["coupon_code"] else "Coupon discount"
         totals.append([label, f"- {money(invoice['coupon_discount'])}"])

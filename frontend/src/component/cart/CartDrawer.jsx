@@ -42,6 +42,15 @@ function CartLine({ item, symbol, busy, onQuantity, onRemove, onNavigate }) {
             </Link>
             {label && <p className="showcase-muted mt-0.5 text-xs">{label}</p>}
             <p className="showcase-muted mt-0.5 text-xs">{formatPrice(unit_price, symbol)}</p>
+            {item.free_quantity > 0 ? (
+              <p className="mt-0.5 text-xs font-medium" style={{ color: "var(--color-success)" }}>
+                {item.free_quantity} free
+              </p>
+            ) : Number(item.promotion_discount) > 0 ? (
+              <p className="mt-0.5 text-xs font-medium" style={{ color: "var(--color-success)" }}>
+                -{formatPrice(item.promotion_discount, symbol)} offer
+              </p>
+            ) : null}
           </div>
           <p className="shrink-0 text-sm font-semibold">{formatPrice(line_total, symbol)}</p>
         </div>
@@ -91,7 +100,7 @@ function CartLine({ item, symbol, busy, onQuantity, onRemove, onNavigate }) {
 // The ONE cart drawer. It is mounted once in the root layout and opened through useCart().openCart(),
 // so product cards, the navbar, and any future "add to cart" button all share it.
 export default function CartDrawer() {
-  const { items, itemCount, subtotal, currencySymbol, isOpen, pendingIds, closeCart, setQuantity, removeItem } = useCart();
+  const { items, itemCount, subtotal, promotionDiscount, currencySymbol, isOpen, pendingIds, closeCart, setQuantity, removeItem } = useCart();
   const panelRef = useRef(null);
   const closeRef = useRef(null);
   const isEmpty = items.length === 0;
@@ -185,6 +194,12 @@ export default function CartDrawer() {
                 <span className="text-sm">Subtotal</span>
                 <span className="text-lg font-semibold">{formatPrice(subtotal, currencySymbol)}</span>
               </div>
+              {Number(promotionDiscount) > 0 && (
+                <div className="mt-1 flex items-baseline justify-between text-sm">
+                  <span style={{ color: "var(--color-success)" }}>Offer savings</span>
+                  <span className="font-medium" style={{ color: "var(--color-success)" }}>-{formatPrice(promotionDiscount, currencySymbol)}</span>
+                </div>
+              )}
               <p className="showcase-muted mt-1 text-xs">Shipping and taxes are calculated at checkout.</p>
               <div className="mt-4 flex flex-col gap-2.5">
                 <Link href={CART_ROUTE} onClick={leave} className="auth-btn auth-btn--outline rounded-full px-6 py-3 text-center text-sm font-medium">
