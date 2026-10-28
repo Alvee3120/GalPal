@@ -6,6 +6,7 @@ import { useCart } from "@/component/cart/CartProvider";
 import { FaStar } from "react-icons/fa";
 import { FiCheckCircle } from "react-icons/fi";
 import NotifyMeButton from "@/component/shared/NotifyMeButton";
+import Breadcrumbs from "@/component/shared/Breadcrumbs";
 import ProductAccordion from "./ProductAccordion";
 import SaleCountdown from "./SaleCountdown";
 import formatPrice from "@/lib/formatPrice";
@@ -88,6 +89,17 @@ export default function ProductDetailContent({ product, currencySymbol }) {
     if (result.ok) openCart();
   }
 
+  // Home / <primary category chain> / product. Built from the backend's `breadcrumb` (root to the product's
+  // primary category); each level links to the Shop page filtered by that category.
+  const breadcrumbs = [
+    { label: "Home", href: "/" },
+    ...(product.breadcrumb ?? []).map((category) => ({
+      label: category.name,
+      href: `/shop?category=${encodeURIComponent(category.slug)}`,
+    })),
+    { label: product.name },
+  ];
+
   return (
     <div className="grid gap-8 lg:grid-cols-2 lg:gap-12 pt-10">
       <div>
@@ -116,9 +128,7 @@ export default function ProductDetailContent({ product, currencySymbol }) {
       </div>
 
       <div>
-        {(product.brand?.name || product.primary_category?.name) && (
-          <p className="showcase-muted text-xs uppercase tracking-widest">{product.brand?.name ?? product.primary_category.name}</p>
-        )}
+        <Breadcrumbs items={breadcrumbs} className="mb-1" />
         <h1 className="custom-font mt-2 text-3xl leading-tight sm:text-4xl">{product.name}</h1>
 
         {product.review_count > 0 && (

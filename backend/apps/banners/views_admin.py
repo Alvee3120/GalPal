@@ -11,8 +11,8 @@ from apps.core.serializers import ErrorResponseSerializer
 from apps.core.utils import discard_file
 
 from . import services
-from .models import HeroBanner, HeroSliderConfig
-from .serializers import AdminHeroBannerSerializer, AdminSliderConfigSerializer
+from .models import HeroBanner, HeroSliderConfig, MegaMenuBanner
+from .serializers import AdminHeroBannerSerializer, AdminMegaMenuBannerSerializer, AdminSliderConfigSerializer
 
 ERR = OpenApiResponse(ErrorResponseSerializer)
 
@@ -74,3 +74,28 @@ class AdminHeroBannerViewSet(viewsets.ModelViewSet):
         except ValueError as exc:
             raise ValidationError(str(exc)) from None
         return Response(AdminHeroBannerSerializer(banners, many=True, context=self.get_serializer_context()).data)
+
+
+@extend_schema_view(
+    list=extend_schema(tags=["Admin – Mega Menu"], summary="List mega menu banners"),
+    retrieve=extend_schema(tags=["Admin – Mega Menu"], summary="Get a mega menu banner"),
+    create=extend_schema(tags=["Admin – Mega Menu"], summary="Create a mega menu banner", responses={201: AdminMegaMenuBannerSerializer, 400: ERR}),
+    partial_update=extend_schema(tags=["Admin – Mega Menu"], summary="Update a mega menu banner", responses={200: AdminMegaMenuBannerSerializer, 400: ERR}),
+    destroy=extend_schema(tags=["Admin – Mega Menu"], summary="Delete a mega menu banner"),
+)
+class AdminMegaMenuBannerViewSet(viewsets.ModelViewSet):
+    """Admin → Mega Menu: the three Shop mega menu images (square_1, square_2, wide), one per slot."""
+
+    serializer_class = AdminMegaMenuBannerSerializer
+    permission_classes = [IsAdmin]
+    queryset = MegaMenuBanner.objects.all()
+    http_method_names = ["get", "post", "patch", "delete", "head", "options"]
+    filterset_fields = ["slot", "is_active"]
+    search_fields = ["title"]
+    ordering_fields = ["slot", "created_at"]
+    ordering = ["slot"]
+
+    def perform_destroy(self, instance):
+        image = instance.image
+        instance.delete()
+        discard_file(image)

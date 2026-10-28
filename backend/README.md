@@ -503,7 +503,7 @@ endpoint must declare `permission_classes = [AllowAny]` explicitly.
    ```
 4. **Processes**: `gunicorn config.wsgi:application --workers 3 --bind 0.0.0.0:8000` and a Celery worker
    `celery -A config worker -l info` (emails/SMS, Meta/GA4 events, restock alerts).
-5. **Frontend**: `cd frontend && npm ci && npm run build && npm start`, with `API_BASE_URL` pointing at
+5. **Frontend**: `cd frontend && pnpm install --frozen-lockfile && pnpm build && pnpm start`, with `API_BASE_URL` pointing at
    `https://<api host>/api/v1`.
 6. TLS is terminated by the proxy; Django redirects HTTP → HTTPS and sends HSTS (`SECURE_HSTS_SECONDS`).
 

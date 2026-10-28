@@ -5,11 +5,12 @@ from django.utils import timezone
 
 from apps.banners.models import HeroSliderConfig
 
-from .factories import HeroBannerFactory, make_image
+from .factories import HeroBannerFactory, MegaMenuBannerFactory, make_image
 
 pytestmark = pytest.mark.django_db
 
 SLIDER = "/api/v1/hero-banners/"
+MEGA_MENU = "/api/v1/mega-menu/banners/"
 
 
 def test_shape_has_config_and_banners(api_client):
@@ -90,3 +91,35 @@ def test_slider_served_from_cache_for_config(api_client, django_assert_max_num_q
     api_client.get(SLIDER)  # primes the config cache
     with django_assert_max_num_queries(3):
         assert api_client.get(SLIDER).status_code == 200
+
+
+# --- Shop mega menu banners ------------------------------------------------------------------------
+
+
+def test_mega_menu_returns_a_plain_list_with_public_fields(api_client):
+    MegaMenuBannerFactory(slot="square_1")
+    body = api_client.get(MEGA_MENU).json()
+    assert isinstance(body, list) and len(body) == 1
+    assert set(body[0]) == {"slot", "image", "alt_text", "link_url", "link_target"}
+    assert body[0]["image"].startswith("http://testserver/media/mega-menu/")
+
+
+def test_mega_menu_omits_inactive_and_is_ordered_by_slot(api_client):
+    MegaMenuBannerFactory(slot="wide", alt_text="Wide")
+    MegaMenuBannerFactory(slot="square_2")
+    MegaMenuBannerFactory(slot="square_1", is_active=False)
+    assert [b["slot"] for b in api_client.get(MEGA_MENU).json()] == ["square_2", "wide"]
+
+
+def test_mega_menu_keeps_a_site_path_in_link_url(api_client):
+    MegaMenuBannerFactory(slot="square_1", link_url="/shop?category=skincare")
+    assert api_client.get(MEGA_MENU).json()[0]["link_url"] == "/shop?category=skincare"
+
+
+def test_mega_menu_empty_is_an_empty_list(api_client):
+    assert api_client.get(MEGA_MENU).json() == []
+
+
+def test_mega_menu_is_read_only(api_client):
+    for method in ("post", "put", "patch", "delete"):
+        assert getattr(api_client, method)(MEGA_MENU, {}, format="json").status_code == 405

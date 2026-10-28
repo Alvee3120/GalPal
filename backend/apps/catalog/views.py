@@ -7,7 +7,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 
 from . import services
-from .filters import PublicCategoryFilter
+from .filters import PublicBrandFilter, PublicCategoryFilter
 from .models import Brand, Category, Tag
 from .serializers import (
     PublicBrandSerializer,
@@ -77,6 +77,7 @@ class PublicCategoryViewSet(_PublicReadOnly):
 )
 class PublicBrandViewSet(_PublicReadOnly):
     serializer_class = PublicBrandSerializer
+    filterset_class = PublicBrandFilter
     queryset = Brand.objects.filter(is_active=True)
     search_fields = ["name"]
     ordering_fields = ["name", "created_at"]

@@ -4,7 +4,7 @@ import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
 from PIL import Image
 
-from .factories import BrandFactory, CategoryFactory, TagFactory
+from .factories import BrandFactory, CategoryFactory, ProductFactory, TagFactory
 
 pytestmark = pytest.mark.django_db
 
@@ -276,3 +276,36 @@ def test_tags_list_and_detail(api_client):
     assert api_client.get(f"{TAGS}vegan/").json()["name"] == "Vegan"
     assert api_client.get(f"{TAGS}missing/").status_code == 404
     assert [t["name"] for t in api_client.get(f"{TAGS}?search=free").json()["results"]] == ["Cruelty Free"]
+
+
+# --- brands filtered by category ---------------------------------------------------------------------
+
+
+def test_brand_filter_by_category_covers_its_sub_categories(api_client):
+    skincare = CategoryFactory(name="Skincare")
+    serums = CategoryFactory(name="Serums", parent=skincare)
+    makeup = CategoryFactory(name="Makeup")
+    in_serums = BrandFactory(name="Serum Brand")
+    in_makeup = BrandFactory(name="Makeup Brand")
+    BrandFactory(name="Idle Brand")  # no products, never listed
+    ProductFactory(brand=in_serums).categories.set([serums])
+    ProductFactory(brand=in_makeup).categories.set([makeup])
+
+    def names(slug):
+        return [b["name"] for b in api_client.get(f"{BRANDS}?category={slug}").json()["results"]]
+
+    assert names(skincare.slug) == ["Serum Brand"]  # a sub-category's product counts for its parent
+    assert names(serums.slug) == ["Serum Brand"]
+    assert names(makeup.slug) == ["Makeup Brand"]
+
+
+def test_brand_filter_ignores_unpublished_products(api_client):
+    skincare = CategoryFactory(name="Skincare")
+    ProductFactory(brand=BrandFactory(name="Draft Brand"), status="draft").categories.set([skincare])
+    assert api_client.get(f"{BRANDS}?category={skincare.slug}").json()["count"] == 0
+
+
+def test_brand_filter_unknown_category_is_empty_not_an_error(api_client):
+    BrandFactory(name="Any")
+    response = api_client.get(f"{BRANDS}?category=no-such-category")
+    assert response.status_code == 200 and response.json()["count"] == 0

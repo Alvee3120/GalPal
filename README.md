@@ -68,9 +68,9 @@ python manage.py seed_reviews        # sample approved reviews                  
 
 ```bash
 cd frontend
-npm install
+pnpm install
 echo "API_BASE_URL=http://localhost:8000/api/v1" > .env.local
-npm run dev                          # http://localhost:3000
+pnpm dev                          # http://localhost:3000
 ```
 
 Log in with the superuser's phone number to reach the admin dashboard. Create CCE and customer accounts from
@@ -80,7 +80,7 @@ Log in with the superuser's phone number to reach the admin dashboard. Create CC
 
 ```bash
 cd backend && pytest                 # uses a LOCAL test database (TEST_DATABASE_URL), never DATABASE_URL
-cd frontend && npm run lint && npm run build
+cd frontend && pnpm lint && pnpm build
 ```
 
 ## Repository layout
