@@ -173,7 +173,7 @@ class OrderItemSerializer(serializers.ModelSerializer):
         model = OrderItem
         fields = [
             "id", "product_id", "variant_id", "product_name", "sku", "variant_label", "image",
-            "regular_price", "unit_price", "quantity", "line_total",
+            "regular_price", "unit_price", "quantity", "line_total", "promotion_discount", "free_quantity",
         ]
 
     def get_image(self, obj) -> str | None:
@@ -191,8 +191,8 @@ class PublicHistorySerializer(serializers.ModelSerializer):
 
 
 _MONEY_AND_SHIPPING = [
-    "subtotal", "discount_amount", "coupon_code", "shipping_zone_name", "delivery_method_name", "shipping_charge",
-    "shipping_free_reason", "tax_percent", "tax_amount", "grand_total",
+    "subtotal", "promotion_discount", "discount_amount", "coupon_code", "shipping_zone_name", "delivery_method_name",
+    "shipping_charge", "shipping_free_reason", "tax_percent", "tax_amount", "grand_total",
 ]
 _ADDRESS = ["customer_name", "phone", "division", "district", "area", "address_line", "postal_code", "note"]
 
@@ -225,8 +225,8 @@ class PublicOrderSerializer(serializers.ModelSerializer):
         model = Order
         fields = [
             "number", "status", "payment_method", "payment_status", "payment_reference", "email", *_ADDRESS, "items",
-            "item_count", *_MONEY_AND_SHIPPING, "courier_name", "tracking_id", "consignment_id", "can_cancel", "history",
-            "created_at",
+            "item_count", "applied_promotions", *_MONEY_AND_SHIPPING, "courier_name", "tracking_id", "consignment_id",
+            "can_cancel", "history", "created_at",
         ]
 
     def get_can_cancel(self, obj) -> bool:
@@ -314,7 +314,8 @@ class StaffOrderSerializer(serializers.ModelSerializer):
         model = Order
         fields = [
             "id", "number", "status", "allowed_transitions", "editable", "source", "source_note", "is_manual", "created_by",
-            "customer", "email", *_ADDRESS, "payment_method", "payment_status", "payment_reference", "items", "item_count", *_MONEY_AND_SHIPPING,
+            "customer", "email", *_ADDRESS, "payment_method", "payment_status", "payment_reference", "items", "item_count",
+            "applied_promotions", *_MONEY_AND_SHIPPING,
             "shipping_overridden", "shipping_override_reason", "courier_name", "tracking_id", "consignment_id",
             "parcel_codes", "ip_address", "history", "notes", "created_at", "updated_at",
         ]

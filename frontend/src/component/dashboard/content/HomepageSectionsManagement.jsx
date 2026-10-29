@@ -17,7 +17,15 @@ const POSITIONS = [
   { value: "after_video", label: "After Skincare Video" },
 ];
 const POSITION_LABEL = Object.fromEntries(POSITIONS.map((p) => [p.value, p.label]));
-const EMPTY = { category: null, position: "before_video", sort_order: "0", product_limit: "8", rows: "1", is_active: true };
+// Mirrors apps.content.models.SectionSource / FLAG_SOURCES: a category, or one of the product flags from Product Management.
+const SOURCES = [
+  { value: "category", label: "Category", title: "" },
+  { value: "featured", label: "Trending (Is Featured)", title: "Trending Products" },
+  { value: "new_arrival", label: "New Arrivals (Is New Arrival)", title: "New Arrivals" },
+  { value: "bestseller", label: "Bestsellers (Is Bestseller)", title: "Bestsellers" },
+];
+const SOURCE = Object.fromEntries(SOURCES.map((s) => [s.value, s]));
+const EMPTY = { source: "category", category: null, title: "", position: "before_video", sort_order: "0", product_limit: "8", rows: "1", is_active: true };
 const byOrder = (a, b) => a.position.localeCompare(b.position) * -1 || a.sort_order - b.sort_order || a.id - b.id; // before_video first
 
 // Picker items: every category with its place in the tree, inactive ones marked (they won't show on the homepage).
@@ -45,16 +53,20 @@ function SectionForm({ initial, categories, onSaved, onClose }) {
     [categories],
   );
 
+  const isCategory = v.source === "category";
+
   async function save(e) {
     e.preventDefault();
-    if (!v.category) return notify.error("Choose a category.");
+    if (isCategory && !v.category) return notify.error("Choose a category.");
     const limit = Number(v.product_limit);
     const rows = Number(v.rows);
     if (!Number.isInteger(limit) || limit < 1 || limit > 48) return notify.error("Product limit must be a whole number from 1 to 48.");
     if (!Number.isInteger(rows) || rows < 1 || rows > 4) return notify.error("Rows must be a whole number from 1 to 4.");
     setSaving(true);
     const body = {
-      category_id: v.category.id,
+      source: v.source,
+      category_id: isCategory ? v.category.id : null,
+      title: isCategory ? "" : v.title.trim() || SOURCE[v.source].title,
       position: v.position,
       sort_order: Number(v.sort_order) || 0,
       product_limit: limit,
@@ -70,16 +82,45 @@ function SectionForm({ initial, categories, onSaved, onClose }) {
 
   return (
     <form onSubmit={save} noValidate className="flex flex-col gap-4">
-      <SearchPicker
-        id="hs-category"
-        label="Category"
-        placeholder="Search categories..."
-        search={searchCategories}
-        value={v.category}
-        onChange={set("category")}
-        required
-      />
-      <p className="showcase-muted -mt-2 text-xs">The section&apos;s title is the category&apos;s name; its products include its sub-categories&apos;.</p>
+      <label className="flex flex-col gap-1.5">
+        <span className="text-sm font-medium">Products from</span>
+        <select
+          value={v.source}
+          disabled={isEdit}
+          onChange={(e) => setV((s) => ({ ...s, source: e.target.value, title: s.title || SOURCE[e.target.value].title }))}
+          className={INPUT}
+        >
+          {SOURCES.map((s) => (
+            <option key={s.value} value={s.value}>
+              {s.label}
+            </option>
+          ))}
+        </select>
+        {isEdit && <span className="showcase-muted text-xs">To use a different source, add a new section.</span>}
+      </label>
+      {isCategory ? (
+        <>
+          <SearchPicker
+            id="hs-category"
+            label="Category"
+            placeholder="Search categories..."
+            search={searchCategories}
+            value={v.category}
+            onChange={set("category")}
+            required
+          />
+          <p className="showcase-muted -mt-2 text-xs">The section&apos;s title is the category&apos;s name; its products include its sub-categories&apos;.</p>
+        </>
+      ) : (
+        <label className="flex flex-col gap-1.5">
+          <span className="text-sm font-medium">Section title</span>
+          <input value={v.title} maxLength={80} placeholder={SOURCE[v.source].title} onChange={(e) => set("title")(e.target.value)} className={INPUT} />
+          <span className="showcase-muted text-xs">
+            Shows published products with the {SOURCE[v.source].label.match(/\((.*)\)/)?.[1]} box ticked in Product Management. The title only
+            changes the heading.
+          </span>
+        </label>
+      )}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <label className="flex flex-col gap-1.5">
           <span className="text-sm font-medium">Position</span>
@@ -121,9 +162,10 @@ function SectionForm({ initial, categories, onSaved, onClose }) {
   );
 }
 
-// Admin → Homepage Sections: the category product sections around the homepage's skincare video section
-// (apps.content HomepageCategorySection, IsAdmin). Each one is the storefront's existing CategoryProductShowcase, titled
-// with the category's own name; the homepage refreshes as soon as a change is saved.
+// Admin → Homepage Sections: the product sections around the homepage's skincare video section (apps.content
+// HomepageCategorySection, IsAdmin): a category (titled with the category's own name) or Trending / New Arrivals /
+// Bestsellers (products with that flag ticked in Product Management, with an editable title). Each one is the
+// storefront's shared product showcase; the homepage refreshes as soon as a change is saved.
 export default function HomepageSectionsManagement({ initial = [] }) {
   const [sections, setSections] = useState([...initial].sort(byOrder));
   const [categories, setCategories] = useState([]);
@@ -167,7 +209,9 @@ export default function HomepageSectionsManagement({ initial = [] }) {
 
   const toForm = (s) => ({
     id: s.id,
-    category: { id: s.category.id, label: s.category.name },
+    source: s.source,
+    title: s.title ?? "",
+    category: s.category ? { id: s.category.id, label: s.category.name } : null,
     position: s.position,
     sort_order: String(s.sort_order),
     product_limit: String(s.product_limit),
@@ -180,7 +224,9 @@ export default function HomepageSectionsManagement({ initial = [] }) {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="custom-font text-2xl sm:text-3xl">Homepage Sections</h1>
-          <p className="showcase-muted mt-1 text-sm">Category product sections before and after the skincare video · {sections.length}</p>
+          <p className="showcase-muted mt-1 text-sm">
+            Product sections before and after the skincare video — categories, Trending, New Arrivals, Bestsellers · {sections.length}
+          </p>
         </div>
         <button type="button" onClick={() => setEditing({ ...EMPTY })} className="auth-btn auth-btn--primary inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-medium">
           <FiPlus className="h-4 w-4" aria-hidden="true" />
@@ -197,10 +243,11 @@ export default function HomepageSectionsManagement({ initial = [] }) {
       ) : (
         <>
           <div className="dashboard-card hidden overflow-x-auto rounded-2xl md:block">
-            <table className="product-table w-full min-w-[760px] text-left text-sm">
+            <table className="product-table w-full min-w-[860px] text-left text-sm">
               <thead>
                 <tr>
-                  <th scope="col" className="px-4 py-3 font-medium">Category</th>
+                  <th scope="col" className="px-4 py-3 font-medium">Section</th>
+                  <th scope="col" className="px-4 py-3 font-medium">Products From</th>
                   <th scope="col" className="px-4 py-3 font-medium">Position</th>
                   <th scope="col" className="px-4 py-3 font-medium">Order</th>
                   <th scope="col" className="px-4 py-3 font-medium">Products</th>
@@ -214,9 +261,12 @@ export default function HomepageSectionsManagement({ initial = [] }) {
                 {sections.map((s) => (
                   <tr key={s.id}>
                     <td className="px-4 py-3 font-semibold">
-                      {s.category.name}
-                      {!s.category.is_active && <span className="showcase-muted block text-xs font-normal">Category inactive — hidden on the homepage</span>}
+                      {s.display_title}
+                      {s.category && !s.category.is_active && (
+                        <span className="showcase-muted block text-xs font-normal">Category inactive — hidden on the homepage</span>
+                      )}
                     </td>
+                    <td className="px-4 py-3">{s.source === "category" ? "Category" : SOURCE[s.source]?.label ?? s.source}</td>
                     <td className="px-4 py-3">{POSITION_LABEL[s.position] ?? s.position}</td>
                     <td className="px-4 py-3 tabular-nums">{s.sort_order}</td>
                     <td className="px-4 py-3 tabular-nums">{s.product_limit}</td>
@@ -233,12 +283,12 @@ export default function HomepageSectionsManagement({ initial = [] }) {
                       </button>
                     </td>
                     <td className="px-4 py-3">
-                      <button type="button" onClick={() => setEditing(toForm(s))} title="Edit section" aria-label={`Edit ${s.category.name} section`} className="icon-action flex h-9 w-9 items-center justify-center rounded-full">
+                      <button type="button" onClick={() => setEditing(toForm(s))} title="Edit section" aria-label={`Edit ${s.display_title} section`} className="icon-action flex h-9 w-9 items-center justify-center rounded-full">
                         <FiEdit2 className="h-4 w-4" aria-hidden="true" />
                       </button>
                     </td>
                     <td className="px-4 py-3">
-                      <button type="button" onClick={() => setPendingDelete(s)} title="Remove section" aria-label={`Remove ${s.category.name} section`} className="icon-action icon-action--danger flex h-9 w-9 items-center justify-center rounded-full">
+                      <button type="button" onClick={() => setPendingDelete(s)} title="Remove section" aria-label={`Remove ${s.display_title} section`} className="icon-action icon-action--danger flex h-9 w-9 items-center justify-center rounded-full">
                         <FiTrash2 className="h-4 w-4" aria-hidden="true" />
                       </button>
                     </td>
@@ -253,9 +303,9 @@ export default function HomepageSectionsManagement({ initial = [] }) {
               <li key={s.id} className="dashboard-card flex flex-col gap-2 rounded-2xl p-4 text-sm">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="font-semibold">{s.category.name}</p>
+                    <p className="font-semibold">{s.display_title}</p>
                     <p className="showcase-muted text-xs">
-                      {POSITION_LABEL[s.position]} · order {s.sort_order} · {s.product_limit} products · {s.rows} row{s.rows === 1 ? "" : "s"}
+                      {SOURCE[s.source]?.label ?? s.source} · {POSITION_LABEL[s.position]} · order {s.sort_order} · {s.product_limit} products · {s.rows} row{s.rows === 1 ? "" : "s"}
                     </p>
                   </div>
                   <button type="button" onClick={() => toggle(s)} className="coupon-status rounded-full px-2.5 py-1 text-xs font-medium" data-status={s.is_active ? "active" : "inactive"}>
@@ -263,10 +313,10 @@ export default function HomepageSectionsManagement({ initial = [] }) {
                   </button>
                 </div>
                 <div className="flex justify-end gap-1.5">
-                  <button type="button" onClick={() => setEditing(toForm(s))} aria-label={`Edit ${s.category.name} section`} className="icon-action flex h-9 w-9 items-center justify-center rounded-full">
+                  <button type="button" onClick={() => setEditing(toForm(s))} aria-label={`Edit ${s.display_title} section`} className="icon-action flex h-9 w-9 items-center justify-center rounded-full">
                     <FiEdit2 className="h-4 w-4" aria-hidden="true" />
                   </button>
-                  <button type="button" onClick={() => setPendingDelete(s)} aria-label={`Remove ${s.category.name} section`} className="icon-action icon-action--danger flex h-9 w-9 items-center justify-center rounded-full">
+                  <button type="button" onClick={() => setPendingDelete(s)} aria-label={`Remove ${s.display_title} section`} className="icon-action icon-action--danger flex h-9 w-9 items-center justify-center rounded-full">
                     <FiTrash2 className="h-4 w-4" aria-hidden="true" />
                   </button>
                 </div>
@@ -283,7 +333,7 @@ export default function HomepageSectionsManagement({ initial = [] }) {
       <ConfirmDialog
         open={Boolean(pendingDelete)}
         title="Remove Section?"
-        description={`The ${pendingDelete?.category.name ?? ""} section will be removed from the homepage. The category and its products aren't affected.`}
+        description={`The ${pendingDelete?.display_title ?? ""} section will be removed from the homepage. Its products aren't affected.`}
         confirmLabel="Remove"
         busyLabel="Removing..."
         busy={busy}

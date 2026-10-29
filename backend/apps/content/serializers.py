@@ -5,7 +5,7 @@ from apps.catalog.serializers import PublicBrandSerializer, PublicCategorySerial
 from apps.catalog.serializers_product import PublicProductListSerializer
 
 from . import services
-from .models import Announcement, Faq, HomepageCategorySection, NewsletterSubscriber, Page
+from .models import FLAG_SOURCES, Announcement, Faq, HomepageCategorySection, NewsletterSubscriber, Page, SectionSource
 
 # --- public --------------------------------------------------------------------------------------------------------------
 
@@ -125,23 +125,43 @@ class SectionCategorySerializer(serializers.Serializer):
 
 
 class AdminHomepageCategorySectionSerializer(serializers.ModelSerializer):
-    """Admin: the section's settings; the title shown on the homepage is always the category's own name."""
+    """
+    Admin: a homepage product section. `source` category needs `category_id` (title = the category's name); a flag source
+    (featured / new_arrival / bestseller) uses `title`, defaulting to "Trending Products" / "New Arrivals" / "Bestsellers".
+    """
 
-    category_id = serializers.PrimaryKeyRelatedField(source="category", queryset=Category.objects.all())
-    category = SectionCategorySerializer(read_only=True)
+    category_id = serializers.PrimaryKeyRelatedField(source="category", queryset=Category.objects.all(), allow_null=True, required=False)
+    category = SectionCategorySerializer(read_only=True, allow_null=True)
     position_label = serializers.CharField(source="get_position_display", read_only=True)
+    source_label = serializers.CharField(source="get_source_display", read_only=True)
+    display_title = serializers.CharField(read_only=True)
 
     class Meta:
         model = HomepageCategorySection
-        fields = ["id", "category_id", "category", "position", "position_label", "sort_order", "product_limit", "rows",
-                  "is_active", "created_at", "updated_at"]
-        read_only_fields = ["id", "category", "position_label", "created_at", "updated_at"]
+        fields = ["id", "source", "source_label", "category_id", "category", "title", "display_title", "position", "position_label",
+                  "sort_order", "product_limit", "rows", "is_active", "created_at", "updated_at"]
+        read_only_fields = ["id", "source_label", "category", "display_title", "position_label", "created_at", "updated_at"]
+
+    def validate(self, attrs):
+        source = attrs.get("source", getattr(self.instance, "source", SectionSource.CATEGORY))
+        if source == SectionSource.CATEGORY:
+            if attrs.get("category", getattr(self.instance, "category", None)) is None:
+                raise serializers.ValidationError({"category_id": "Choose a category."})
+            attrs["title"] = ""  # a category section is always titled with the category's name
+        else:
+            attrs["category"] = None
+            title = " ".join(attrs.get("title", getattr(self.instance, "title", "") or "").split())
+            attrs["title"] = title or FLAG_SOURCES[source][1]
+        return attrs
 
 
 class PublicHomepageCategorySectionSerializer(serializers.ModelSerializer):
-    category = SectionCategorySerializer(read_only=True)
+    category = SectionCategorySerializer(read_only=True, allow_null=True)
+    title = serializers.CharField(source="display_title", read_only=True)
+    filter = serializers.DictField(source="product_filter", child=serializers.CharField(), read_only=True,
+                                   help_text="Query filters for GET /products/ that give this section's products.")
 
     class Meta:
         model = HomepageCategorySection
-        fields = ["id", "category", "position", "sort_order", "product_limit", "rows"]
+        fields = ["id", "source", "title", "filter", "category", "position", "sort_order", "product_limit", "rows"]
         read_only_fields = fields

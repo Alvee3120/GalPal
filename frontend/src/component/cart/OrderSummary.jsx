@@ -10,7 +10,7 @@ const CHECKOUT_ROUTE = "/checkout";
 
 // Order Summary card: voucher code, the Sub Total/Total breakdown, a shipping note (the backend's own cart
 // response explicitly defers shipping/tax to checkout — same copy the cart drawer already uses) and Checkout.
-export default function OrderSummary({ subtotal, discount, coupon, couponBusy, currencySymbol, onApplyCoupon, onRemoveCoupon, itemCount, hasAvailableItems = true }) {
+export default function OrderSummary({ subtotal, discount, promotionDiscount = "0.00", promotions = [], coupon, couponBusy, currencySymbol, onApplyCoupon, onRemoveCoupon, itemCount, hasAvailableItems = true }) {
   const [zones, setZones] = useState(null);
   useEffect(() => {
     let cancelled = false;
@@ -23,8 +23,9 @@ export default function OrderSummary({ subtotal, discount, coupon, couponBusy, c
     };
   }, []);
   const checkoutDisabled = itemCount === 0 || !hasAvailableItems;
-  const grandTotal = Number(subtotal) - Number(discount);
+  const grandTotal = Number(subtotal) - Number(promotionDiscount) - Number(discount);
   const hasDiscount = Number(discount) > 0;
+  const hasPromotion = Number(promotionDiscount) > 0;
 
   return (
     <aside className="order-summary rounded-2xl p-5 sm:p-6">
@@ -39,6 +40,20 @@ export default function OrderSummary({ subtotal, discount, coupon, couponBusy, c
           <dt>Sub Total</dt>
           <dd className="font-medium">{formatPrice(subtotal, currencySymbol)}</dd>
         </div>
+        {hasPromotion &&
+          (promotions.length > 0 ? (
+            promotions.map((promo) => (
+              <div key={promo.id} className="flex items-center justify-between gap-3">
+                <dt className="min-w-0 truncate" title={promo.label || promo.name}>{promo.label || promo.name}</dt>
+                <dd className="shrink-0 font-medium">-{formatPrice(promo.discount, currencySymbol)}</dd>
+              </div>
+            ))
+          ) : (
+            <div className="flex items-center justify-between">
+              <dt>Promotion</dt>
+              <dd className="font-medium">-{formatPrice(promotionDiscount, currencySymbol)}</dd>
+            </div>
+          ))}
         {hasDiscount && (
           <div className="flex items-center justify-between">
             <dt>Discount</dt>

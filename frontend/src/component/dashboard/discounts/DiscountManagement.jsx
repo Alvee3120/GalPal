@@ -22,7 +22,8 @@ import DashboardPagination from "../DashboardPagination";
 const PAGE_SIZE = 10;
 const SEARCH_DELAY_MS = 350;
 
-const valueText = (d, symbol) => (d.kind === "percentage" ? `${Number(d.value)}%` : `${formatPrice(d.value, symbol)} OFF`);
+// The backend sends a ready-made `label` (apps.discounts.models.promotion_label) for every kind, e.g. "Buy 3, get 20% off".
+const valueText = (d, symbol) => d.label || (d.kind === "percentage" ? `${Number(d.value)}%` : `${formatPrice(d.value, symbol)} OFF`);
 const targetText = (d) => {
   if (d.target_type !== "category") return `${d.product_count} product${d.product_count === 1 ? "" : "s"}`;
   const names = (d.categories ?? []).map((c) => c.name);
@@ -155,7 +156,7 @@ export default function DiscountManagement({ initialDiscounts, initialCount, cur
         <div>
           <h1 className="custom-font text-2xl sm:text-3xl">Discounts</h1>
           <p className="showcase-muted mt-1 text-sm">
-            Automatic price reductions on a category or chosen products · {count} discount{count === 1 ? "" : "s"}
+            Product price reductions and cart offers (Buy X Get Y, bundles, free items) · {count} discount{count === 1 ? "" : "s"}
           </p>
         </div>
         <Link href="/dashboard/admin/discounts/new" className="auth-btn auth-btn--primary inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-medium">

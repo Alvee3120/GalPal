@@ -33,7 +33,7 @@ from django.db.models import Case, DecimalField, F, Q, Value, When
 from django.db.models.functions import Coalesce, Least, Round
 from django.utils import timezone
 
-from .models import Discount, DiscountKind, DiscountStatus, DiscountTarget
+from .models import PRODUCT_KINDS, Discount, DiscountKind, DiscountStatus, DiscountTarget
 
 logger = logging.getLogger(__name__)
 
@@ -54,16 +54,32 @@ class Rule:
     starts_at: object
     ends_at: object
     product_ids: frozenset
+    # Cart-promotion configuration (None / defaults for the product price kinds).
+    min_quantity: object = None
+    percent_off: object = None
+    free_quantity: object = None
+    bundle_price: object = None
+    same_product_group: bool = False
+    allow_repeat: bool = True
+    priority: int = 100
+
+    @property
+    def is_pricing(self):
+        """True for the product price kinds that feed `effective_price`; False for cart promotions."""
+        return self.kind in PRODUCT_KINDS
 
     def is_live(self, now):
         return self.starts_at <= now < self.ends_at
 
     @property
-    def priority(self):
+    def tier(self):
+        """0 for a product-specific discount, 1 for a category one (product-specific wins — see admin_price)."""
         return 0 if self.target_type == DiscountTarget.PRODUCTS else 1
 
     def price_for(self, base):
-        """The discounted price of `base`, or None when this rule can't apply (fixed amount above the price)."""
+        """The discounted price of `base`, or None when this rule can't apply (a cart kind, or fixed above the price)."""
+        if self.kind not in PRODUCT_KINDS:
+            return None
         if base is None or base <= 0:
             return None
         if self.kind == DiscountKind.PERCENTAGE:
@@ -142,6 +158,9 @@ def _load():
         rule = Rule(
             id=discount.id, name=discount.name, kind=discount.kind, value=discount.value, target_type=discount.target_type,
             starts_at=discount.starts_at, ends_at=discount.ends_at, product_ids=frozenset(target_product_ids(discount)),
+            min_quantity=discount.min_quantity, percent_off=discount.percent_off, free_quantity=discount.free_quantity,
+            bundle_price=discount.bundle_price, same_product_group=discount.same_product_group,
+            allow_repeat=discount.allow_repeat, priority=discount.priority,
         )
         rules.append(rule)
         for product_id in rule.product_ids:
@@ -182,12 +201,12 @@ def admin_price(product_id, base_price, now=None):
     now = now or timezone.now()
     best = None
     for rule in rules:
-        if not rule.is_live(now):
+        if not rule.is_pricing or not rule.is_live(now):
             continue
         price = rule.price_for(base_price)
         if price is None:
             continue
-        key = (rule.priority, price, rule.id)
+        key = (rule.tier, price, rule.id)
         if best is None or key < best[0]:
             best = (key, price, rule)
     return (best[1], best[2]) if best else (None, None)
@@ -225,6 +244,25 @@ def priced_product_ids(rule):
     return ids
 
 
+def eligible_product_ids(rule):
+    """Published products a cart promotion covers (its chosen products, or the products of its categories)."""
+    from apps.catalog.models import Product, ProductStatus
+
+    if not rule.product_ids:
+        return []
+    return list(
+        Product.objects.filter(pk__in=rule.product_ids, status=ProductStatus.PUBLISHED).values_list("id", flat=True)
+    )
+
+
+def showcase_product_ids(rule):
+    """
+    The products a storefront section shows for a live rule: the ones it is pricing (a product price kind), or the ones
+    it covers (a cart promotion, whose prices are unchanged). Used by the homepage sections and the `?discount=` filter.
+    """
+    return priced_product_ids(rule) if rule.is_pricing else eligible_product_ids(rule)
+
+
 def storefront_discounts(now=None):
     """
     Live discounts for the storefront (homepage sections), each with the ids of the products it is pricing; discounts
@@ -233,7 +271,7 @@ def storefront_discounts(now=None):
     now = now or timezone.now()
     shown = []
     for rule in sorted(live_rules(now), key=lambda r: (r.starts_at, r.id), reverse=True):
-        ids = priced_product_ids(rule)
+        ids = showcase_product_ids(rule)
         if ids:
             shown.append((rule, ids))
     return shown
@@ -247,8 +285,9 @@ def annotate_admin_price(queryset, now=None):
     """
     `admin_price_db`: the same rule as `admin_price`, as SQL on the product's regular price (NULL when no live discount
     applies), for price sorting, price-range and on-sale filters. Product-level only, like the existing sale price.
+    Cart promotions are left out entirely: they never change a single product's price.
     """
-    rules = live_rules(now)
+    rules = [rule for rule in live_rules(now) if rule.is_pricing]
     if not rules:
         return queryset.annotate(admin_price_db=Value(None, output_field=MONEY))
 

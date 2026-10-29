@@ -373,6 +373,7 @@ SPECTACULAR_SETTINGS = {
         "StockMovementReasonEnum": "apps.catalog.models.StockMovement.Reason",
         "SupportMessageStatusEnum": "apps.care.models.MessageStatus",
         "DiscountTypeEnum": "apps.discounts.models.DiscountKind",
+        "HomepageSectionSourceEnum": "apps.content.models.SectionSource",
     },
     "TAGS": [
         {"name": "System", "description": "Health and operational endpoints."},

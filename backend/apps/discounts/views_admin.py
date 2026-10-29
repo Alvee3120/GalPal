@@ -16,7 +16,8 @@ TAG = ["Admin – Discounts"]
     list=extend_schema(
         tags=TAG, summary="Discounts",
         description="`search` name; `status` (active / scheduled / expired / inactive — from is_active, the window and now), "
-                    "`kind` (percentage / fixed), `target_type` (category / products).",
+                    "`kind` (percentage / fixed / buy_x_get_y_percent / buy_x_get_y_free / lowest_free / three_for_two / "
+                    "bundle_price), `target_type` (category / products).",
         parameters=[
             OpenApiParameter("status", str, enum=DiscountStatus.values),
             OpenApiParameter("kind", str, enum=DiscountKind.values),
@@ -25,7 +26,9 @@ TAG = ["Admin – Discounts"]
     ),
     retrieve=extend_schema(tags=TAG, summary="One discount"),
     create=extend_schema(tags=TAG, summary="Create a discount", description="Category target: `category_ids` (their "
-                         "sub-categories are included). Products target: `product_ids`. Dates are ISO datetimes."),
+                         "sub-categories are included). Products target: `product_ids`. Dates are ISO datetimes. Product "
+                         "kinds use `value`; cart promotions use `min_quantity` / `percent_off` / `free_quantity` / "
+                         "`bundle_price` / `same_product_group` / `allow_repeat`."),
     partial_update=extend_schema(tags=TAG, summary="Edit / activate / deactivate a discount"),
     destroy=extend_schema(tags=TAG, summary="Delete a discount", description="Orders already placed keep their prices; "
                           "to keep the record, switch it off (`is_active: false`) instead."),

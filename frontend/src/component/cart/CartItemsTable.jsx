@@ -70,6 +70,25 @@ function RemoveButton({ item, busy, onRemove }) {
   );
 }
 
+// "1 free" or the line's promotion discount, shown under a line the backend put a promotion on.
+function PromoBadge({ item, currencySymbol }) {
+  if (item.free_quantity > 0) {
+    return (
+      <p className="mt-1 text-xs font-medium" style={{ color: "var(--color-success)" }}>
+        {item.free_quantity} free
+      </p>
+    );
+  }
+  if (Number(item.promotion_discount) > 0) {
+    return (
+      <p className="mt-1 text-xs font-medium" style={{ color: "var(--color-success)" }}>
+        -{formatPrice(item.promotion_discount, currencySymbol)} offer
+      </p>
+    );
+  }
+  return null;
+}
+
 // Cart items as a real <table> on tablet/desktop (matching the reference's Product Code / Quantity / Total /
 // Action columns) and as stacked cards on phones — same data, same handlers, two layouts so nothing needs a
 // cramped horizontal table-scroll on small screens.
@@ -100,6 +119,7 @@ export default function CartItemsTable({ items, currencySymbol, pendingIds, onQu
               <tr key={item.id} className="cart-table__row">
                 <td className="py-4 pr-4 align-top">
                   <ProductCell product={item.product} label={variantLabel(item.variant)} />
+                  <PromoBadge item={item} currencySymbol={currencySymbol} />
                   {cartLineIssue(item) && <p className="auth-error mt-1 text-xs font-medium">{cartLineIssue(item)}</p>}
                 </td>
                 <td className="py-4 align-middle">
@@ -129,6 +149,7 @@ export default function CartItemsTable({ items, currencySymbol, pendingIds, onQu
                 <RemoveButton item={item} busy={busy} onRemove={onRemove} />
               </div>
               {cartLineIssue(item) && <p className="auth-error mt-2 text-xs font-medium">{cartLineIssue(item)}</p>}
+              <PromoBadge item={item} currencySymbol={currencySymbol} />
               <div className="mt-3 flex items-center justify-between">
                 <QuantityStepper item={item} busy={busy} onQuantity={onQuantity} />
                 <span className="text-base font-semibold">{formatPrice(item.line_total, currencySymbol)}</span>

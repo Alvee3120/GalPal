@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { getAnnouncements } from "@/lib/content";
-import AnnouncementRotator from "./AnnouncementRotator";
+import AnnouncementMarquee from "./AnnouncementMarquee";
 
-// The thin bar above the navbar (Admin → Announcements). Renders nothing when no announcement is live. Several live
-// announcements take turns; links are a site path or an http(s) URL (validated backend-side).
+// The thin bar above the navbar (Admin → Announcements). Renders nothing when no announcement is live; one shows as
+// centred text, several scroll by in a marquee. Links are a site path or an http(s) URL (validated backend-side).
 export default async function AnnouncementBar() {
   const items = await getAnnouncements();
   if (items.length === 0) return null;
@@ -23,8 +23,12 @@ export default async function AnnouncementBar() {
     ),
   );
   return (
-    <div className="announcement-bar w-full px-4 py-2 text-center text-xs font-medium sm:text-sm" role="region" aria-label="Announcements">
-      <AnnouncementRotator>{rendered}</AnnouncementRotator>
+    <div
+      className={`announcement-bar w-full py-2 text-xs font-medium sm:text-sm ${rendered.length > 1 ? "overflow-hidden" : "px-4 text-center"}`}
+      role="region"
+      aria-label="Announcements"
+    >
+      {rendered.length > 1 ? <AnnouncementMarquee>{rendered}</AnnouncementMarquee> : rendered[0]}
     </div>
   );
 }

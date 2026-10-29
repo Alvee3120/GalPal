@@ -99,14 +99,36 @@ class SectionPosition(models.TextChoices):
     AFTER_VIDEO = "after_video", "After the skincare video"
 
 
+class SectionSource(models.TextChoices):
+    """Where a homepage section's products come from: one category, or one of the product flags set in Product Management."""
+
+    CATEGORY = "category", "Category"
+    FEATURED = "featured", "Trending (Is Featured)"
+    NEW_ARRIVAL = "new_arrival", "New Arrivals (Is New Arrival)"
+    BESTSELLER = "bestseller", "Bestsellers (Is Bestseller)"
+
+
+# The flag sections' product filter on GET /products/ and their default title.
+FLAG_SOURCES = {
+    SectionSource.FEATURED: ("is_featured", "Trending Products"),
+    SectionSource.NEW_ARRIVAL: ("is_new_arrival", "New Arrivals"),
+    SectionSource.BESTSELLER: ("is_bestseller", "Bestsellers"),
+}
+
+
 class HomepageCategorySection(TimeStampedModel):
     """
-    One category product section on the homepage (the storefront's CategoryProductShowcase): which category, on which
-    side of the skincare video section, in what order, how many products and rows. The title is always the category's
-    own name, so renaming the category renames the section. A section whose category is gone, hidden or empty isn't shown.
+    One product section on the homepage (the storefront's shared ProductShowcase): where its products come from (a
+    category, or the Featured / New Arrival / Bestseller product flag), on which side of the skincare video section, in
+    what order, how many products and rows. A category section's title is always the category's own name; a flag
+    section's title is `title` (Admin-editable). A section whose category is gone or hidden, or with no products, isn't
+    shown.
     """
 
-    category = models.ForeignKey("catalog.Category", on_delete=models.CASCADE, related_name="homepage_sections")
+    source = models.CharField(max_length=12, choices=SectionSource.choices, default=SectionSource.CATEGORY, db_index=True)
+    category = models.ForeignKey("catalog.Category", null=True, blank=True, on_delete=models.CASCADE, related_name="homepage_sections",
+                                 help_text="Category sections only.")
+    title = models.CharField(max_length=80, blank=True, help_text="Flag sections only; category sections use the category name.")
     position = models.CharField(max_length=12, choices=SectionPosition.choices, default=SectionPosition.BEFORE_VIDEO)
     sort_order = models.PositiveIntegerField(default=0, help_text="Lower first, within its position.")
     product_limit = models.PositiveSmallIntegerField(default=8, validators=[MinValueValidator(1), MaxValueValidator(48)])
@@ -116,5 +138,18 @@ class HomepageCategorySection(TimeStampedModel):
     class Meta:
         ordering = ["position", "sort_order", "id"]
 
+    @property
+    def display_title(self):
+        if self.source == SectionSource.CATEGORY:
+            return self.category.name if self.category else ""
+        return self.title or FLAG_SOURCES[self.source][1]
+
+    @property
+    def product_filter(self):
+        """The GET /products/ filter for this section's products ({} if it has none)."""
+        if self.source == SectionSource.CATEGORY:
+            return {"category": self.category.slug} if self.category else {}
+        return {FLAG_SOURCES[self.source][0]: "true"}
+
     def __str__(self):
-        return f"{self.category} ({self.get_position_display()})"
+        return f"{self.display_title} ({self.get_position_display()})"

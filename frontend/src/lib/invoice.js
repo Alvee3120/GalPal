@@ -15,6 +15,9 @@ export function toInvoiceView(data) {
   if (Number(data.product_discount) > 0) {
     totals.push({ label: "Product discount (in prices)", value: `− ${money(data.product_discount)}` });
   }
+  if (Number(data.promotion_discount) > 0) {
+    totals.push({ label: "Promotions", value: `− ${money(data.promotion_discount)}` });
+  }
   if (Number(data.coupon_discount) > 0) {
     totals.push({ label: data.coupon_code ? `Coupon discount (${data.coupon_code})` : "Coupon discount", value: `− ${money(data.coupon_discount)}` });
   }
@@ -50,7 +53,7 @@ export function toInvoiceView(data) {
     items: (data.items ?? []).map((item, index) => ({
       key: `${index}-${item.sku || item.name}`,
       name: item.name,
-      meta: joined([item.variant, item.sku && `SKU ${item.sku}`], " · "),
+      meta: joined([item.variant, item.sku && `SKU ${item.sku}`, item.free_quantity > 0 && `${item.free_quantity} free`], " · "),
       quantity: item.quantity,
       price: money(item.unit_price),
       discount: Number(item.discount) > 0 ? money(item.discount) : "—",

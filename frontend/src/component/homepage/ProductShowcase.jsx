@@ -64,7 +64,7 @@ export function ProductShowcaseSkeleton({ columns = 4, rows = 1 }) {
   );
 }
 
-// Generic homepage product section. CategoryProductShowcase, TrendingProducts and DiscountProductShowcase are thin wrappers that
+// Generic homepage product section. CategoryProductShowcase, HomepageCategorySections and DiscountProductShowcase are thin wrappers that
 // only decide the `filter`; the fetch, header, carousel, product cards, cart, skeleton and error handling are shared.
 //   filter        API query filters, e.g. { category: "makeup" } or { tag: "trending" }
 //   productLimit  total products fetched

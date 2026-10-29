@@ -104,6 +104,8 @@ export default function CceOrderDetail({ initialOrder, currencySymbol }) {
   }
 
   const hasDiscount = Number(order.discount_amount) > 0;
+  const hasPromotion = Number(order.promotion_discount) > 0;
+  const promotions = order.applied_promotions ?? [];
   const addressLine = [order.address_line, order.area, order.district, order.division].filter(Boolean).join(", ");
 
   return (
@@ -217,6 +219,11 @@ export default function CceOrderDetail({ initialOrder, currencySymbol }) {
                         )}
                       </p>
                     )}
+                    {item.free_quantity > 0 && (
+                      <p className="mt-0.5 text-xs font-medium" style={{ color: "var(--color-success)" }}>
+                        {item.free_quantity} free
+                      </p>
+                    )}
                   </div>
                   <div className="flex shrink-0 flex-col items-end gap-2">
                     <p className="text-sm font-medium">{formatPrice(item.line_total, currencySymbol)}</p>
@@ -306,6 +313,20 @@ export default function CceOrderDetail({ initialOrder, currencySymbol }) {
               <dt>Subtotal</dt>
               <dd className="font-medium">{formatPrice(order.subtotal, currencySymbol)}</dd>
             </div>
+            {hasPromotion &&
+              (promotions.length > 0 ? (
+                promotions.map((promo) => (
+                  <div key={promo.id} className="flex items-center justify-between gap-3">
+                    <dt className="min-w-0 truncate" title={promo.label || promo.name}>{promo.label || promo.name}</dt>
+                    <dd className="shrink-0 font-medium">-{formatPrice(promo.discount, currencySymbol)}</dd>
+                  </div>
+                ))
+              ) : (
+                <div className="flex items-center justify-between">
+                  <dt>Promotion</dt>
+                  <dd className="font-medium">-{formatPrice(order.promotion_discount, currencySymbol)}</dd>
+                </div>
+              ))}
             {hasDiscount && (
               <div className="flex items-center justify-between">
                 <dt>Discount{order.coupon_code ? ` (${order.coupon_code})` : ""}</dt>

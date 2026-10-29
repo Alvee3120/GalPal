@@ -15,6 +15,7 @@ export function DiscountProductShowcase({ discount, ...props }) {
     <ProductShowcase
       filter={{ discount: String(discount.id) }}
       title={discount.name}
+      description={discount.label}
       productLimit={Math.max(1, discount.product_count ?? 1)}
       hideWhenEmpty
       cacheTags={[DISCOUNTS_TAG]}

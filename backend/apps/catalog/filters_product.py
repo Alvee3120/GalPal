@@ -91,7 +91,9 @@ class PublicProductFilter(django_filters.FilterSet):
         from apps.discounts import services as discounts
 
         rule = discounts.live_rule(int(value))
-        return queryset.none() if rule is None else queryset.filter(pk__in=discounts.priced_product_ids(rule))
+        # A product price discount shows the products it is pricing; a cart promotion shows the products it covers
+        # (its prices aren't lowered, so the section is a "these are eligible" showcase).
+        return queryset.none() if rule is None else queryset.filter(pk__in=discounts.showcase_product_ids(rule))
 
     def filter_skin_type(self, queryset, name, value):
         return queryset.filter(skin_type__contains=[value])

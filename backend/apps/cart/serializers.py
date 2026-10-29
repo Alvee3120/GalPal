@@ -32,6 +32,9 @@ class CartItemSerializer(serializers.Serializer):
     quantity = serializers.IntegerField(source="item.quantity")
     unit_price = serializers.DecimalField(max_digits=12, decimal_places=2)
     line_total = serializers.DecimalField(max_digits=12, decimal_places=2)
+    promotion_discount = serializers.DecimalField(max_digits=12, decimal_places=2)
+    free_quantity = serializers.IntegerField()
+    promotion_labels = serializers.ListField(child=serializers.CharField())
     is_available = serializers.BooleanField()
     available_quantity = serializers.IntegerField(allow_null=True)
 
@@ -47,6 +50,16 @@ class AppliedCouponSerializer(serializers.Serializer):
     message = serializers.CharField()
 
 
+class AppliedPromotionSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    name = serializers.CharField()
+    kind = serializers.CharField()
+    label = serializers.CharField()
+    discount = serializers.DecimalField(max_digits=12, decimal_places=2)
+    groups = serializers.IntegerField()
+    free_quantity = serializers.IntegerField()
+
+
 class CartSerializer(serializers.Serializer):
     """
     The full cart, built from `{**services.summarize(cart), "cart_token": ...}`.
@@ -58,6 +71,8 @@ class CartSerializer(serializers.Serializer):
     item_count = serializers.IntegerField()
     subtotal = serializers.DecimalField(max_digits=12, decimal_places=2)
     discount = serializers.DecimalField(max_digits=12, decimal_places=2)
+    promotion_discount = serializers.DecimalField(max_digits=12, decimal_places=2)
+    promotions = AppliedPromotionSerializer(many=True)
     coupon = AppliedCouponSerializer(allow_null=True)
     shipping = ShippingEstimateSerializer()
     total = serializers.DecimalField(max_digits=12, decimal_places=2)
