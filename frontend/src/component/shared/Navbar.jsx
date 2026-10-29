@@ -22,6 +22,12 @@ const SEARCH_RESULT_LIMIT = 5;
 const HIDE_ANNOUNCEMENT_AT = 80;
 const SHOW_ANNOUNCEMENT_AT = 20;
 
+// Login and Register use their own focused layout, so the storefront announcement bar is hidden on them (the exact
+// path or any nested variant). Matching is path-segment aware, so "/login-help" is deliberately left alone.
+const ANNOUNCEMENT_HIDDEN_ROUTES = ["/login", "/register"];
+const hidesAnnouncement = (pathname) =>
+  ANNOUNCEMENT_HIDDEN_ROUTES.some((route) => pathname === route || pathname.startsWith(`${route}/`));
+
 const links = [
   { href: "/", label: "Home" },
   { href: "/shop", label: "Shop" },
@@ -205,6 +211,7 @@ export default function Navbar({ announcement = null, megaMenu = null }) {
   const pathname = usePathname();
   const router = useRouter();
   const isHome = pathname === "/";
+  const showAnnouncement = Boolean(announcement) && !hidesAnnouncement(pathname);
   const { itemCount, openCart, currencySymbol } = useCart();
 
   // Session state comes from the auth cookies (via /api/session); re-checked on every navigation,
@@ -433,7 +440,7 @@ export default function Navbar({ announcement = null, megaMenu = null }) {
       className={`navbar ${position} z-50 transition-[background-color,color,box-shadow,backdrop-filter] duration-300 ease-out motion-reduce:transition-none ${surface}`}
     >
       {/* Collapses once the page is scrolled, so only the navbar stays pinned; back at the top it slides open again. */}
-      {announcement && (
+      {showAnnouncement && (
         <div className="announcement-collapse" data-hidden={announcementHidden} inert={announcementHidden}>
           <div className="min-h-0 overflow-hidden">{announcement}</div>
         </div>

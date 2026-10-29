@@ -18,6 +18,7 @@ import {
   splitStoreDateTime,
 } from "@/lib/productAdmin";
 import TagSelector from "./TagSelector";
+import AvailableTagsManager from "./AvailableTagsManager";
 import { GalleryInput, SingleImageInput } from "./ImageInputs";
 import { useStaffHref } from "@/lib/staffPaths";
 
@@ -562,6 +563,13 @@ export default function ProductForm({ product = null, savedVariants = [] }) {
               allTags={lookups.tags}
               onTagsChange={(tags) => setLookups((l) => ({ ...l, tags }))}
               selectedIds={v.tag_ids}
+              onChange={set("tag_ids")}
+            />
+            <AvailableTagsManager
+              tags={lookups.tags}
+              loading={lookups.loading}
+              selectedIds={v.tag_ids}
+              onTagsChange={(tags) => setLookups((l) => ({ ...l, tags }))}
               onChange={set("tag_ids")}
             />
           </div>

@@ -1568,6 +1568,17 @@ a.dashboard-card:hover {
   outline-offset: -2px;
 }
 
+/* "Available Tags" manager (component/dashboard/products/AvailableTagsManager.jsx): the editable chips of every
+   existing tag, shown under the product's Tags field. */
+.available-tags {
+  border-top: 1px solid var(--color-cart-line);
+}
+
+.available-tags__chip {
+  border: 1px solid var(--color-cart-line);
+  background-color: var(--color-background);
+}
+
 /* OrderDateRangePicker's calendar popover (Order Management's "Order Date" filter) — HeroUI handles the
    selected/range-highlight colors itself via the --accent/--surface overrides above; this is just the popover
    card's own chrome, matched to the same card look used everywhere else in the dashboard. */

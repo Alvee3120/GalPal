@@ -5,7 +5,7 @@ from django.core.files.storage import default_storage
 from django.core.files.uploadedfile import SimpleUploadedFile
 from PIL import Image
 
-from apps.catalog.models import Brand, Category, Tag
+from apps.catalog.models import Brand, Category, Product, Tag
 
 from .factories import BrandFactory, CategoryFactory, TagFactory
 
@@ -76,12 +76,13 @@ def test_cce_can_add_a_tag_but_not_a_duplicate(auth_client, cce_user):
     assert client.post(TAGS, {"name": "vegan"}, format="json").status_code == 400
 
 
-def test_cce_cannot_modify_or_delete_tags(auth_client, cce_user):
-    tag = TagFactory()
+def test_cce_manages_tags_under_the_same_rules_as_admin(auth_client, cce_user):
     client = auth_client(cce_user)
-    assert client.patch(f"{TAGS}{tag.pk}/", {"name": "Hacked"}, format="json").status_code == 403
-    assert client.delete(f"{TAGS}{tag.pk}/").status_code == 403
-    assert Tag.objects.get().name == tag.name
+    r = client.post(TAGS, {"name": "Vegan"}, format="json")
+    assert r.status_code == 201 and r.json()["slug"] == "vegan"
+    url = f"{TAGS}{r.json()['id']}/"
+    assert client.patch(url, {"name": "Cruelty Free"}, format="json").json()["name"] == "Cruelty Free"
+    assert client.delete(url).status_code == 204 and not Tag.objects.exists()
 
 
 @pytest.mark.parametrize("url", [CATEGORIES, BRANDS, TAGS])
@@ -445,7 +446,7 @@ def test_brand_invalid_logo(admin_client):
 
 def test_tag_crud(admin_client):
     r = admin_client.post(TAGS, {"name": "Vegan"}, format="json")
-    assert r.status_code == 201 and r.json()["slug"] == "vegan" and set(r.json()) == {"id", "name", "slug", "created_at", "updated_at"}
+    assert r.status_code == 201 and r.json()["slug"] == "vegan" and set(r.json()) == {"id", "name", "slug", "product_count", "created_at", "updated_at"}
     tid = r.json()["id"]
     assert admin_client.patch(f"{TAGS}{tid}/", {"name": "Cruelty Free"}, format="json").json()["slug"] == "cruelty-free"
     assert admin_client.get(f"{TAGS}?search=cruel").json()["count"] == 1
@@ -458,6 +459,29 @@ def test_tag_names_are_unique_ignoring_case_and_required(admin_client):
     assert "name" in details(admin_client.post(TAGS, {"name": "VEGAN"}, format="json"))
     assert "name" in details(admin_client.post(TAGS, {}, format="json"))
     assert "name" in details(admin_client.post(TAGS, {"name": "x" * 61}, format="json"))
+
+
+def test_tag_product_count_is_an_annotation_and_deleting_detaches_products(admin_client, django_assert_max_num_queries):
+    from .factories import ProductFactory
+
+    tag = TagFactory(name="Vegan")
+    products = ProductFactory.create_batch(2)
+    for product in products:
+        product.tags.set([tag])
+
+    # product_count is a real annotation (no query per row), and it reports how many products use the tag.
+    with django_assert_max_num_queries(6):
+        body = admin_client.get(TAGS).json()
+    assert body["results"][0]["product_count"] == 2
+    assert admin_client.get(f"{TAGS}{tag.id}/").json()["product_count"] == 2
+
+    # Deleting a tag detaches it from its products but keeps the products themselves.
+    assert admin_client.delete(f"{TAGS}{tag.id}/").status_code == 204
+    assert not Tag.objects.exists()
+    assert Product.objects.count() == 2
+    for product in products:
+        product.refresh_from_db()
+        assert product.tags.count() == 0
 
 
 def test_products_count_is_a_real_annotation_not_a_per_row_query(admin_client, django_assert_max_num_queries):
