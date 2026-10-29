@@ -29,6 +29,7 @@ export const DASHBOARD_NAV = {
     { label: "Reviews", href: "/dashboard/admin/reviews", icon: FiStar },
     { label: "Video Cards", href: "/dashboard/admin/video-cards", icon: FiVideo },
     { label: "Hero Banners", href: "/dashboard/admin/banners", icon: FiImage },
+    { label: "Mega Menu", href: "/dashboard/admin/banners/mega-menu", icon: FiLayout },
     { label: "Homepage Sections", href: "/dashboard/admin/content/homepage-sections", icon: FiLayout },
     { label: "Content Pages", href: "/dashboard/admin/content/pages", icon: FiFileText },
     { label: "FAQs", href: "/dashboard/admin/content/faqs", icon: FiHelpCircle },

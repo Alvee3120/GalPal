@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import HeroBanner, HeroSliderConfig
+from .models import HeroBanner, HeroSliderConfig, MegaMenuBanner
 
 
 @admin.register(HeroSliderConfig)
@@ -15,5 +15,12 @@ class HeroSliderConfigAdmin(admin.ModelAdmin):
 @admin.register(HeroBanner)
 class HeroBannerAdmin(admin.ModelAdmin):
     list_display = ["title", "is_active", "sort_order", "start_at", "end_at"]
+    list_filter = ["is_active"]
+    search_fields = ["title"]
+
+
+@admin.register(MegaMenuBanner)
+class MegaMenuBannerAdmin(admin.ModelAdmin):
+    list_display = ["slot", "title", "is_active"]
     list_filter = ["is_active"]
     search_fields = ["title"]

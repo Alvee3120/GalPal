@@ -3,7 +3,7 @@ from rest_framework import serializers
 from apps.core.serializers import ReplacedFilesMixin
 
 from . import services
-from .models import HeroBanner, HeroSliderConfig
+from .models import HeroBanner, HeroSliderConfig, MegaMenuBanner
 
 # --- public ----------------------------------------------------------------------------------
 
@@ -26,6 +26,15 @@ class PublicHeroBannerSerializer(serializers.ModelSerializer):
             "id", "desktop_image", "tablet_image", "mobile_image", "alt_text",
             "link_url", "link_target", "button_text", "slide_delay_override",
         ]
+        read_only_fields = fields
+
+
+class PublicMegaMenuBannerSerializer(serializers.ModelSerializer):
+    """One Shop mega menu image: its slot (square_1/square_2/wide), image and link."""
+
+    class Meta:
+        model = MegaMenuBanner
+        fields = ["slot", "image", "alt_text", "link_url", "link_target"]
         read_only_fields = fields
 
 
@@ -69,3 +78,15 @@ class AdminHeroBannerSerializer(ReplacedFilesMixin, serializers.ModelSerializer)
         if start and end and end <= start:
             raise serializers.ValidationError({"end_at": ["Must be after the start date."]})
         return attrs
+
+
+class AdminMegaMenuBannerSerializer(ReplacedFilesMixin, serializers.ModelSerializer):
+    file_fields = ("image",)
+
+    class Meta:
+        model = MegaMenuBanner
+        fields = [
+            "id", "slot", "title", "image", "alt_text", "link_url", "link_target", "is_active",
+            "created_at", "updated_at",
+        ]
+        read_only_fields = ["id", "created_at", "updated_at"]

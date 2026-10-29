@@ -4,7 +4,9 @@ import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { FiChevronDown } from "react-icons/fi";
 import AccountMenu from "./AccountMenu";
+import MegaMenu from "./MegaMenu";
 import ProductImage from "./ProductImage";
 import { useCart } from "@/component/cart/CartProvider";
 import { logoutAction } from "@/app/actions/auth";
@@ -13,6 +15,12 @@ import formatPrice from "@/lib/formatPrice";
 
 const SEARCH_DEBOUNCE_MS = 350;
 const SEARCH_RESULT_LIMIT = 5;
+
+// Announcement bar hide/show thresholds (px). The gap between them must be wider than the bar itself: collapsing
+// it shrinks the (sticky) header, the browser's scroll-anchoring nudges scrollY back, and a single threshold lets
+// the two ping-pong — the "blinking" bar. See the scroll effect below.
+const HIDE_ANNOUNCEMENT_AT = 80;
+const SHOW_ANNOUNCEMENT_AT = 20;
 
 const links = [
   { href: "/", label: "Home" },
@@ -193,7 +201,7 @@ function SearchResults({ results, groups, loading, fresh, count, query, currency
 }
 
 // `announcement`: the server-rendered AnnouncementBar, shown inside the header so it stays with the (fixed/sticky) navbar.
-export default function Navbar({ announcement = null }) {
+export default function Navbar({ announcement = null, megaMenu = null }) {
   const pathname = usePathname();
   const router = useRouter();
   const isHome = pathname === "/";
@@ -226,6 +234,8 @@ export default function Navbar({ announcement = null }) {
   };
 
   const [scrolled, setScrolled] = useState(false);
+  const [announcementHidden, setAnnouncementHidden] = useState(false);
+  const [megaOpen, setMegaOpen] = useState(false);
   const [open, setOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -242,8 +252,29 @@ export default function Navbar({ announcement = null }) {
 
   const searchButtonRef = useRef(null);
   const mobileInputRef = useRef(null);
+  const megaCloseTimer = useRef(null);
 
   const closeSearch = () => setIsSearchOpen(false);
+
+  const hasMegaMenu = (megaMenu?.categories?.length ?? 0) > 0;
+
+  // Hover "Shop" to open the mega menu; leaving it (or the panel) closes after a short delay, so a diagonal move
+  // from the nav item down into the panel doesn't dismiss it.
+  const openMegaMenu = () => {
+    if (megaCloseTimer.current) clearTimeout(megaCloseTimer.current);
+    setMegaOpen(true);
+  };
+  const cancelCloseMegaMenu = () => {
+    if (megaCloseTimer.current) clearTimeout(megaCloseTimer.current);
+  };
+  const closeMegaMenuSoon = () => {
+    cancelCloseMegaMenu();
+    megaCloseTimer.current = setTimeout(() => setMegaOpen(false), 150);
+  };
+  const closeMegaMenu = () => {
+    cancelCloseMegaMenu();
+    setMegaOpen(false);
+  };
 
   // Typing always (re)reveals the desktop dropdown; only an explicit close (outside click, Escape, selecting a
   // result, View All, submit) hides it again while a query is still present.
@@ -358,10 +389,28 @@ export default function Navbar({ announcement = null }) {
   }, [isSearchOpen]);
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 20);
+    const onScroll = () => {
+      const y = window.scrollY;
+      setScrolled(y > 20);
+      // Hysteresis: hide once scrolled well past the bar, but only bring it back near the very top.
+      setAnnouncementHidden((hidden) => (hidden ? y > SHOW_ANNOUNCEMENT_AT : y > HIDE_ANNOUNCEMENT_AT));
+    };
+    onScroll(); // covers a page restored mid-scroll (refresh / back navigation)
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
+
+  // Close the mega menu on Escape, and never leave a pending close-timer behind on unmount. (Navigation closes it
+  // via each link's onClick, so no effect has to watch the pathname.)
+  useEffect(() => {
+    if (!megaOpen) return;
+    const onKeyDown = (e) => {
+      if (e.key === "Escape") setMegaOpen(false);
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [megaOpen]);
+  useEffect(() => () => clearTimeout(megaCloseTimer.current), []);
 
   // Transparent only on the homepage, at the top, with the mobile menu closed.
   const transparent = isHome && !scrolled && !open;
@@ -385,7 +434,7 @@ export default function Navbar({ announcement = null }) {
     >
       {/* Collapses once the page is scrolled, so only the navbar stays pinned; back at the top it slides open again. */}
       {announcement && (
-        <div className="announcement-collapse" data-hidden={scrolled} inert={scrolled}>
+        <div className="announcement-collapse" data-hidden={announcementHidden} inert={announcementHidden}>
           <div className="min-h-0 overflow-hidden">{announcement}</div>
         </div>
       )}
@@ -394,17 +443,34 @@ export default function Navbar({ announcement = null }) {
         className="mx-auto flex h-16 w-full max-w-7xl items-center px-4 sm:px-6 lg:px-8"
       >
         <ul className="order-1 hidden flex-1 items-center gap-6 whitespace-nowrap text-sm font-medium md:flex lg:gap-8">
-          {links.map((l) => (
-            <li key={l.href}>
-              <Link
-                href={l.href}
-                aria-current={pathname === l.href ? "page" : undefined}
-                className="opacity-90 transition-opacity hover:opacity-100 aria-[current=page]:opacity-100 aria-[current=page]:underline aria-[current=page]:underline-offset-8"
-              >
-                {l.label}
-              </Link>
-            </li>
-          ))}
+          {links.map((l) =>
+            l.href === "/shop" && hasMegaMenu ? (
+              <li key={l.href} onMouseEnter={openMegaMenu} onMouseLeave={closeMegaMenuSoon}>
+                <Link
+                  href={l.href}
+                  aria-current={pathname === l.href ? "page" : undefined}
+                  aria-haspopup="true"
+                  aria-expanded={megaOpen}
+                  onFocus={openMegaMenu}
+                  onClick={closeMegaMenu}
+                  className="flex items-center gap-1 opacity-90 transition-opacity hover:opacity-100 aria-[current=page]:opacity-100 aria-[current=page]:underline aria-[current=page]:underline-offset-8"
+                >
+                  {l.label}
+                  <FiChevronDown className={`h-3.5 w-3.5 transition-transform duration-200 ${megaOpen ? "rotate-180" : ""}`} aria-hidden="true" />
+                </Link>
+              </li>
+            ) : (
+              <li key={l.href}>
+                <Link
+                  href={l.href}
+                  aria-current={pathname === l.href ? "page" : undefined}
+                  className="opacity-90 transition-opacity hover:opacity-100 aria-[current=page]:opacity-100 aria-[current=page]:underline aria-[current=page]:underline-offset-8"
+                >
+                  {l.label}
+                </Link>
+              </li>
+            ),
+          )}
         </ul>
         <Link
           href="/"
@@ -511,6 +577,22 @@ export default function Navbar({ announcement = null }) {
           </button>
         </div>
       </nav>
+
+      {/* Desktop only: the Shop mega menu, dropped under the navbar while "Shop" is hovered. */}
+      {hasMegaMenu && megaOpen && (
+        <div
+          className="mega-menu__panel absolute left-1/2 top-full hidden -translate-x-1/2 md:block"
+          onMouseEnter={cancelCloseMegaMenu}
+          onMouseLeave={closeMegaMenuSoon}
+        >
+          <MegaMenu
+            categories={megaMenu.categories ?? []}
+            brands={megaMenu.brands ?? []}
+            banners={megaMenu.banners ?? []}
+            onNavigate={closeMegaMenu}
+          />
+        </div>
+      )}
 
       {/* Below lg: dropdown panel directly under the navbar (overlays, never pushes it) */}
       <div

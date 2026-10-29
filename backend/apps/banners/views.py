@@ -6,7 +6,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from . import services
-from .serializers import HeroSliderSerializer
+from .serializers import HeroSliderSerializer, PublicMegaMenuBannerSerializer
 
 
 class HeroSliderView(APIView):
@@ -21,3 +21,19 @@ class HeroSliderView(APIView):
     def get(self, request):
         data = {"config": services.get_slider_config(), "banners": services.visible_banners()}
         return Response(HeroSliderSerializer(data, context={"request": request}).data)
+
+
+class MegaMenuBannersView(APIView):
+    """The Shop mega menu's active banners, one per slot (square_1, square_2, wide)."""
+
+    authentication_classes = []  # a stale token must not break a public page
+    permission_classes = [AllowAny]
+
+    @extend_schema(
+        tags=["Mega Menu"], summary="Shop mega menu banners",
+        description="Active Shop mega menu banners by slot (`square_1`, `square_2`, `wide`).",
+        responses=PublicMegaMenuBannerSerializer(many=True),
+    )
+    def get(self, request):
+        banners = services.visible_mega_menu_banners()
+        return Response(PublicMegaMenuBannerSerializer(banners, many=True, context={"request": request}).data)

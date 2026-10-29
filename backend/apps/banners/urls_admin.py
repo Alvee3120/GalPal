@@ -2,10 +2,11 @@
 from django.urls import path
 from rest_framework.routers import SimpleRouter
 
-from .views_admin import AdminHeroBannerViewSet, AdminSliderConfigView
+from .views_admin import AdminHeroBannerViewSet, AdminMegaMenuBannerViewSet, AdminSliderConfigView
 
 router = SimpleRouter()
 router.register("hero-banners", AdminHeroBannerViewSet, basename="admin-hero-banner")
+router.register("mega-menu-banners", AdminMegaMenuBannerViewSet, basename="admin-mega-menu-banner")
 
 urlpatterns = [
     path("hero-slider-config/", AdminSliderConfigView.as_view(), name="admin-hero-slider-config"),

@@ -103,3 +103,32 @@ class HeroBanner(TimeStampedModel):
     @property
     def effective_mobile_image(self):
         return self.mobile_image if self.mobile_image else self.desktop_image
+
+
+class MegaMenuSlot(models.TextChoices):
+    SQUARE_1 = "square_1", "Square 1"
+    SQUARE_2 = "square_2", "Square 2"
+    WIDE = "wide", "Wide"
+
+
+class MegaMenuBanner(TimeStampedModel):
+    """
+    One promotional image in the storefront's Shop mega menu.
+
+    The menu has three fixed slots — two square banners side by side and one wide banner spanning two columns — so
+    the `slot` is unique: at most one banner per slot (three in total), and the Admin decides which image sits where.
+    """
+
+    slot = models.CharField(max_length=8, choices=MegaMenuSlot.choices, unique=True)
+    title = models.CharField(max_length=120, blank=True, help_text="Internal label, not shown to customers.")
+    image = models.ImageField(upload_to=UploadPath("mega-menu"), validators=[validate_image_file])
+    alt_text = models.CharField(max_length=150, blank=True)
+    link_url = models.CharField(max_length=500, blank=True, help_text="A site path (/shop?category=…) or an http(s) URL.")
+    link_target = models.CharField(max_length=7, choices=LinkTarget.choices, default=LinkTarget.SELF)
+    is_active = models.BooleanField(default=True, db_index=True)
+
+    class Meta:
+        ordering = ["slot"]
+
+    def __str__(self):
+        return self.title or self.get_slot_display()

@@ -11,20 +11,20 @@ React 19, React Compiler) and **Tailwind CSS 4**. All data comes from the Django
 Requirements: Node.js 20.9+ and a running backend (see `../backend/README.md`).
 
 ```bash
-npm install
+pnpm install
 # point the frontend at the backend (see "Environment" below)
 echo "API_BASE_URL=http://localhost:8000/api/v1" > .env.local
-npm run dev
+pnpm dev
 ```
 
 Open <http://localhost:3000>.
 
 | Script          | What it does                    |
 | --------------- | ------------------------------- |
-| `npm run dev`   | Development server              |
-| `npm run build` | Production build                |
-| `npm run start` | Serve the production build      |
-| `npm run lint`  | ESLint                          |
+| `pnpm dev`   | Development server              |
+| `pnpm build` | Production build                |
+| `pnpm start` | Serve the production build      |
+| `pnpm lint`  | ESLint                          |
 
 ## Environment
 

@@ -9,7 +9,7 @@ from django.db.models import Q
 from django.utils import timezone
 
 from .exceptions import field_error
-from .models import HeroBanner, HeroSliderConfig
+from .models import HeroBanner, HeroSliderConfig, MegaMenuBanner
 
 logger = logging.getLogger(__name__)
 
@@ -69,6 +69,11 @@ def visible_banners():
         & (Q(start_at__isnull=True) | Q(start_at__lte=now))
         & (Q(end_at__isnull=True) | Q(end_at__gte=now))
     ).order_by("sort_order", "-created_at")
+
+
+def visible_mega_menu_banners():
+    """The Shop mega menu's active banners, ordered by slot (square_1, square_2, wide)."""
+    return MegaMenuBanner.objects.filter(is_active=True).order_by("slot")
 
 
 def reorder_banners(ids):

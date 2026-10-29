@@ -8,6 +8,8 @@ import AppToaster from "@/component/shared/AppToaster";
 import { CartProvider } from "@/component/cart/CartProvider";
 import CartDrawer from "@/component/cart/CartDrawer";
 import { getCurrencySymbol } from "@/lib/siteSettings";
+import { getMegaMenuBanners, getMegaMenuBrands } from "@/lib/megaMenu";
+import { getShopCategories } from "@/lib/shopData";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -25,7 +27,14 @@ export const metadata = {
 };
 
 export default async function RootLayout({ children }) {
-  const currencySymbol = await getCurrencySymbol();
+  // The Shop mega menu's data (category tree, all brands, the three banners). Cached + tagged, so an Admin change
+  // revalidates it; each getter returns an empty list on failure, so the navbar just shows the plain Shop link.
+  const [currencySymbol, categories, brands, banners] = await Promise.all([
+    getCurrencySymbol(),
+    getShopCategories(),
+    getMegaMenuBrands(),
+    getMegaMenuBanners(),
+  ]);
   return (
     <html
       lang="en"
@@ -33,7 +42,7 @@ export default async function RootLayout({ children }) {
     >
       <body className="min-h-full flex flex-col" suppressHydrationWarning>
         <CartProvider currencySymbol={currencySymbol}>
-          <Navbar announcement={<AnnouncementBar />} />
+          <Navbar announcement={<AnnouncementBar />} megaMenu={{ categories, brands, banners }} />
           {children}
           <FooterGate>
             <Footer />
