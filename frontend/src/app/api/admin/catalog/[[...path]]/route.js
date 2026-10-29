@@ -32,7 +32,11 @@ const isPath = (p, method) => {
     return p.length === 2 && ID.test(id) && ["GET", "PATCH", "DELETE"].includes(method); // retrieve / edit / delete
   }
   if (resource === "product-attributes") return method === "GET" && p.length === 1;
-  if (resource === "tags" || resource === "attribute-values") return p.length === 1 && (method === "GET" || method === "POST");
+  if (resource === "tags") {
+    if (p.length === 1) return method === "GET" || method === "POST"; // list+search / create
+    return p.length === 2 && ID.test(id) && ["GET", "PATCH", "DELETE"].includes(method); // retrieve / edit / delete
+  }
+  if (resource === "attribute-values") return p.length === 1 && (method === "GET" || method === "POST");
   return false;
 };
 

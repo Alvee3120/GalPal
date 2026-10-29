@@ -172,9 +172,12 @@ class AdminBrandSerializer(SlugSerializerMixin, ReplacedFilesMixin, _UniqueNameM
 
 class AdminTagSerializer(SlugSerializerMixin, _UniqueNameMixin, serializers.ModelSerializer):
     slug = slug_field()
+    # How many products carry this tag, so the dashboard can warn before deleting one that is in use.
+    # Annotated by the view's queryset (`Count("products")`), not a per-row query; the default covers a new tag.
+    product_count = serializers.IntegerField(read_only=True, default=0)
 
     class Meta:
         model = Tag
-        fields = ["id", "name", "slug", "created_at", "updated_at"]
-        read_only_fields = ["id", "created_at", "updated_at"]
+        fields = ["id", "name", "slug", "product_count", "created_at", "updated_at"]
+        read_only_fields = ["id", "product_count", "created_at", "updated_at"]
         validators = []

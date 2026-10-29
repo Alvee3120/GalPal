@@ -1,8 +1,9 @@
+import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import PageHero from "@/component/shared/PageHero";
 import ProductDetailContent from "@/component/product/ProductDetailContent";
 import ProductReviews from "@/component/product/ProductReviews";
-import RecommendedProducts from "@/component/product/RecommendedProducts";
+import RecommendedProducts, { RecommendedProductsSkeleton } from "@/component/product/RecommendedProducts";
 import { getCurrencySymbol } from "@/lib/siteSettings";
 import { REVIEWS_TAG, getProductReviews, getRatingBreakdown } from "@/lib/reviewsData";
 
@@ -45,7 +46,9 @@ export default async function ProductDetailPage({ params }) {
           initialReviews={initialReviews}
           breakdown={breakdown}
         />
-        <RecommendedProducts products={product.related_products} currencySymbol={currencySymbol} />
+        <Suspense fallback={<RecommendedProductsSkeleton />}>
+          <RecommendedProducts product={product} currencySymbol={currencySymbol} />
+        </Suspense>
       </div>
     </main>
   );

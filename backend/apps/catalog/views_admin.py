@@ -123,10 +123,14 @@ class AdminBrandViewSet(_AdminModelViewSet):
     destroy=extend_schema(tags=["Admin – Tags"], summary="Delete a tag"),
 )
 class AdminTagViewSet(_AdminModelViewSet):
-    cce_actions = frozenset({"list", "retrieve", "create"})  # the product form's tag picker, incl. "+ Add Tag"
+    # Available Tags management in the CCE dashboard, plus the product form's tag picker (incl. "+ Add Tag").
+    cce_actions = frozenset({"list", "retrieve", "create", "partial_update", "destroy"})
     serializer_class = AdminTagSerializer
-    queryset = Tag.objects.all()
     filterset_class = AdminTagFilter
     search_fields = ["name", "slug"]
     ordering_fields = ["name", "created_at", "updated_at"]
     ordering = ["name"]
+
+    def get_queryset(self):
+        # `product_count` (used by the dashboard's delete confirmation) is a real annotation, not a query per row.
+        return Tag.objects.annotate(product_count=Count("products"))
